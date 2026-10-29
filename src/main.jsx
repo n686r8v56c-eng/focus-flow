@@ -149,6 +149,8 @@ function AuthGate() {
     <>
       <App
         key={session.user.id}
+        bridgeClient={supabase}
+        bridgeUserId={session.user.id}
         initialData={snapshot}
         onDataChange={save}
         onLogout={async () => {
