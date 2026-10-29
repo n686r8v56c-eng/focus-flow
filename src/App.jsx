@@ -44,7 +44,8 @@ export function App({ initialData, onDataChange, onLogout }) {
     [statView, setStatView] = useState("daily"),
     [statMonth, setStatMonth] = useState(localDate().slice(0, 7)),
     [showDone, setShowDone] = useState(false),
-    [clockDate, setClockDate] = useState(localDate());
+    [clockDate, setClockDate] = useState(localDate()),
+    [audioStatus, setAudioStatus] = useState("");
   const tickSound = data.settings?.tickSound ?? false,
     tickType = data.settings?.tickType ?? "wood",
     goalHours = data.settings?.goalHours ?? 3;
@@ -55,6 +56,7 @@ export function App({ initialData, onDataChange, onLogout }) {
     setGoalHours = (v) => setting("goalHours", v);
   const endAt = useRef(null);
   const audioRef = useRef(null);
+  const testAudioRef = useRef(null);
   const latest = useRef({});
   latest.current = { data, pomTask, mode, round };
   useEffect(() => {
@@ -64,6 +66,7 @@ export function App({ initialData, onDataChange, onLogout }) {
   useEffect(
     () => () => {
       audioRef.current?.close();
+      testAudioRef.current?.pause();
     },
     [],
   );
@@ -125,6 +128,99 @@ export function App({ initialData, onDataChange, onLogout }) {
   const plannedTasks = data.tasks.filter((t) => t.due && t.status !== "done");
   const todayNotDone = todayTasks.filter((t) => t.status !== "done");
   const selectedPomTask = data.tasks.find((t) => t.id === pomTask);
+  function reportAudioError(error) {
+    setAudioStatus(
+      "소리를 켜지 못했어. 소리 테스트를 다시 눌러 줘. (" +
+        (error?.message || "오디오 확인 필요") +
+        ")",
+    );
+  }
+  function activateAudio() {
+    // Call directly from a tap, before awaiting anything (Safari user activation).
+    try {
+      if (window.navigator.audioSession) {
+        try {
+          window.navigator.audioSession.type = "playback";
+        } catch {}
+      }
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return Promise.reject(new Error("Web Audio 미지원"));
+      if (!audioRef.current || audioRef.current.state === "closed")
+        audioRef.current = new AudioContext();
+      const ctx = audioRef.current;
+      const resumed = ctx.resume();
+      const source = ctx.createBufferSource();
+      source.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      source.connect(ctx.destination);
+      source.start(0);
+      return Promise.resolve(resumed).then(() => {
+        if (ctx.state !== "running") throw new Error("오디오가 일시 중단됐어");
+        return ctx;
+      });
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+  function testSound() {
+    // A real short WAV through the media path also tests Safari's speaker route.
+    try {
+      const ready = activateAudio();
+      if (!testAudioRef.current) {
+        const rate = 16000,
+          count = 6400;
+        const bytes = new Uint8Array(44 + count * 2),
+          view = new DataView(bytes.buffer);
+        const text = (offset, value) =>
+          [...value].forEach((c, i) =>
+            view.setUint8(offset + i, c.charCodeAt(0)),
+          );
+        text(0, "RIFF");
+        view.setUint32(4, 36 + count * 2, true);
+        text(8, "WAVE");
+        text(12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, rate, true);
+        view.setUint32(28, rate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        text(36, "data");
+        view.setUint32(40, count * 2, true);
+        for (let i = 0; i < count; i++) {
+          const t = i / rate,
+            envelope = Math.min(1, t / 0.01) * Math.exp(-t * 9);
+          view.setInt16(
+            44 + i * 2,
+            Math.round(Math.sin(2 * Math.PI * 660 * t) * envelope * 12000),
+            true,
+          );
+        }
+        let binary = "";
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        testAudioRef.current = new window.Audio(
+          "data:audio/wav;base64," + window.btoa(binary),
+        );
+        testAudioRef.current.preload = "auto";
+      }
+      const audio = testAudioRef.current;
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 0.8;
+      // Both play() and resume() run in the original button gesture.
+      const played = audio.play();
+      Promise.allSettled([ready, Promise.resolve(played)]).then((results) => {
+        const failed = results.find((result) => result.status === "rejected");
+        if (failed) reportAudioError(failed.reason);
+        else
+          setAudioStatus(
+            "짧은 확인음이 들리는지 확인해 줘. 이제 초침 미리 듣기를 눌러 봐.",
+          );
+      });
+    } catch (error) {
+      reportAudioError(error);
+    }
+  }
   function playTick() {
     try {
       const ctx = audioRef.current;
@@ -158,7 +254,13 @@ export function App({ initialData, onDataChange, onLogout }) {
     if (!running || mode !== "focus" || !tickSound) return;
     const tick = () => {
       const ctx = audioRef.current;
-      if (ctx?.state === "suspended") ctx.resume().catch(() => {});
+      if (ctx && ctx.state !== "running") {
+        ctx
+          .resume()
+          .then(() => playTick())
+          .catch(reportAudioError);
+        return;
+      }
       playTick();
     };
     tick();
@@ -767,12 +869,7 @@ export function App({ initialData, onDataChange, onLogout }) {
                   onChange={(e) => {
                     setTickSound(e.target.checked);
                     if (e.target.checked) {
-                      try {
-                        audioRef.current ||= new (
-                          window.AudioContext || window.webkitAudioContext
-                        )();
-                        audioRef.current.resume();
-                      } catch {}
+                      activateAudio().catch(reportAudioError);
                     }
                   }}
                   aria-label="시계 소리 켜기"
@@ -792,16 +889,32 @@ export function App({ initialData, onDataChange, onLogout }) {
                 </select>
                 <button
                   onClick={() => {
-                    try {
-                      audioRef.current ||= new (
-                        window.AudioContext || window.webkitAudioContext
-                      )();
-                      audioRef.current.resume().then(() => playTick());
-                    } catch {}
+                    activateAudio()
+                      .then(() => playTick())
+                      .catch(reportAudioError);
                   }}
                 >
                   미리 듣기
                 </button>
+              </div>
+              <div style={{ width: "100%", marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={testSound}
+                  aria-label="소리 테스트"
+                >
+                  🔊 소리 테스트
+                </button>
+                {audioStatus && (
+                  <p
+                    className="hint"
+                    role="status"
+                    style={{ margin: "8px 0 0" }}
+                  >
+                    {audioStatus}
+                  </p>
+                )}
               </div>
               <div className="timer-actions">
                 <button
@@ -815,14 +928,7 @@ export function App({ initialData, onDataChange, onLogout }) {
                   className="primary start"
                   onClick={() => {
                     if (!running) {
-                      try {
-                        audioRef.current ||= new (
-                          window.AudioContext || window.webkitAudioContext
-                        )();
-                        audioRef.current.resume();
-                      } catch (e) {
-                        console.warn("오디오 초기화 실패", e);
-                      }
+                      activateAudio().catch(reportAudioError);
                     } else if (endAt.current !== null) {
                       setSeconds(
                         Math.max(
@@ -1151,8 +1257,8 @@ export function App({ initialData, onDataChange, onLogout }) {
       </main>
       <nav className="bottom-nav">
         {[
-          ["projects", FolderKanban, "프로젝트"],
           ["today", Columns3, "오늘"],
+          ["projects", FolderKanban, "프로젝트"],
           ["calendar", CalendarDays, "일정"],
           ["pom", Timer, "뽀모도로"],
         ].map(([id, Icon, label]) => (
