@@ -13,7 +13,8 @@ Authentication → URL Configuration → Site URL을 실제 Cloudflare Pages 주
 압축 해제한 파일/폴더를 GitHub 저장소 루트에 업로드합니다.
 Cloudflare Pages: GitHub repo 연결 / Framework preset: Vite / Build command: `npm run build` / Output directory: `dist`.
 
-## 4. 주의
-최초 로그인 시 서버에 데이터가 없으면 기본 프로젝트만 표시합니다. 이전 브라우저 localStorage의 기록은 자동으로 가져오지 않습니다.
-기본 데이터는 사용자별 JSON 상태를 Supabase에 저장합니다. 다른 기기에서 이미 열린 화면이 실시간 자동 갱신되는 기능은 아직 구현하지 않았습니다. 다른 기기에서 변경한 기록은 페이지를 새로 열면 불러옵니다. 동시에 두 기기에서 수정하면 마지막 저장이 덮어쓸 수 있습니다.
-Codespaces 없이 Cloudflare 자동 빌드가 가능합니다.
+## 4. 기존 사용자는 데이터 보존
+기존 Supabase 연결과 테이블, 사용자, RLS를 유지합니다. 이번 코드 업데이트를 위해 SQL을 다시 실행할 필요가 없습니다.
+최초 로그인 시 서버 행이 없으면 기본 프로젝트를 표시합니다. 이전 v1 localStorage 데이터는 자동 가져오지 않습니다.
+다른 기기의 변경은 화면 포커스 복귀 및 12초 간격으로 확인합니다. 저장은 updated_at 비교 후 갱신하며, 독립 수정은 병합하고 동일 항목 충돌은 경고합니다. 네트워크 오류나 충돌 시 미저장 변경은 사용자별 localStorage에 보관합니다.
+새 코드 배포 후 모든 기기를 새로고침하세요. 구버전 클라이언트의 무조건 덮어쓰기는 새 코드로 보호할 수 없습니다.

@@ -1,14 +1,13 @@
-# Codespaces 없이 Cloudflare Pages 배포
-1. GitHub에서 새 저장소 `Focus-Flow` 생성.
-2. 이 폴더의 파일을 저장소 최상위에 업로드 (`src`, `index.html`, `package.json` 등).
-3. Cloudflare Dashboard > Workers & Pages > Create > Pages > Connect to Git > 저장소 선택.
-4. Framework preset: Vite, Build command: `npm run build`, Build output directory: `dist`.
-5. 배포가 완료되면 Cloudflare의 `*.pages.dev` 주소로 아이폰에서 열기.
+# Focus Flow v5 배포
 
-# Supabase 준비
-1. Supabase 새 프로젝트 생성.
-2. SQL Editor에서 `supabase.sql` 실행.
-3. Project URL과 publishable key를 확인. `service_role`/secret key 공유 금지.
-4. 앱의 로그인·읽기·쓰기 연결 코드는 아직 구현 전. 데이터 테이블 준비 단계임.
+기존 Cloudflare Pages 프로젝트와 GitHub 연결을 유지합니다.
+- Build command: `npm run build`
+- Output directory: `dist`
+- Node.js: 22 LTS 권장
+- Production branch: 기존 `main` 유지. 수정 브랜치는 Preview 배포로 확인합니다.
 
-현재 v1은 localStorage 기반으로 기기 간 동기화가 불가능하므로, Supabase 연결 완료 전 중요 기록 입력은 피하세요.
+`npm install` 및 `npm run build` 후 배포합니다. `package-lock.json`을 함께 커밋해 버전을 고정합니다.
+
+기존 Supabase 프로젝트, 사용자, 테이블과 RLS 정책을 유지합니다. 업데이트를 위해 `supabase.sql`을 재실행하거나 데이터를 초기화할 필요가 없습니다.
+
+iPhone Safari에서는 시작/소리 켜기/미리 듣기 버튼을 직접 눌러 오디오를 활성화하세요. 잠금 화면이나 백그라운드에서 Safari가 오디오를 중지할 수 있으며, 이 경우 소리와 알림은 보장되지 않습니다. 타이머는 화면 복귀 시 경과 시간을 반영합니다.
