@@ -18,6 +18,7 @@ import {
   Heart,
 } from "lucide-react";
 import "./style.css";
+import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
 import {
@@ -78,7 +79,11 @@ export function App({
   const alarmEnabled = data.settings?.alarmEnabled ?? true;
   const setAlarmEnabled = v => setting("alarmEnabled",v);
   const endAt = useRef(null);
+  const dialDrag = useRef(null);
+  const dialValue = useRef(25);
   const audioRef = useRef(null);
+  const bellBufferRef = useRef(null);
+  const bellLoadRef = useRef(null);
   const testAudioRef = useRef(null);
   const previewRef = useRef(null);
   const previewGeneration = useRef(0);
@@ -216,6 +221,13 @@ export function App({
       if (!audioRef.current || audioRef.current.state === "closed")
         audioRef.current = new AudioContext();
       const ctx = audioRef.current;
+      if (!bellLoadRef.current) {
+        bellLoadRef.current = fetch(focusBellSound)
+          .then(response => { if (!response.ok) throw new Error('Bell download failed'); return response.arrayBuffer(); })
+          .then(buffer => ctx.decodeAudioData(buffer))
+          .then(decoded => { bellBufferRef.current = decoded; return decoded; })
+          .catch(error => { bellLoadRef.current = null; console.warn('종소리를 준비하지 못했어', error); });
+      }
       const resumed = ctx.resume();
       const source = ctx.createBufferSource();
       source.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
@@ -351,28 +363,24 @@ export function App({
     };
   }, [running, mode, tickSound, tickType]);
   function ringBell() {
-    try {
-      const ctx = audioRef.current;
-      if (!ctx) return;
-      if (ctx.state === "suspended") ctx.resume();
-      const now = ctx.currentTime;
-      [0, 0.32, 0.64].forEach((delay) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(880, now + delay);
-        osc.frequency.exponentialRampToValueAtTime(660, now + delay + 0.38);
-        gain.gain.setValueAtTime(0.0001, now + delay);
-        gain.gain.exponentialRampToValueAtTime(0.18, now + delay + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.55);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now + delay);
-        osc.stop(now + delay + 0.56);
-      });
-    } catch (e) {
-      console.warn("알림음 재생 실패", e);
+    const ctx = audioRef.current;
+    if (!ctx || !bellBufferRef.current) {
+      // Fallback when the user started before sound decoding finished.
+      const audio = new Audio(focusBellSound);
+      audio.volume = 0.8;
+      audio.play().catch(error => console.warn('종소리 재생 차단', error));
+      return;
     }
+    try {
+      const voice = ctx.createBufferSource();
+      voice.buffer = bellBufferRef.current;
+      const volume = ctx.createGain();
+      volume.gain.value = 0.8;
+      voice.connect(volume);
+      volume.connect(ctx.destination);
+      if (ctx.state === 'suspended') void ctx.resume();
+      voice.start(0);
+    } catch (error) { console.warn('종소리 재생 실패', error); }
   }
   function finishPom() {
     if (endAt.current === null) return;
@@ -382,7 +390,7 @@ export function App({
     setRunning(false);
     endAt.current = null;
     if (mode === "focus") {
-      update((d) => ({
+      if (customFocusMinutes >= 1) update((d) => ({
         ...d,
         sessions: [
           ...(d.sessions || []),
@@ -394,13 +402,13 @@ export function App({
           },
         ],
       }));
-      setToast(`집중 ${customFocusMinutes}분 완료! 기록에 저장했어.`);
+      setToast(customFocusMinutes >= 1 ? `집중 ${customFocusMinutes}분 완료! 기록에 저장했어.` : "1분 미만은 기록하지 않아.");
       setRound(round + 1);
       setMode("break");
       setSeconds((round + 1) % 4 === 0 ? 900 : 300);
     } else {
       setMode("focus");
-      setSeconds(1500);
+      setSeconds(customFocusMinutes * 60);
       setToast("휴식 끝! 다음 집중을 시작해봐.");
     }
   }
@@ -420,6 +428,35 @@ export function App({
       document.removeEventListener("visibilitychange", tick);
     };
   }, [running]);
+  const changeFocusMinutes = (minutes) => {
+    const next = Math.max(0, Math.min(60, Math.round(minutes)));
+    dialValue.current = next;
+    setCustomFocusMinutes(next);
+    setSeconds(next * 60);
+  };
+  const dialAngle = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left - rect.width / 2;
+    const y = event.clientY - rect.top - rect.height / 2;
+    return (Math.atan2(y, x) * 180 / Math.PI + 450) % 360;
+  };
+  const dialStart = (event) => {
+    if (running || mode !== "focus") return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dialDrag.current = { id: event.pointerId, last: dialAngle(event), accumulated: dialValue.current };
+  };
+  const dialMove = (event) => {
+    const drag = dialDrag.current;
+    if (!drag || drag.id !== event.pointerId || running || mode !== "focus") return;
+    const angle = dialAngle(event);
+    let delta = angle - drag.last;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    drag.last = angle;
+    drag.accumulated = Math.max(0, Math.min(60, drag.accumulated + delta / 6));
+    changeFocusMinutes(drag.accumulated);
+  };
+  const dialEnd = () => { dialDrag.current = null; };
   const resetTimer = (m = mode) => {
     setRunning(false);
     endAt.current = null;
@@ -1079,7 +1116,7 @@ export function App({
                   휴식 5분
                 </button>
               </div>
-              <div className="timer-circle" style={{position:"relative",touchAction:"none"}} onPointerDown={e=>{if(running || mode!=="focus")return;e.currentTarget.setPointerCapture(e.pointerId);const r=e.currentTarget.getBoundingClientRect(), x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2,angle=(Math.atan2(y,x)*180/Math.PI+450)%360;const m=Math.max(1,Math.min(120,Math.round(angle/360*120)));setCustomFocusMinutes(m);setSeconds(m*60)}} onPointerMove={e=>{if(e.buttons!==1||running||mode!=="focus")return;const r=e.currentTarget.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2,angle=(Math.atan2(y,x)*180/Math.PI+450)%360;const m=Math.max(1,Math.min(120,Math.round(angle/360*120)));setCustomFocusMinutes(m);setSeconds(m*60)}}>
+              <div className="timer-circle" role="slider" aria-label="집중 시간 (원형 다이얼)" aria-valuemin={0} aria-valuemax={60} aria-valuenow={customFocusMinutes} tabIndex={mode === "focus" && !running ? 0 : -1} onKeyDown={(e) => {if(running || mode !== "focus")return;if(e.key === "ArrowRight" || e.key === "ArrowUp"){e.preventDefault();changeFocusMinutes(customFocusMinutes+1);}if(e.key === "ArrowLeft" || e.key === "ArrowDown"){e.preventDefault();changeFocusMinutes(customFocusMinutes-1);}}} style={{position:"relative",touchAction:"none",background:`conic-gradient(from 0deg,#aa8fd9 0deg ${Math.max(0,Math.min(360,seconds/3600*360))}deg,#eae2f5 ${Math.max(0,Math.min(360,seconds/3600*360))}deg 360deg)`}} onPointerDown={dialStart} onPointerMove={dialMove} onPointerUp={dialEnd} onPointerCancel={dialEnd} onLostPointerCapture={dialEnd}>
                 <div className="timer-mode">
                   {mode === "focus" ? "FOCUS TIME" : "BREAK TIME"}
                 </div>
@@ -1139,8 +1176,17 @@ export function App({
                   </p>
                 )}
               </div>
-              <label style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",marginTop:14}}>집중 종료 알림음 <input type="checkbox" checked={alarmEnabled} onChange={e=>setAlarmEnabled(e.target.checked)}/></label>
-              <div style={{fontSize:12,color:"#92879f",padding:4}}>원을 드래그하면 1~120분까지 설정할 수 있어.</div>
+              <label className="tick-option" style={{ marginTop: 12 }}>
+                <span>집중 종료 알림음 <small>집중이 끝나면 땡~</small></span>
+                <input
+                  type="checkbox"
+                  checked={alarmEnabled}
+                  onChange={e => setAlarmEnabled(e.target.checked)}
+                  aria-label="집중 종료 알림음 켜기"
+                />
+                <span className="tick-toggle" aria-hidden="true" />
+              </label>
+
               <div className="timer-actions">
                 <button
                   className="reset"
@@ -1152,6 +1198,7 @@ export function App({
                 <button
                   className="primary start"
                   onClick={() => {
+                    if (!running && mode === "focus" && seconds === 0) { setToast("집중 시간을 1분 이상 설정해 줘."); return; }
                     if (!running) {
                       activateAudio().catch(reportAudioError);
                     } else if (endAt.current !== null) {
@@ -1175,7 +1222,7 @@ export function App({
                 </button>
                 <button
                   className="stop-btn"
-                  onClick={() => {const left=running&&endAt.current?Math.max(0,Math.ceil((endAt.current-Date.now())/1000)):seconds;const elapsed=Math.max(0,customFocusMinutes*60-left);if(mode==="focus"&&elapsed>0){update(d=>({...d,sessions:[...(d.sessions||[]),{id:uid(),taskId:pomTask||null,minutes:Number((elapsed/60).toFixed(2)),endedAt:new Date().toISOString(),partial:true}]}));setToast("진행한 집중 시간을 기록했어.");}resetTimer(mode)}}
+                  onClick={() => {const left=running&&endAt.current?Math.max(0,Math.ceil((endAt.current-Date.now())/1000)):seconds;const elapsed=Math.max(0,customFocusMinutes*60-left);if(mode==="focus"&&elapsed>=60){update(d=>({...d,sessions:[...(d.sessions||[]),{id:uid(),taskId:pomTask||null,minutes:Number((elapsed/60).toFixed(2)),endedAt:new Date().toISOString(),partial:true}]}));setToast("진행한 집중 시간을 기록했어.");}resetTimer(mode)}}
                   aria-label="정지"
                 >
                   <Square size={18} /> 정지

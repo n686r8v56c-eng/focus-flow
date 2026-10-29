@@ -543,10 +543,11 @@ h2 {
 .timer-circle {
   height: 250px;
   width: 250px;
-  border: 10px solid #ece4f6;
-  border-top-color: #ae94dc;
-  border-right-color: #ae94dc;
+  padding: 10px;
+  border: 0;
   border-radius: 50%;
+  box-shadow: inset 0 0 0 1px #eee7f6;
+  cursor: grab;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1405,3 +1406,10 @@ body,
  .bottom-nav { padding-left: 2px; padding-right: 2px; }
  .bottom-nav button { font-size: 9px; gap: 4px; }
 }
+
+/* Continuous draggable progress ring: interior stays white while outer ring reflects minutes. */
+.timer-circle { isolation: isolate; user-select: none; -webkit-user-select: none; touch-action: none; }
+.timer-circle::before { content: ""; position: absolute; inset: 12px; border-radius: 50%; background: #fff; z-index: 0; pointer-events: none; }
+.timer-circle > * { position: relative; z-index: 1; pointer-events: none; }
+.timer-circle:active { cursor: grabbing; }
+.timer-circle:focus-visible { outline: 3px solid #8d6dce; outline-offset: 4px; }
