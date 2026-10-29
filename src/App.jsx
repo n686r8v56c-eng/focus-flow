@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import "./style.css";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
+import { LinkedActivities } from "./LinkedActivities.jsx";
 import {
   CLOCK_SOUNDS,
   clockType,
@@ -586,6 +587,11 @@ export function App({
           미완료 투두는 다음 날 자동으로 오늘에 표시돼. 원래 날짜와 시간은
           보존해. 약속처럼 날짜가 중요한 일정은 자동으로 변경되지 않아.
         </p>
+        <LinkedActivities
+          source="study" client={bridgeClient} userId={bridgeUserId} today={today}
+          checks={data.activityChecks || {}}
+          onCheck={(key, done) => setData({...data, activityChecks:{...(data.activityChecks || {}),[key]:{done}}})}
+        />
         <HomeWorkouts
           client={bridgeClient}
           userId={bridgeUserId}
@@ -595,6 +601,11 @@ export function App({
             ...data,
             homeWorkoutChecks: {...(data.homeWorkoutChecks || {}), [key]: {done}},
           })}
+        />
+        <LinkedActivities
+          source="mind" client={bridgeClient} userId={bridgeUserId} today={today}
+          checks={data.activityChecks || {}}
+          onCheck={(key, done) => setData({...data, activityChecks:{...(data.activityChecks || {}),[key]:{done}}})}
         />
       </>
     );
