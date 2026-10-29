@@ -137,7 +137,7 @@ export function LinkedActivities({ client, userId, today, checks = {}, onCheck, 
     >
       <div className="section-top">
         <div>
-          <div className="eyebrow">{name}</div>
+          <a className="eyebrow" href={HOME} target="_blank" rel="noopener noreferrer" aria-label={`${name} 앱 열기`} title={`${name} 앱 열기`} style={{display:"inline-block",color:"#957bb6",textDecoration:"none",cursor:"pointer",minHeight:28,paddingTop:4}}>{name} <span aria-hidden="true" style={{fontSize:12}}>↗</span></a>
           <h1>{title}</h1>
         </div>
         <button

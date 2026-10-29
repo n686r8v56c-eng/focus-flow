@@ -15,6 +15,7 @@ import {
   Pause,
   Square,
   RotateCcw,
+  Heart,
 } from "lucide-react";
 import "./style.css";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
@@ -44,6 +45,8 @@ export function App({
     setData = onDataChange;
   const [tab, setTab] = useState("today"),
     [selectedProject, setSelectedProject] = useState("p1"),
+    [karmaCategory, setKarmaCategory] = useState("me"),
+    [karmaDraft, setKarmaDraft] = useState(""),
     [calendarView, setCalendarView] = useState("month"),
     [focusDate, setFocusDate] = useState(localDate()),
     [modal, setModal] = useState(null),
@@ -58,6 +61,10 @@ export function App({
     [statView, setStatView] = useState("daily"),
     [statMonth, setStatMonth] = useState(localDate().slice(0, 7)),
     [showDone, setShowDone] = useState(false),
+    [viewDate,setViewDate]=useState(localDate()),
+    [analysisPeriod,setAnalysisPeriod]=useState("daily"),
+    [customFocusMinutes,setCustomFocusMinutes]=useState(25),
+
     [clockNow, setClockNow] = useState(Date.now()),
     [audioStatus, setAudioStatus] = useState("");
   const tickSound = data.settings?.tickSound ?? false,
@@ -68,6 +75,8 @@ export function App({
   const setTickSound = (v) => setting("tickSound", v),
     setTickType = (v) => setting("tickType", v),
     setGoalHours = (v) => setting("goalHours", v);
+  const alarmEnabled = data.settings?.alarmEnabled ?? true;
+  const setAlarmEnabled = v => setting("alarmEnabled",v);
   const endAt = useRef(null);
   const audioRef = useRef(null);
   const testAudioRef = useRef(null);
@@ -116,6 +125,8 @@ export function App({
           time: t.time || "",
           status: t.status || "todo",
           subtasks: [],
+          tally: t.tally || null,
+          tallies: Array.isArray(t.tallies)?t.tallies:[],
           estimatedPomodoros: pomCount(t.estimatedPomodoros),
           createdAt: new Date().toISOString(),
           completedAt: null,
@@ -130,6 +141,30 @@ export function App({
       ...d,
       tasks: d.tasks.map((t) => (t.id === id ? { ...t, ...fields } : t)),
     }));
+  const advanceTally = (task) => {
+    const tally = task.tally;
+    if (!tally || !Number(tally.total)) return;
+    const total=Math.max(1,Number(tally.total));
+    const step=Math.max(1,Number(tally.step)||1);
+    const count=Math.min(total,(Number(tally.count)||0)+step);
+    changeTask(task.id,{tally:{...tally,count}});
+  };
+  const advanceMultiTally=(task,index)=>{
+    const counters=task.tallies||[];
+    const counter=counters[index];if(!counter)return;
+    const total=Math.max(1,Number(counter.total)||1);
+    const count=Math.min(total, (Number(counter.count)||0)+Math.max(1,Number(counter.step)||1));
+    changeTask(task.id,{tallies:counters.map((c,i)=>i===index?{...c,count}:c)});
+  };
+  const reorderTask=(id,anchorId,targetStatus)=>update(d=>{
+    const moving=d.tasks.find(t=>t.id===id);
+    if (!moving || (anchorId && id===anchorId)) return d;
+    const group=d.tasks.filter(t=>t.id!==id&&t.status===(targetStatus||moving.status)&&t.projectId===moving.projectId);
+    const index=anchorId?group.findIndex(t=>t.id===anchorId):group.length;
+    group.splice(index<0?group.length:index,0,{...moving,status:targetStatus||moving.status});
+    const order=new Map(group.map((t,i)=>[t.id,i]));
+    return {...d,tasks:d.tasks.map(t=>order.has(t.id)?{...t,status:targetStatus||moving.status,order:order.get(t.id)}:t)};
+  });
   const completeOrStatus = (task, status) =>
     changeTask(task.id, {
       status,
@@ -141,6 +176,7 @@ export function App({
   };
   const now = new Date(clockNow);
   const today = localDate(now);
+  const visibleDate = viewDate;
   const timeText = (seconds) =>
     `${pad(Math.floor(seconds / 3600))}:${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`;
   const remaining = (hour) => {
@@ -151,12 +187,12 @@ export function App({
   const todayTasks = data.tasks
     .filter(
       (t) =>
-        (t.status !== "done" && (!t.due || t.due <= today)) ||
+        (t.status !== "done" && (!t.due || t.due <= visibleDate)) ||
         (t.status === "done" &&
           t.completedAt &&
-          localDate(new Date(t.completedAt)) === today),
+          localDate(new Date(t.completedAt)) === visibleDate),
     )
-    .sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
+    .sort((a,b) => (a.order??0)-(b.order??0) || (a.time||"99:99").localeCompare(b.time||"99:99"));
   const plannedTasks = data.tasks.filter((t) => t.due && t.status !== "done");
   const todayNotDone = todayTasks.filter((t) => t.status !== "done");
   const selectedPomTask = data.tasks.find((t) => t.id === pomTask);
@@ -341,7 +377,7 @@ export function App({
   function finishPom() {
     if (endAt.current === null) return;
     const finishedAt = endAt.current;
-    ringBell();
+    if(alarmEnabled) ringBell();
     const { pomTask, mode, round } = latest.current;
     setRunning(false);
     endAt.current = null;
@@ -353,12 +389,12 @@ export function App({
           {
             id: uid(),
             taskId: pomTask || null,
-            minutes: 25,
+            minutes: customFocusMinutes,
             endedAt: new Date(finishedAt).toISOString(),
           },
         ],
       }));
-      setToast("집중 25분 완료! 기록에 저장했어.");
+      setToast(`집중 ${customFocusMinutes}분 완료! 기록에 저장했어.`);
       setRound(round + 1);
       setMode("break");
       setSeconds((round + 1) % 4 === 0 ? 900 : 300);
@@ -388,14 +424,72 @@ export function App({
     setRunning(false);
     endAt.current = null;
     setMode(m);
-    setSeconds(m === "focus" ? 1500 : 300);
+    setSeconds(m === "focus" ? customFocusMinutes*60 : 300);
   };
   function dateItems(date) {
     return data.tasks.filter(
       (t) =>
         t.due === date ||
-        (date === today && t.status !== "done" && t.due && t.due < today),
+        (date === today && t.status !== "done" && t.due && t.due < visibleDate),
     );
+  }
+  function KarmaPanel() {
+    const all = Array.isArray(data.karmaEntries) ? data.karmaEntries : [];
+    const items = all.filter((entry) => entry.category === karmaCategory)
+      .slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))
+      .slice(0,20);
+    const last = all.reduce((latest, item) => {
+      const timestamp = Date.parse(item.createdAt);
+      return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
+    }, 0);
+    const elapsed = last ? Math.max(0, Math.floor((Date.now()-last)/1000)) : 0;
+    const timer = `${pad(Math.floor(elapsed/3600))}:${pad(Math.floor(elapsed/60)%60)}:${pad(elapsed%60)}`;
+    function saveKarma(e) {
+      e.preventDefault();
+      const memo = karmaDraft.trim();
+      if (!memo) return;
+      const createdAt = new Date().toISOString();
+      update(d => ({ ...d, karmaEntries: [ ...(Array.isArray(d.karmaEntries) ? d.karmaEntries : []),
+        { id: uid(), category: karmaCategory, text: memo, createdAt } ] }));
+      setKarmaDraft("");
+    }
+    function downloadKarma() {
+      const rows = [['날짜','시각','구분','메모'], ...all.slice()
+        .sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt))
+        .map(entry => {const date=new Date(entry.createdAt);return [
+          Number.isNaN(date.getTime())?'':localDate(date),
+          Number.isNaN(date.getTime())?'':`${pad(date.getHours())}:${pad(date.getMinutes())}`,
+          entry.category==='world'?'세상':'나',entry.text||'' ];})];
+      const csv = '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value).replaceAll('"','""')+'"').join(',')).join('\r\n');
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const url=URL.createObjectURL(blob);
+      const anchor=document.createElement('a');anchor.href=url;anchor.download=`FocusFlow_Karma_${localDate()}.csv`;
+      document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    return <section className="karma-page" style={{paddingBottom:24}}>
+      <div className="section-top"><div><div className="eyebrow">작은 선행을 기록하는 공간</div><h1>카르마</h1></div></div>
+      <div className="stat-card" style={{textAlign:'center',padding:'22px 12px',marginBottom:18}}>
+        <div style={{fontSize:13,color:'#9680aa',fontWeight:700}}>From Last Good Karma</div>
+        <div style={{fontSize:'clamp(27px,9vw,40px)',fontWeight:750,fontVariantNumeric:'tabular-nums',letterSpacing:1,marginTop:10}} aria-label="마지막 카르마 이후 경과 시간">{timer}</div>
+      </div>
+      <div className="pom-subnav" role="tablist" aria-label="카르마 유형">
+        <button role="tab" aria-selected={karmaCategory==='me'} className={karmaCategory==='me'?'active':''} onClick={()=>setKarmaCategory('me')}>나</button>
+        <button role="tab" aria-selected={karmaCategory==='world'} className={karmaCategory==='world'?'active':''} onClick={()=>setKarmaCategory('world')}>세상</button>
+      </div>
+      <form onSubmit={saveKarma} className="stat-card" style={{marginTop:16,marginBottom:18}}>
+        <label style={{display:'block',fontWeight:700,color:'#775991',marginBottom:10}} htmlFor="karma-memo">{karmaCategory==='me'?'나를 위한 카르마':'세상을 위한 카르마'}</label>
+        <textarea id="karma-memo" rows={4} value={karmaDraft} onChange={e=>setKarmaDraft(e.target.value)} placeholder="오늘의 카르마를 기록해 줘" style={{width:'100%',boxSizing:'border-box',resize:'vertical',padding:12,borderRadius:12,border:'1px solid #e5dcea',fontSize:15}} />
+        <button className="primary" type="submit" disabled={!karmaDraft.trim()} style={{width:'100%',marginTop:10}}>기록하기</button>
+      </form>
+      <div aria-label="카르마 최근 기록">
+        {items.map(entry=>{const date=new Date(entry.createdAt);return <article key={entry.id} className="stat-card" style={{marginBottom:10,padding:16}}>
+          <div style={{fontSize:12,color:'#978aa2',marginBottom:8,fontVariantNumeric:'tabular-nums'}}>{Number.isNaN(date.getTime())?'':`${String(date.getFullYear()).slice(-2)}${pad(date.getMonth()+1)}${pad(date.getDate())}`}　{Number.isNaN(date.getTime())?'':`${pad(date.getHours())}:${pad(date.getMinutes())}`}</div>
+          <div style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{entry.text}</div>
+        </article>})}
+        {!items.length && <p className="hint">아직 기록이 없어. 첫 카르마를 남겨봐.</p>}
+      </div>
+      <button type="button" className="secondary" onClick={downloadKarma} style={{width:'100%',marginTop:14}}>전체 기록 다운로드하기 (CSV)</button>
+    </section>;
   }
   function TaskCard({ task, compact = false }) {
     const p = taskProject(task),
@@ -414,6 +508,7 @@ export function App({
             style={{ background: p?.color || "#b8b3bf" }}
           />
           <span className="task-project">{p?.name || "개인 일정"}</span>
+          <small style={{marginLeft:"auto",fontSize:11,color:"#90889a"}}>{task.due||""}{task.time?" · "+task.time:""}</small>
           {task.due && task.due < today && task.status !== "done" && (
             <span className="carry">자동 이월</span>
           )}
@@ -424,11 +519,10 @@ export function App({
           </div>
           <TaskEstimate count={task.estimatedPomodoros} />
         </div>
+        {task.tally?.total > 0 && <button type="button" aria-label={`${task.title} 횟수 추가`} onClick={e=>{e.stopPropagation();advanceTally(task)}} style={{width:"100%",border:0,textAlign:"left",marginTop:6,padding:"8px 10px",borderRadius:9,fontWeight:650,background:`linear-gradient(to right,#efb7bc ${Math.min(100,100*(task.tally.count||0)/task.tally.total)}%,#f2eef5 0%)`}}>{task.tally.count||0}/{task.tally.total} · +{task.tally.step||1}</button>}
+        {(task.tallies||[]).map((counter,i)=><button key={counter.id||i} type="button" aria-label={`${counter.label||task.title} 횟수 추가`} onClick={e=>{e.stopPropagation();advanceMultiTally(task,i)}} style={{width:"100%",border:0,textAlign:"left",marginTop:6,padding:"8px 10px",borderRadius:9,fontWeight:650,background:`linear-gradient(to right,#efb7bc ${Math.min(100,100*(counter.count||0)/Math.max(1,counter.total))}%,#f2eef5 0%)`}}>{counter.label?counter.label+" · ":""}{counter.count||0}/{counter.total} · +{counter.step||1}</button>)}
         <div className="task-foot">
-          <span>
-            {task.due || "날짜 없음"}
-            {task.time ? ` · ${task.time}` : ""}
-          </span>
+          <span>{task.tally?.total ? `${task.tally.count||0}/${task.tally.total}` : ""}</span>
           {total > 0 && (
             <span>
               ☑ {complete}/{total}
@@ -517,7 +611,7 @@ export function App({
         <div className="section-top">
           <div>
             <div className="eyebrow">
-              {new Date().toLocaleDateString("ko-KR", {
+              {new Date(visibleDate+"T12:00:00").toLocaleDateString("ko-KR", {
                 month: "long",
                 day: "numeric",
                 weekday: "long",
@@ -525,6 +619,7 @@ export function App({
             </div>
             <h1>오늘의 할 일</h1>
           </div>
+          <div style={{display:"flex",alignItems:"center",gap:4}}><button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))}><ChevronLeft size={18}/></button><span style={{fontSize:12}}>{visibleDate===today?"오늘":visibleDate}</span><button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))}><ChevronRight size={18}/></button></div>
           <button
             className="primary small"
             onClick={() => {
@@ -573,8 +668,8 @@ export function App({
               <div className="lane-content">
                 {todayTasks
                   .filter((t) => t.status === key)
-                  .map((t) => (
-                    <TaskCard key={t.id} task={t} />
+                  .map((t,i,list) => (
+                    <div key={t.id} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();e.stopPropagation();reorderTask(e.dataTransfer.getData("text/plain"),t.id,key)}}><TaskCard task={t}/><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button type="button" aria-label="카드 위로 이동" disabled={i===0} onClick={()=>reorderTask(t.id,list[i-1]?.id,key)}>↑</button><button type="button" aria-label="카드 아래로 이동" disabled={i===list.length-1} onClick={()=>reorderTask(list[i+1]?.id,t.id,key)}>↓</button></div></div>
                   ))}
                 {!todayTasks.some((t) => t.status === key) && (
                   <div className="empty-lane">여기로 카드를 끌어와</div>
@@ -609,6 +704,12 @@ export function App({
         />
       </>
     );
+  }
+  function CalendarChecklist({date}) {
+    const categories=["오늘의 할 일","공부","운동","명상"];
+    const tasks=dateItems(date);
+    const category=t=>{const name=((taskProject(t)?.name||"")+" "+t.title).toLowerCase();if(/명상|호흡|만트라/.test(name))return "명상";if(/운동|헬스|근력|스트레칭|요가|필라테스/.test(name))return "운동";if(/공부|암기|논점|학습|중국어|독서/.test(name))return "공부";return "오늘의 할 일"};
+    return <div className="day-checklists">{categories.map(group=><section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}><h3 style={{fontSize:14,margin:"4px 0 8px"}}>{group}</h3>{tasks.filter(t=>category(t)===group).map(t=><label key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",color:t.status==="done"?"#aaa":"#574b65"}}><input type="checkbox" checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/><span style={{textDecoration:t.status==="done"?"line-through":"none",flex:1}}>{t.title}</span><small>{t.time||""}</small></label>)}{!tasks.some(t=>category(t)===group)&&<span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}</section>)}</div>;
   }
   function Calendar() {
     const base = new Date(focusDate + "T12:00:00"),
@@ -734,9 +835,7 @@ export function App({
             <div className="selected-day-agenda">
               <h2>{focusDate} 일정</h2>
               {dateItems(focusDate).length ? (
-                dateItems(focusDate).map((t) => (
-                  <TaskCard key={t.id} task={t} compact />
-                ))
+                <CalendarChecklist date={focusDate}/>
               ) : (
                 <p>등록된 일정이 없어.</p>
               )}
@@ -755,13 +854,7 @@ export function App({
                   {date === today && <span className="tiny-tag">오늘</span>}
                 </div>
                 <div className="agenda-items">
-                  {dateItems(date)
-                    .sort((a, b) =>
-                      (a.time || "99:99").localeCompare(b.time || "99:99"),
-                    )
-                    .map((t) => (
-                      <TaskCard key={t.id} task={t} compact />
-                    ))}
+                  <CalendarChecklist date={date}/>
                   {dateItems(date).length === 0 && (
                     <span className="empty-day">등록된 일정이 없어</span>
                   )}
@@ -787,7 +880,7 @@ export function App({
   }
   function Projects() {
     const selected = project(selectedProject),
-      items = data.tasks.filter((t) => t.projectId === selectedProject),
+      items = data.tasks.filter((t) => t.projectId === selectedProject).sort((a,b)=>(a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||"")),
       pending = items.filter((t) => t.status !== "done"),
       done = items.filter((t) => t.status === "done");
     const renderItem = (t) => (
@@ -814,6 +907,7 @@ export function App({
           <div onClick={() => setEditing(t.id)} style={{ cursor: "pointer" }}>
             <TaskEstimate count={t.estimatedPomodoros} />
           </div>
+          <div style={{display:"flex",flexDirection:"column"}}><button type="button" aria-label="위로 이동" onClick={()=>{const list=t.status==="done"?done:pending;const i=list.findIndex(x=>x.id===t.id);if(i>0)reorderTask(t.id,list[i-1].id,t.status)}}>▲</button><button type="button" aria-label="아래로 이동" onClick={()=>{const list=t.status==="done"?done:pending;const i=list.findIndex(x=>x.id===t.id);if(i>=0&&i<list.length-1)reorderTask(list[i+1].id,t.id,t.status)}}>▼</button></div>
           <ChevronRight
             size={17}
             color="#b8b0be"
@@ -953,7 +1047,7 @@ export function App({
               <div className="label">집중할 오늘의 할 일</div>
               <select
                 className="select-full"
-                disabled={running || (mode === "focus" && seconds !== 1500)}
+                disabled={running}
                 value={pomTask}
                 onChange={(e) => setPomTask(e.target.value)}
               >
@@ -969,7 +1063,7 @@ export function App({
                   className={mode === "focus" ? "active" : ""}
                   onClick={() => resetTimer("focus")}
                 >
-                  집중 25분
+                  집중 {customFocusMinutes}분
                 </button>
                 <button
                   className={mode === "break" ? "active" : ""}
@@ -978,7 +1072,7 @@ export function App({
                   휴식 5분
                 </button>
               </div>
-              <div className="timer-circle">
+              <div className="timer-circle" style={{position:"relative",touchAction:"none"}} onPointerDown={e=>{if(running || mode!=="focus")return;e.currentTarget.setPointerCapture(e.pointerId);const r=e.currentTarget.getBoundingClientRect(), x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2,angle=(Math.atan2(y,x)*180/Math.PI+450)%360;const m=Math.max(1,Math.min(120,Math.round(angle/360*120)));setCustomFocusMinutes(m);setSeconds(m*60)}} onPointerMove={e=>{if(e.buttons!==1||running||mode!=="focus")return;const r=e.currentTarget.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2,angle=(Math.atan2(y,x)*180/Math.PI+450)%360;const m=Math.max(1,Math.min(120,Math.round(angle/360*120)));setCustomFocusMinutes(m);setSeconds(m*60)}}>
                 <div className="timer-mode">
                   {mode === "focus" ? "FOCUS TIME" : "BREAK TIME"}
                 </div>
@@ -1038,6 +1132,8 @@ export function App({
                   </p>
                 )}
               </div>
+              <label style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",marginTop:14}}>집중 종료 알림음 <input type="checkbox" checked={alarmEnabled} onChange={e=>setAlarmEnabled(e.target.checked)}/></label>
+              <div style={{fontSize:12,color:"#92879f",padding:4}}>원을 드래그하면 1~120분까지 설정할 수 있어.</div>
               <div className="timer-actions">
                 <button
                   className="reset"
@@ -1072,7 +1168,7 @@ export function App({
                 </button>
                 <button
                   className="stop-btn"
-                  onClick={() => resetTimer(mode)}
+                  onClick={() => {const left=running&&endAt.current?Math.max(0,Math.ceil((endAt.current-Date.now())/1000)):seconds;const elapsed=Math.max(0,customFocusMinutes*60-left);if(mode==="focus"&&elapsed>0){update(d=>({...d,sessions:[...(d.sessions||[]),{id:uid(),taskId:pomTask||null,minutes:Number((elapsed/60).toFixed(2)),endedAt:new Date().toISOString(),partial:true}]}));setToast("진행한 집중 시간을 기록했어.");}resetTimer(mode)}}
                   aria-label="정지"
                 >
                   <Square size={18} /> 정지
@@ -1319,6 +1415,7 @@ export function App({
             ))}
           </div>
         </div>
+        <div className="stat-card"><h2>카테고리 분석</h2><div className="stat-switch">{[["daily","일별"],["weekly","주별"],["monthly","월별"]].map(([id,label])=><button key={id} className={analysisPeriod===id?"active":""} onClick={()=>setAnalysisPeriod(id)}>{label}</button>)}</div>{(()=>{const sums=new Map();const from=analysisPeriod==="daily"?today:analysisPeriod==="weekly"?dayAdd(today,-6):today.slice(0,7)+"-01";for(const record of sessions){const date=localDate(new Date(record.endedAt));if(date<from||date>today)continue;const task=data.tasks.find(t=>t.id===record.taskId);const name=project(record.projectId||task?.projectId)?.name||"미분류";sums.set(name,(sums.get(name)||0)+(Number(record.minutes)||0))}return [...sums].length?[...sums].sort((a,b)=>b[1]-a[1]).map(([name,value])=><p key={name} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f0ebf4"}}><span>{name}</span><b>{Number(value.toFixed(1))}분</b></p>):<p className="hint">해당 기간에 집중 기록이 없어.</p>})()}</div>
         <div className="stat-card">
           <h2>집중 시간</h2>
           <div className="stat-switch">
@@ -1381,7 +1478,9 @@ export function App({
             ? Calendar()
             : tab === "pom"
               ? Pomodoro()
-              : Projects()}
+              : tab === "karma"
+                ? KarmaPanel()
+                : Projects()}
       </main>
       <nav className="bottom-nav">
         {[
@@ -1389,6 +1488,7 @@ export function App({
           ["projects", FolderKanban, "프로젝트"],
           ["calendar", CalendarDays, "일정"],
           ["pom", Timer, "뽀모도로"],
+          ["karma", Heart, "카르마"],
         ].map(([id, Icon, label]) => (
           <button
             key={id}
@@ -1551,7 +1651,8 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
     [projectId, setProjectId] = useState(preProject),
     [due, setDue] = useState(localDate()),
     [time, setTime] = useState(""),
-    [estimatedPomodoros, setEstimatedPomodoros] = useState(0);
+    [estimatedPomodoros, setEstimatedPomodoros] = useState(0),
+    [tallyEnabled,setTallyEnabled]=useState(false),[tallyRows,setTallyRows]=useState([{id:uid(),label:"",total:12,step:1}]);
   return (
     <div
       className="overlay"
@@ -1562,7 +1663,7 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
         onSubmit={(e) => {
           e.preventDefault();
           if (title.trim())
-            onSave({ title, projectId, due, time, estimatedPomodoros });
+            onSave({ title, projectId, due, time, estimatedPomodoros, tally:null,tallies:tallyEnabled?tallyRows.map(r=>({...r,count:0,total:Math.max(1,Number(r.total)||1),step:Math.max(1,Number(r.step)||1)})):[] });
         }}
       >
         <div className="sheet-top">
@@ -1610,9 +1711,11 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-            />
+            /><button type="button" aria-label="시간 삭제" onClick={()=>setTime("")} style={{marginLeft:5}}>×</button>
           </label>
         </div>
+        <label style={{display:"flex",alignItems:"center",gap:8}}><input type="checkbox" checked={tallyEnabled} onChange={e=>setTallyEnabled(e.target.checked)}/> 횟수 기록 사용</label>
+        {tallyEnabled&&<div>{tallyRows.map((r,i)=><div key={r.id} style={{margin:"10px 0",padding:10,border:"1px solid #eee5f3",borderRadius:12}}><input aria-label={`횟수 항목 ${i+1} 이름`} placeholder="예: 물 마시기 / 호흡" value={r.label} onChange={e=>setTallyRows(rows=>rows.map(x=>x.id===r.id?{...x,label:e.target.value}:x))}/><div className="field-row"><label>총 횟수<input type="number" min="1" value={r.total} onChange={e=>setTallyRows(rows=>rows.map(x=>x.id===r.id?{...x,total:e.target.value}:x))}/></label><label>탭별 횟수<input type="number" min="1" value={r.step} onChange={e=>setTallyRows(rows=>rows.map(x=>x.id===r.id?{...x,step:e.target.value}:x))}/></label></div><button type="button" onClick={()=>setTallyRows(rows=>rows.filter(x=>x.id!==r.id))}>× 행 삭제</button></div>)}<button type="button" onClick={()=>setTallyRows(rows=>[...rows,{id:uid(),label:"",total:12,step:1}])}>+ 횟수 행 추가</button></div>}
         <PomEstimatePicker
           value={estimatedPomodoros}
           onChange={setEstimatedPomodoros}
@@ -1768,6 +1871,10 @@ function EditTask({
             />
           </label>
         </div>
+        <label>총 횟수 (0이면 사용 안 함)<input type="number" min="0" value={task.tally?.total||0} onChange={e=>onChange({tally:Number(e.target.value)>0?{count:task.tally?.count||0,total:Number(e.target.value),step:task.tally?.step||1}:null})}/></label>
+        {!!task.tally?.total&&<label>탭별 횟수<input type="number" min="1" value={task.tally.step||1} onChange={e=>onChange({tally:{...task.tally,step:Math.max(1,Number(e.target.value)||1)}})}/></label>}
+        <div><h3>횟수형 활동</h3>{(task.tallies||[]).map((r,i)=><div key={r.id||i} style={{borderBottom:"1px solid #eee",padding:8}}><input aria-label="횟수 항목 이름" value={r.label||""} onChange={e=>onChange({tallies:task.tallies.map((x,j)=>j===i?{...x,label:e.target.value}:x)})}/><div className="field-row"><label>총 횟수<input type="number" min="1" value={r.total} onChange={e=>onChange({tallies:task.tallies.map((x,j)=>j===i?{...x,total:Math.max(1,Number(e.target.value)||1)}:x)})}/></label><label>탭별 횟수<input type="number" min="1" value={r.step} onChange={e=>onChange({tallies:task.tallies.map((x,j)=>j===i?{...x,step:Math.max(1,Number(e.target.value)||1)}:x)})}/></label></div><button type="button" onClick={()=>onChange({tallies:task.tallies.filter((_,j)=>j!==i)})}>행 삭제</button></div>)}<button type="button" onClick={()=>onChange({tallies:[...(task.tallies||[]),{id:uid(),label:"",count:0,total:12,step:1}]})}>+ 횟수 행 추가</button></div>
+        <button type="button" onClick={()=>onChange({time:""})}>× 시간 지우기</button>
         <PomEstimatePicker
           value={task.estimatedPomodoros}
           onChange={(value) => onChange({ estimatedPomodoros: value })}

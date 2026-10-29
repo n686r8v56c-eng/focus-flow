@@ -134,7 +134,7 @@ export function HomeWorkouts({ client, userId, today, checks = {}, onCheck }) {
     >
       <div className="section-top">
         <div>
-          <div className="eyebrow">HOME FIT</div>
+          <a className="eyebrow" href={HOME} target="_blank" rel="noopener noreferrer" aria-label="HOME FIT 앱 열기" title="HOME FIT 앱 열기" style={{display:"inline-block",color:"#957bb6",textDecoration:"none",cursor:"pointer",minHeight:28,paddingTop:4}}>HOME FIT <span aria-hidden="true" style={{fontSize:12}}>↗</span></a>
           <h1>오늘 할 운동</h1>
         </div>
         <button
