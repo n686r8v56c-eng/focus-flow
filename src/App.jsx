@@ -453,6 +453,10 @@ export function App({
         { id: uid(), category: karmaCategory, text: memo, createdAt } ] }));
       setKarmaDraft("");
     }
+    function deleteKarma(id) {
+      if (!window.confirm('이 카르마 기록을 삭제할까? 삭제한 기록은 되돌릴 수 없어.')) return;
+      update(d => ({...d, karmaEntries: (Array.isArray(d.karmaEntries) ? d.karmaEntries : []).filter(entry => entry.id !== id)}));
+    }
     function downloadKarma() {
       const rows = [['날짜','시각','구분','메모'], ...all.slice()
         .sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt))
@@ -479,11 +483,14 @@ export function App({
       <form onSubmit={saveKarma} className="stat-card" style={{marginTop:16,marginBottom:18}}>
         <label style={{display:'block',fontWeight:700,color:'#775991',marginBottom:10}} htmlFor="karma-memo">{karmaCategory==='me'?'나를 위한 카르마':'세상을 위한 카르마'}</label>
         <textarea id="karma-memo" rows={4} value={karmaDraft} onChange={e=>setKarmaDraft(e.target.value)} placeholder="오늘의 카르마를 기록해 줘" style={{width:'100%',boxSizing:'border-box',resize:'vertical',padding:12,borderRadius:12,border:'1px solid #e5dcea',fontSize:15}} />
-        <button className="primary" type="submit" disabled={!karmaDraft.trim()} style={{width:'100%',marginTop:10}}>기록하기</button>
+        <button className="primary" type="submit" disabled={!karmaDraft.trim()} style={{width:'100%',minHeight:52,marginTop:16,borderRadius:13,padding:'13px 16px',fontSize:16,fontWeight:750,display:'flex',alignItems:'center',justifyContent:'center'}}>기록하기</button>
       </form>
-      <div aria-label="카르마 최근 기록">
+      <div aria-label="카르마 최근 기록" className="karma-record-list">
         {items.map(entry=>{const date=new Date(entry.createdAt);return <article key={entry.id} className="stat-card" style={{marginBottom:10,padding:16}}>
-          <div style={{fontSize:12,color:'#978aa2',marginBottom:8,fontVariantNumeric:'tabular-nums'}}>{Number.isNaN(date.getTime())?'':`${String(date.getFullYear()).slice(-2)}${pad(date.getMonth()+1)}${pad(date.getDate())}`}　{Number.isNaN(date.getTime())?'':`${pad(date.getHours())}:${pad(date.getMinutes())}`}</div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:8}}>
+            <div style={{fontSize:12,color:'#978aa2',fontVariantNumeric:'tabular-nums'}}>{Number.isNaN(date.getTime())?'':`${String(date.getFullYear()).slice(-2)}${pad(date.getMonth()+1)}${pad(date.getDate())}`}　{Number.isNaN(date.getTime())?'':`${pad(date.getHours())}:${pad(date.getMinutes())}`}</div>
+            <button type="button" aria-label="카르마 기록 삭제" title="이 기록 삭제" onClick={()=>deleteKarma(entry.id)} style={{width:40,height:40,flexShrink:0,display:'grid',placeItems:'center',border:'1px solid #f0e5ed',borderRadius:10,color:'#ad8191',background:'#fff'}}> <Trash2 size={17}/> </button>
+          </div>
           <div style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{entry.text}</div>
         </article>})}
         {!items.length && <p className="hint">아직 기록이 없어. 첫 카르마를 남겨봐.</p>}

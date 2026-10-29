@@ -1383,3 +1383,25 @@ body,
   border-radius: 9px;
   font-size: 11px;
 }
+
+/* Five tabs always fit on one row on iPhone and iPad. */
+.bottom-nav {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+.bottom-nav button { min-width: 0; white-space: nowrap; font-size: 10px; }
+.bottom-nav button svg { flex-shrink: 0; }
+/* Keep a steady-height scroll area while switching between Me and World. */
+.karma-record-list {
+  height: 340px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.karma-record-list .stat-card { margin-right: 3px; }
+@media (max-width: 380px) {
+ .bottom-nav { padding-left: 2px; padding-right: 2px; }
+ .bottom-nav button { font-size: 9px; gap: 4px; }
+}
