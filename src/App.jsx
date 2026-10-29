@@ -50,7 +50,7 @@ export function App({ initialData, onDataChange, onLogout }) {
     [statView, setStatView] = useState("daily"),
     [statMonth, setStatMonth] = useState(localDate().slice(0, 7)),
     [showDone, setShowDone] = useState(false),
-    [clockDate, setClockDate] = useState(localDate()),
+    [clockNow, setClockNow] = useState(Date.now()),
     [audioStatus, setAudioStatus] = useState("");
   const tickSound = data.settings?.tickSound ?? false,
     tickType = clockType(data.settings?.tickType),
@@ -68,8 +68,13 @@ export function App({ initialData, onDataChange, onLogout }) {
   const latest = useRef({});
   latest.current = { data, pomTask, mode, round };
   useEffect(() => {
-    const i = setInterval(() => setClockDate(localDate()), 1000);
-    return () => clearInterval(i);
+    const refresh = () => setClockNow(Date.now());
+    const i = setInterval(refresh, 1000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(i);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, []);
   useEffect(
     () => () => {
@@ -125,7 +130,15 @@ export function App({ initialData, onDataChange, onLogout }) {
     update((d) => ({ ...d, tasks: d.tasks.filter((t) => t.id !== id) }));
     setEditing(null);
   };
-  const today = clockDate;
+  const now = new Date(clockNow);
+  const today = localDate(now);
+  const timeText = (seconds) =>
+    `${pad(Math.floor(seconds / 3600))}:${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`;
+  const remaining = (hour) => {
+    const end = new Date(clockNow);
+    end.setHours(hour, 0, 0, 0);
+    return timeText(Math.max(0, Math.ceil((end.getTime() - clockNow) / 1000)));
+  };
   const todayTasks = data.tasks
     .filter(
       (t) =>
@@ -434,6 +447,59 @@ export function App({ initialData, onDataChange, onLogout }) {
   function Kanban() {
     return (
       <>
+        <div
+          aria-label="오늘의 시간"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+            gap: 10,
+            marginBottom: 24,
+          }}
+        >
+          {[
+            [
+              "현재 시각",
+              `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+            ],
+            ["오전 타이머", remaining(12)],
+            ["오후 타이머", remaining(18)],
+            ["저녁 타이머", remaining(22)],
+          ].map(([label, value], i) => (
+            <div
+              key={label}
+              style={{
+                padding: "15px 12px",
+                borderRadius: 15,
+                border: "1px solid #e9e1f0",
+                background: i === 0 ? "#f3edf9" : "white",
+                minWidth: 0,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#8b7b9c",
+                  marginBottom: 7,
+                  fontWeight: 650,
+                }}
+              >
+                {label}
+              </div>
+              <div
+                style={{
+                  fontSize: "clamp(21px,6vw,30px)",
+                  fontWeight: 750,
+                  fontVariantNumeric: "tabular-nums",
+                  letterSpacing: "-.5px",
+                  color: i === 0 ? "#7854ab" : "#53465f",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {value}
+              </div>
+            </div>
+          ))}
+        </div>
         <div className="section-top">
           <div>
             <div className="eyebrow">
@@ -1258,9 +1324,15 @@ export function App({ initialData, onDataChange, onLogout }) {
   return (
     <div className="app">
       <header>
-        <div className="brand">
+        <button
+          type="button"
+          className="brand"
+          aria-label="Focus Flow · 오늘로 이동"
+          onClick={() => setTab("today")}
+          style={{ padding: 0, textAlign: "left" }}
+        >
           <span className="brand-mark">✳</span> Focus Flow
-        </div>
+        </button>
         <button className="header-pill" onClick={onLogout}>
           로그아웃
         </button>
