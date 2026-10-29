@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { Check, ChevronRight } from "lucide-react";
 const HOME = "https://home-fit-11n.pages.dev";
-export function HomeWorkouts({ client, userId, today }) {
+export function HomeWorkouts({ client, userId, today, checks = {}, onCheck }) {
   const [link, setLink] = useState(null),
     [snapshot, setSnapshot] = useState(null),
     [error, setError] = useState(""),
@@ -116,6 +117,8 @@ export function HomeWorkouts({ client, userId, today }) {
   const workouts = (
     Array.isArray(snapshot?.workouts) ? snapshot.workouts : []
   ).filter((w) => w.date === today);
+  const checkKey = (w) => JSON.stringify([link?.id, w.date, w.videoId || w.id]);
+  const isDone = (w) => typeof checks[checkKey(w)]?.done === "boolean" ? checks[checkKey(w)].done : w.status === "done";
   const href = (w) => {
     try {
       const u = new URL(w.url);
@@ -132,7 +135,7 @@ export function HomeWorkouts({ client, userId, today }) {
       <div className="section-top">
         <div>
           <div className="eyebrow">HOME FIT</div>
-          <h1>오늘의 운동</h1>
+          <h1>오늘 할 운동</h1>
         </div>
         <button
           className="secondary"
@@ -154,7 +157,7 @@ export function HomeWorkouts({ client, userId, today }) {
         >
           <p className="hint">
             {link
-              ? "Home Fit과 연결됐어요. 운동 시작·완료는 Home Fit에서 기록해 주세요."
+              ? "운동 이름을 누르면 Home Fit으로 이동해요. 왼쪽 완료 체크는 Focus Flow에 저장돼요."
               : "Home Fit에서 로그인한 뒤 아래 연결 코드를 입력해 주세요."}
           </p>
           {link ? (
@@ -209,58 +212,25 @@ export function HomeWorkouts({ client, userId, today }) {
           Home Fit에서 ‘Focus Flow에 표시’를 켜고 동기화해 주세요.
         </p>
       )}
-      <div className="kanban">
-        {[
-          ["todo", "할 운동"],
-          ["doing", "진행 중"],
-          ["done", "완료"],
-        ].map(([status, label]) => (
-          <div className="lane" key={status}>
-            <div className={"lane-head " + status}>
-              <span>{label}</span>
-              <small>
-                {workouts.filter((w) => w.status === status).length}
-              </small>
-            </div>
-            <div className="lane-content">
-              {workouts
-                .filter((w) => w.status === status)
-                .map((w) => (
-                  <a
-                    className="task-card"
-                    key={w.id}
-                    href={href(w)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: "block",
-                      textDecoration: "none",
-                      color: "inherit",
-                    }}
-                  >
-                    <div className="task-project">
-                      {{
-                        workout: "근력운동",
-                        stretch: "스트레칭",
-                        skin: "마사지",
-                      }[w.kind] || "운동"}
-                    </div>
-                    <div className="task-title">{w.title}</div>
-                    <div className="task-foot">
-                      <span>
-                        {w.minutes > 0 ? `${w.minutes}분 · ` : ""}Home Fit에서{" "}
-                        {status === "done" ? "보기" : "시작"} ↗
-                      </span>
-                    </div>
-                  </a>
-                ))}
-              {!workouts.some((w) => w.status === status) && (
-                <div className="empty-lane">등록된 운동이 없어요</div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      {workouts.length > 0 && <p className="hint" role="status">{workouts.filter(isDone).length} / {workouts.length}개 완료</p>}
+      <ul aria-label="오늘 할 운동 목록" style={{listStyle:"none",padding:0,margin:0,display:"grid",gap:10}}>
+        {workouts.map(w => {
+          const done = isDone(w);
+          return <li key={w.id} style={{display:"flex",alignItems:"center",gap:8,padding:12,border:"1px solid #e9e1f0",borderRadius:16,background:done?"#f5f3f7":"white",color:done?"#938c9c":"#40384b"}}>
+            <button type="button" role="checkbox" aria-checked={done} aria-label={`${w.title} 완료`} disabled={!onCheck} onClick={() => onCheck(checkKey(w), !done)} style={{width:44,height:44,flexShrink:0,display:"grid",placeItems:"center",padding:0,border:0,background:"transparent",color:done?"#9c91ad":"#a68fc5",cursor:"pointer"}}>
+              <span style={{width:26,height:26,border:"2px solid currentColor",borderRadius:"50%",display:"grid",placeItems:"center",background:done?"#e5e0ed":"white"}}>{done && <Check size={17} strokeWidth={3}/>}</span>
+            </button>
+            <a href={href(w)} target="_blank" rel="noopener noreferrer" style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:10,color:"inherit",textDecoration:"none",padding:"6px 0"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:650,lineHeight:1.5,overflowWrap:"anywhere",textDecoration:done?"line-through":"none"}}>{w.title}</div>
+                <div style={{fontSize:12,marginTop:4,color:done?"#a19aa8":"#9687a5"}}>{{workout:"근력운동",stretch:"스트레칭",skin:"마사지"}[w.kind] || "운동"}{w.minutes > 0 ? ` · ${w.minutes}분` : ""} · Home Fit에서 열기</div>
+              </div>
+              <ChevronRight size={18} aria-hidden="true" style={{flexShrink:0}}/>
+            </a>
+          </li>;
+        })}
+      </ul>
+      {workouts.length === 0 && <p className="hint">오늘 등록된 운동이 없어요.</p>}
       {snapshot?.received_at && (
         <p className="hint">
           마지막 동기화 {new Date(snapshot.received_at).toLocaleString("ko-KR")}

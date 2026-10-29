@@ -590,6 +590,11 @@ export function App({
           client={bridgeClient}
           userId={bridgeUserId}
           today={today}
+          checks={data.homeWorkoutChecks || {}}
+          onCheck={(key, done) => setData({
+            ...data,
+            homeWorkoutChecks: {...(data.homeWorkoutChecks || {}), [key]: {done}},
+          })}
         />
       </>
     );
