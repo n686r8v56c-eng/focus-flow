@@ -1,0 +1,103 @@
+name: Focus Flow - Karma UI Fix (No Codespaces)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  karma-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply guarded Karma UI fixes
+        run: |
+          cat > /tmp/karma_patch.b64 <<'BASE64'
+          ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnA9UGF0aCgnc3JjL0FwcC5qc3gnKTsgcz1wLnJlYWRf
+          dGV4dChlbmNvZGluZz0ndXRmLTgnKQpjc3M9UGF0aCgnc3JjL3N0eWxlLmNzcycpOyBjPWNzcy5y
+          ZWFkX3RleHQoZW5jb2Rpbmc9J3V0Zi04JykKCmRlZiBvbmUob2xkLG5ldyxkZXNjcik6CiBnbG9i
+          YWwgcwogbj1zLmNvdW50KG9sZCkKIGlmIG4gIT0gMTogcmFpc2UgUnVudGltZUVycm9yKGYne2Rl
+          c2NyfTogZXhwZWN0ZWQgZXhhY3RseSBvbmUgbWF0Y2gsIGZvdW5kIHtufTsgbm8gZmlsZXMgbW9k
+          aWZpZWQnKQogcz1zLnJlcGxhY2Uob2xkLG5ldywxKQoKaWYgJ2FyaWEtbGFiZWw9Iuy5tOultOun
+          iCDquLDroZ0g7IKt7KCcIicgbm90IGluIHM6CiBvbmUoJyAgICBmdW5jdGlvbiBkb3dubG9hZEth
+          cm1hKCkgeycsICcnJyAgICBmdW5jdGlvbiBkZWxldGVLYXJtYShpZCkgewogICAgICBpZiAoIXdp
+          bmRvdy5jb25maXJtKCfsnbQg7Lm066W066eIIOq4sOuhneydhCDsgq3soJztlaDquYw/IOyCreyg
+          nO2VnCDquLDroZ3snYAg65CY64+M66a0IOyImCDsl4bslrQuJykpIHJldHVybjsKICAgICAgdXBk
+          YXRlKGQgPT4gKHsuLi5kLCBrYXJtYUVudHJpZXM6IChBcnJheS5pc0FycmF5KGQua2FybWFFbnRy
+          aWVzKSA/IGQua2FybWFFbnRyaWVzIDogW10pLmZpbHRlcihlbnRyeSA9PiBlbnRyeS5pZCAhPT0g
+          aWQpfSkpOwogICAgfQogICAgZnVuY3Rpb24gZG93bmxvYWRLYXJtYSgpIHsnJycsJ2RlbGV0ZSBm
+          dW5jdGlvbicpCiBvbmUoJycnPGJ1dHRvbiBjbGFzc05hbWU9InByaW1hcnkiIHR5cGU9InN1Ym1p
+          dCIgZGlzYWJsZWQ9eyFrYXJtYURyYWZ0LnRyaW0oKX0gc3R5bGU9e3t3aWR0aDonMTAwJScsbWFy
+          Z2luVG9wOjEwfX0+6riw66Gd7ZWY6riwPC9idXR0b24+JycnLCAnJyc8YnV0dG9uIGNsYXNzTmFt
+          ZT0icHJpbWFyeSIgdHlwZT0ic3VibWl0IiBkaXNhYmxlZD17IWthcm1hRHJhZnQudHJpbSgpfSBz
+          dHlsZT17e3dpZHRoOicxMDAlJyxtaW5IZWlnaHQ6NTIsbWFyZ2luVG9wOjE2LGJvcmRlclJhZGl1
+          czoxMyxwYWRkaW5nOicxM3B4IDE2cHgnLGZvbnRTaXplOjE2LGZvbnRXZWlnaHQ6NzUwLGRpc3Bs
+          YXk6J2ZsZXgnLGFsaWduSXRlbXM6J2NlbnRlcicsanVzdGlmeUNvbnRlbnQ6J2NlbnRlcid9fT7q
+          uLDroZ3tlZjquLA8L2J1dHRvbj4nJycsJ3NhdmUgYnV0dG9uJykKIG9uZSgnJyc8ZGl2IGFyaWEt
+          bGFiZWw9Iuy5tOultOuniCDstZzqt7wg6riw66GdIj4KICAgICAgICB7aXRlbXMubWFwKGVudHJ5
+          PT57JycnLCcnJzxkaXYgYXJpYS1sYWJlbD0i7Lm066W066eIIOy1nOq3vCDquLDroZ0iIGNsYXNz
+          TmFtZT0ia2FybWEtcmVjb3JkLWxpc3QiPgogICAgICAgIHtpdGVtcy5tYXAoZW50cnk9PnsnJycs
+          J3N0YWJsZSBsaXN0IGNvbnRhaW5lcicpCiBvbmUoJycnPGRpdiBzdHlsZT17e2ZvbnRTaXplOjEy
+          LGNvbG9yOicjOTc4YWEyJyxtYXJnaW5Cb3R0b206OCxmb250VmFyaWFudE51bWVyaWM6J3RhYnVs
+          YXItbnVtcyd9fT57TnVtYmVyLmlzTmFOKGRhdGUuZ2V0VGltZSgpKT8nJzpgJHtTdHJpbmcoZGF0
+          ZS5nZXRGdWxsWWVhcigpKS5zbGljZSgtMil9JHtwYWQoZGF0ZS5nZXRNb250aCgpKzEpfSR7cGFk
+          KGRhdGUuZ2V0RGF0ZSgpKX1gfeOAgHtOdW1iZXIuaXNOYU4oZGF0ZS5nZXRUaW1lKCkpPycnOmAk
+          e3BhZChkYXRlLmdldEhvdXJzKCkpfToke3BhZChkYXRlLmdldE1pbnV0ZXMoKSl9YH08L2Rpdj4K
+          ICAgICAgICAgIDxkaXYgc3R5bGU9e3t3aGl0ZVNwYWNlOidwcmUtd3JhcCcsb3ZlcmZsb3dXcmFw
+          Oidhbnl3aGVyZSd9fT57ZW50cnkudGV4dH08L2Rpdj4nJycsJycnPGRpdiBzdHlsZT17e2Rpc3Bs
+          YXk6J2ZsZXgnLGp1c3RpZnlDb250ZW50OidzcGFjZS1iZXR3ZWVuJyxhbGlnbkl0ZW1zOidjZW50
+          ZXInLGdhcDoxMCxtYXJnaW5Cb3R0b206OH19PgogICAgICAgICAgICA8ZGl2IHN0eWxlPXt7Zm9u
+          dFNpemU6MTIsY29sb3I6JyM5NzhhYTInLGZvbnRWYXJpYW50TnVtZXJpYzondGFidWxhci1udW1z
+          J319PntOdW1iZXIuaXNOYU4oZGF0ZS5nZXRUaW1lKCkpPycnOmAke1N0cmluZyhkYXRlLmdldEZ1
+          bGxZZWFyKCkpLnNsaWNlKC0yKX0ke3BhZChkYXRlLmdldE1vbnRoKCkrMSl9JHtwYWQoZGF0ZS5n
+          ZXREYXRlKCkpfWB944CAe051bWJlci5pc05hTihkYXRlLmdldFRpbWUoKSk/Jyc6YCR7cGFkKGRh
+          dGUuZ2V0SG91cnMoKSl9OiR7cGFkKGRhdGUuZ2V0TWludXRlcygpKX1gfTwvZGl2PgogICAgICAg
+          ICAgICA8YnV0dG9uIHR5cGU9ImJ1dHRvbiIgYXJpYS1sYWJlbD0i7Lm066W066eIIOq4sOuhnSDs
+          gq3soJwiIHRpdGxlPSLsnbQg6riw66GdIOyCreygnCIgb25DbGljaz17KCk9PmRlbGV0ZUthcm1h
+          KGVudHJ5LmlkKX0gc3R5bGU9e3t3aWR0aDo0MCxoZWlnaHQ6NDAsZmxleFNocmluazowLGRpc3Bs
+          YXk6J2dyaWQnLHBsYWNlSXRlbXM6J2NlbnRlcicsYm9yZGVyOicxcHggc29saWQgI2YwZTVlZCcs
+          Ym9yZGVyUmFkaXVzOjEwLGNvbG9yOicjYWQ4MTkxJyxiYWNrZ3JvdW5kOicjZmZmJ319PiA8VHJh
+          c2gyIHNpemU9ezE3fS8+IDwvYnV0dG9uPgogICAgICAgICAgPC9kaXY+CiAgICAgICAgICA8ZGl2
+          IHN0eWxlPXt7d2hpdGVTcGFjZToncHJlLXdyYXAnLG92ZXJmbG93V3JhcDonYW55d2hlcmUnfX0+
+          e2VudHJ5LnRleHR9PC9kaXY+JycnLCdkZWxldGUgZW50cnkgYnV0dG9uJykKaWYgJy5rYXJtYS1y
+          ZWNvcmQtbGlzdCB7JyBub3QgaW4gYzoKIGMgKz0gJycnXG4vKiBGaXZlIHRhYnMgYWx3YXlzIGZp
+          dCBvbiBvbmUgcm93IG9uIGlQaG9uZSBhbmQgaVBhZC4gKi8KLmJvdHRvbS1uYXYgewogIGdyaWQt
+          dGVtcGxhdGUtY29sdW1uczogcmVwZWF0KDUsIG1pbm1heCgwLCAxZnIpKTsKICBmbGV4LXdyYXA6
+          IG5vd3JhcDsKICBhbGlnbi1pdGVtczogc3RyZXRjaDsKfQouYm90dG9tLW5hdiBidXR0b24geyBt
+          aW4td2lkdGg6IDA7IHdoaXRlLXNwYWNlOiBub3dyYXA7IGZvbnQtc2l6ZTogMTBweDsgfQouYm90
+          dG9tLW5hdiBidXR0b24gc3ZnIHsgZmxleC1zaHJpbms6IDA7IH0KLyogS2VlcCBhIHN0ZWFkeS1o
+          ZWlnaHQgc2Nyb2xsIGFyZWEgd2hpbGUgc3dpdGNoaW5nIGJldHdlZW4gTWUgYW5kIFdvcmxkLiAq
+          Lwoua2FybWEtcmVjb3JkLWxpc3QgewogIGhlaWdodDogMzQwcHg7CiAgb3ZlcmZsb3cteTogYXV0
+          bzsKICBvdmVyc2Nyb2xsLWJlaGF2aW9yOiBjb250YWluOwogIC13ZWJraXQtb3ZlcmZsb3ctc2Ny
+          b2xsaW5nOiB0b3VjaDsKICBzY3JvbGxiYXItd2lkdGg6IHRoaW47Cn0KLmthcm1hLXJlY29yZC1s
+          aXN0IC5zdGF0LWNhcmQgeyBtYXJnaW4tcmlnaHQ6IDNweDsgfQpAbWVkaWEgKG1heC13aWR0aDog
+          MzgwcHgpIHsKIC5ib3R0b20tbmF2IHsgcGFkZGluZy1sZWZ0OiAycHg7IHBhZGRpbmctcmlnaHQ6
+          IDJweDsgfQogLmJvdHRvbS1uYXYgYnV0dG9uIHsgZm9udC1zaXplOiA5cHg7IGdhcDogNHB4OyB9
+          Cn0KJycnCnAud3JpdGVfdGV4dChzLGVuY29kaW5nPSd1dGYtOCcpOyBjc3Mud3JpdGVfdGV4dChj
+          LGVuY29kaW5nPSd1dGYtOCcpCnByaW50KCdVcGRhdGVkIGthcm1hIGJ1dHRvbiwgNS1jb2x1bW4g
+          bmF2aWdhdGlvbiwgcmVjb3JkIGRlbGV0aW9uIGFuZCBzdGVhZHktaGVpZ2h0IHJlY29yZHMgdmll
+          dy4nKQo=
+          BASE64
+          base64 -d /tmp/karma_patch.b64 > /tmp/karma_patch.py
+          python3 /tmp/karma_patch.py
+      - name: Validate production build
+        run: |
+          npm ci
+          npm run build
+          git diff --check
+      - name: Commit and push verified changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx src/style.css
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Polish Karma cards, delete records, keep five tabs in one row'
+          git push origin HEAD:main
