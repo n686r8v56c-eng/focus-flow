@@ -108,6 +108,7 @@ export function App({ initialData, onDataChange, onLogout }) {
           time: t.time || "",
           status: t.status || "todo",
           subtasks: [],
+          estimatedPomodoros: pomCount(t.estimatedPomodoros),
           createdAt: new Date().toISOString(),
           completedAt: null,
         },
@@ -409,7 +410,12 @@ export function App({ initialData, onDataChange, onLogout }) {
             <span className="carry">자동 이월</span>
           )}
         </div>
-        <div className="task-title">{task.title}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="task-title" style={{ flex: 1, minWidth: 0 }}>
+            {task.title}
+          </div>
+          <TaskEstimate count={task.estimatedPomodoros} />
+        </div>
         <div className="task-foot">
           <span>
             {task.due || "날짜 없음"}
@@ -776,6 +782,9 @@ export function App({ initialData, onDataChange, onLogout }) {
                 ? `${t.due}${t.time ? " · " + t.time : ""}`
                 : "날짜 미설정"}
             </small>
+          </div>
+          <div onClick={() => setEditing(t.id)} style={{ cursor: "pointer" }}>
+            <TaskEstimate count={t.estimatedPomodoros} />
           </div>
           <ChevronRight
             size={17}
@@ -1402,11 +1411,119 @@ export function App({ initialData, onDataChange, onLogout }) {
     </div>
   );
 }
+function pomCount(value) {
+  return Math.max(0, Math.min(5, Math.floor(Number(value) || 0)));
+}
+function PomClock({ filled = true, size = 20 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 26"
+      aria-hidden="true"
+      style={{ display: "block", flexShrink: 0 }}
+    >
+      <rect
+        x="9"
+        y="0"
+        width="6"
+        height="3"
+        rx="1.5"
+        fill={filled ? "#ed6978" : "#e6e3e9"}
+      />
+      <circle cx="12" cy="15" r="10" fill={filled ? "#ed6978" : "#e6e3e9"} />
+      <path
+        d="M12 9v6l3 3"
+        fill="none"
+        stroke="white"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+function TaskEstimate({ count }) {
+  const n = pomCount(count);
+  if (!n) return null;
+  return (
+    <div
+      className="task-pom-estimate"
+      aria-label={`예상 뽀모도로 ${n}회, ${n * 25}분`}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: 4,
+        flexShrink: 0,
+        maxWidth: 110,
+      }}
+    >
+      <div style={{ display: "flex", gap: 3 }}>
+        {Array.from({ length: n }, (_, i) => (
+          <PomClock key={i} size={15} />
+        ))}
+      </div>
+      <span style={{ color: "#ce6775", fontSize: 11, whiteSpace: "nowrap" }}>
+        {n}회 · {n * 25}분
+      </span>
+    </div>
+  );
+}
+function PomEstimatePicker({ value, onChange }) {
+  const n = pomCount(value);
+  return (
+    <fieldset
+      style={{ border: 0, padding: 0, margin: "5px 0 20px", minWidth: 0 }}
+    >
+      <legend
+        style={{ fontSize: 12, fontWeight: 650, color: "#817689", padding: 0 }}
+      >
+        예상 뽀모도로 개수
+      </legend>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 5,
+          marginTop: 10,
+        }}
+      >
+        {[1, 2, 3, 4, 5].map((i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={`예상 뽀모도로 ${i}회`}
+            aria-pressed={i <= n}
+            onClick={() => onChange(i === n ? 0 : i)}
+            style={{
+              display: "grid",
+              placeItems: "center",
+              minWidth: 40,
+              minHeight: 44,
+              padding: 5,
+              borderRadius: 10,
+            }}
+          >
+            <PomClock filled={i <= n} size={32} />
+          </button>
+        ))}
+      </div>
+      <div
+        aria-live="polite"
+        style={{ marginTop: 8, fontSize: 12, color: n ? "#ce6775" : "#a297aa" }}
+      >
+        {n ? `${n}회 · ${n * 25}분` : "선택 안 함 · 1회 25분"}
+      </div>
+    </fieldset>
+  );
+}
 function TaskModal({ projects, preProject, onClose, onSave }) {
   const [title, setTitle] = useState(""),
     [projectId, setProjectId] = useState(preProject),
     [due, setDue] = useState(localDate()),
-    [time, setTime] = useState("");
+    [time, setTime] = useState(""),
+    [estimatedPomodoros, setEstimatedPomodoros] = useState(0);
   return (
     <div
       className="overlay"
@@ -1416,7 +1533,8 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
         className="sheet"
         onSubmit={(e) => {
           e.preventDefault();
-          if (title.trim()) onSave({ title, projectId, due, time });
+          if (title.trim())
+            onSave({ title, projectId, due, time, estimatedPomodoros });
         }}
       >
         <div className="sheet-top">
@@ -1467,6 +1585,10 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
             />
           </label>
         </div>
+        <PomEstimatePicker
+          value={estimatedPomodoros}
+          onChange={setEstimatedPomodoros}
+        />
         <button className="primary save" type="submit">
           추가하기
         </button>
@@ -1618,6 +1740,10 @@ function EditTask({
             />
           </label>
         </div>
+        <PomEstimatePicker
+          value={task.estimatedPomodoros}
+          onChange={(value) => onChange({ estimatedPomodoros: value })}
+        />
         <label>
           진행 상태
           <select
