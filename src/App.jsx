@@ -17,6 +17,12 @@ import {
   RotateCcw,
 } from "lucide-react";
 import "./style.css";
+import {
+  CLOCK_SOUNDS,
+  clockType,
+  loadClockBuffer,
+  createClockVoice,
+} from "./clock-audio.js";
 const uid = () => Math.random().toString(36).slice(2, 10);
 const pad = (n) => String(n).padStart(2, "0");
 const localDate = (d = new Date()) =>
@@ -47,7 +53,7 @@ export function App({ initialData, onDataChange, onLogout }) {
     [clockDate, setClockDate] = useState(localDate()),
     [audioStatus, setAudioStatus] = useState("");
   const tickSound = data.settings?.tickSound ?? false,
-    tickType = data.settings?.tickType ?? "wood",
+    tickType = clockType(data.settings?.tickType),
     goalHours = data.settings?.goalHours ?? 3;
   const setting = (key, value) =>
     setData((d) => ({ ...d, settings: { ...d.settings, [key]: value } }));
@@ -57,6 +63,8 @@ export function App({ initialData, onDataChange, onLogout }) {
   const endAt = useRef(null);
   const audioRef = useRef(null);
   const testAudioRef = useRef(null);
+  const previewRef = useRef(null);
+  const previewGeneration = useRef(0);
   const latest = useRef({});
   latest.current = { data, pomTask, mode, round };
   useEffect(() => {
@@ -65,6 +73,8 @@ export function App({ initialData, onDataChange, onLogout }) {
   }, []);
   useEffect(
     () => () => {
+      previewGeneration.current++;
+      previewRef.current?.stop();
       audioRef.current?.close();
       testAudioRef.current?.pause();
     },
@@ -221,51 +231,66 @@ export function App({ initialData, onDataChange, onLogout }) {
       reportAudioError(error);
     }
   }
-  function playTick() {
-    try {
-      const ctx = audioRef.current;
-      if (!ctx || ctx.state !== "running") return;
-      const t = ctx.currentTime;
-      const rate = ctx.sampleRate,
-        buffer = ctx.createBuffer(1, Math.round(rate * 0.045), rate),
-        a = buffer.getChannelData(0);
-      for (let i = 0; i < a.length; i++) {
-        const decay = Math.exp(-i / (rate * 0.009));
-        a[i] = (Math.random() * 2 - 1) * decay;
-      }
-      const src = ctx.createBufferSource(),
-        filter = ctx.createBiquadFilter(),
-        gain = ctx.createGain();
-      src.buffer = buffer;
-      filter.type = "bandpass";
-      filter.frequency.value =
-        tickType === "metal" ? 2800 : tickType === "soft" ? 950 : 1500;
-      filter.Q.value = tickType === "metal" ? 2 : 0.7;
-      gain.gain.value = tickType === "soft" ? 0.25 : 0.5;
-      src.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      src.start(t);
-    } catch (e) {
-      console.warn("시계 소리 재생 실패", e);
-    }
+  function stopPreview() {
+    previewGeneration.current++;
+    previewRef.current?.stop();
+    previewRef.current = null;
+  }
+  function previewClock() {
+    stopPreview();
+    const generation = previewGeneration.current;
+    const ready = activateAudio();
+    setAudioStatus("시계 소리를 준비하고 있어…");
+    ready
+      .then(async (ctx) => {
+        const buffer = await loadClockBuffer(ctx, tickType);
+        if (generation !== previewGeneration.current) return;
+        if (running && mode === "focus" && tickSound) {
+          setAudioStatus("선택한 시계 소리가 집중 타이머에서 재생 중이야.");
+          return;
+        }
+        previewRef.current = createClockVoice(ctx, buffer, { duration: 8 });
+        setAudioStatus("8초 미리 듣기 · 반복되는 경계까지 들어봐.");
+      })
+      .catch((error) => {
+        if (generation === previewGeneration.current) reportAudioError(error);
+      });
   }
   useEffect(() => {
+    stopPreview();
     if (!running || mode !== "focus" || !tickSound) return;
-    const tick = () => {
-      const ctx = audioRef.current;
-      if (ctx && ctx.state !== "running") {
-        ctx
-          .resume()
-          .then(() => playTick())
-          .catch(reportAudioError);
-        return;
-      }
-      playTick();
+    let cancelled = false,
+      voice;
+    const ctx = audioRef.current;
+    if (!ctx) {
+      reportAudioError(new Error("소리 테스트를 먼저 눌러 줘"));
+      return;
+    }
+    (async () => {
+      const buffer = await loadClockBuffer(ctx, tickType);
+      if (cancelled) return;
+      if (ctx.state !== "running") await ctx.resume();
+      if (cancelled) return;
+      if (ctx.state !== "running") throw new Error("오디오가 일시 중단됐어");
+      // One decoded source loops on the audio thread: no ended/restart or JS interval.
+      voice = createClockVoice(ctx, buffer);
+    })().catch((error) => {
+      if (!cancelled) reportAudioError(error);
+    });
+    const resume = () => {
+      if (
+        !cancelled &&
+        document.visibilityState === "visible" &&
+        ctx.state !== "running"
+      )
+        ctx.resume().catch(reportAudioError);
     };
-    tick();
-    const i = setInterval(tick, 1000);
-    return () => clearInterval(i);
+    document.addEventListener("visibilitychange", resume);
+    return () => {
+      cancelled = true;
+      voice?.stop();
+      document.removeEventListener("visibilitychange", resume);
+    };
   }, [running, mode, tickSound, tickType]);
   function ringBell() {
     try {
@@ -883,19 +908,13 @@ export function App({ initialData, onDataChange, onLogout }) {
                   value={tickType}
                   onChange={(e) => setTickType(e.target.value)}
                 >
-                  <option value="wood">아날로그 시계 · 나무</option>
-                  <option value="metal">아날로그 시계 · 금속</option>
-                  <option value="soft">조용한 초침</option>
+                  {Object.entries(CLOCK_SOUNDS).map(([id, sound]) => (
+                    <option key={id} value={id}>
+                      {sound.label}
+                    </option>
+                  ))}
                 </select>
-                <button
-                  onClick={() => {
-                    activateAudio()
-                      .then(() => playTick())
-                      .catch(reportAudioError);
-                  }}
-                >
-                  미리 듣기
-                </button>
+                <button onClick={previewClock}>미리 듣기</button>
               </div>
               <div style={{ width: "100%", marginTop: 12 }}>
                 <button
