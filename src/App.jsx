@@ -600,7 +600,7 @@ export function App({
       complete = (task.subtasks || []).filter((s) => s.done).length;
     return (
       <div
-        className={"task-card " + (compact ? "compact" : "")}
+        className={"task-card today-compact-card " + (compact ? "compact" : "")}
         onClick={() => {if(pinMenuId!==task.id)setEditing(task.id)}}
         onPointerDown={(e) => { if (!e.target.closest('button,input,a,select')) beginPinHold(e,task.id); }}
         onPointerMove={trackPinHold}
@@ -807,7 +807,7 @@ export function App({
     const categories=["오늘의 할 일","공부","운동","명상"];
     const tasks=dateItems(date);
     const category=t=>{const name=((taskProject(t)?.name||"")+" "+t.title).toLowerCase();if(/명상|호흡|만트라/.test(name))return "명상";if(/운동|헬스|근력|스트레칭|요가|필라테스/.test(name))return "운동";if(/공부|암기|논점|학습|중국어|독서/.test(name))return "공부";return "오늘의 할 일"};
-    return <div className="day-checklists">{categories.map(group=><section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}><h3 style={{fontSize:14,margin:"4px 0 8px"}}>{group}</h3>{tasks.filter(t=>category(t)===group).map(t=><label key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",color:t.status==="done"?"#aaa":"#574b65"}}><input type="checkbox" checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/><span style={{textDecoration:t.status==="done"?"line-through":"none",flex:1}}>{t.title}</span><small>{t.time||""}</small></label>)}{group === "오늘의 할 일" && !tasks.some(t=>category(t)===group) && <span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}{group !== "오늘의 할 일" && <CalendarExternal source={group === "공부" ? "study" : group === "운동" ? "workout" : "mind"} date={date} client={bridgeClient} userId={bridgeUserId} checks={group === "운동" ? (data.homeWorkoutChecks || {}) : (data.activityChecks || {})} onCheck={(key, done) => update(d => group === "운동" ? ({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks || {}),[key]:{done}}}) : ({...d, activityChecks:{...(d.activityChecks || {}),[key]:{done}}}))} />}</section>)}</div>;
+    return <div className="day-checklists">{categories.map(group=><section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}><h3 style={{fontSize:14,margin:"4px 0 8px"}}>{group}</h3>{tasks.filter(t=>category(t)===group).map(t=><label key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",color:t.status==="done"?"#aaa":"#574b65"}}><input type="checkbox" checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/><span style={{textDecoration:t.status==="done"?"line-through":"none",flex:1}}>{t.title}</span><span style={{display:"inline-flex",alignItems:"center",gap:6}}><TaskEstimate count={t.estimatedPomodoros}/><small>{t.time||""}</small></span></label>)}{group === "오늘의 할 일" && !tasks.some(t=>category(t)===group) && <span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}{group !== "오늘의 할 일" && <CalendarExternal source={group === "공부" ? "study" : group === "운동" ? "workout" : "mind"} date={date} client={bridgeClient} userId={bridgeUserId} checks={group === "운동" ? (data.homeWorkoutChecks || {}) : (data.activityChecks || {})} onCheck={(key, done) => update(d => group === "운동" ? ({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks || {}),[key]:{done}}}) : ({...d, activityChecks:{...(d.activityChecks || {}),[key]:{done}}}))} />}</section>)}</div>;
   }
   function Calendar() {
     const base = new Date(focusDate + "T12:00:00"),
@@ -1731,9 +1731,6 @@ function TaskEstimate({ count }) {
           <PomClock key={i} size={15} />
         ))}
       </div>
-      <span style={{ color: "#ce6775", fontSize: 11, whiteSpace: "nowrap" }}>
-        {n}회 · {n * 25}분
-      </span>
     </div>
   );
 }
@@ -1790,8 +1787,7 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
     [projectId, setProjectId] = useState(preProject),
     [due, setDue] = useState(localDate()),
     [time, setTime] = useState(""),
-    [estimatedPomodoros, setEstimatedPomodoros] = useState(0),
-    [tallyEnabled,setTallyEnabled]=useState(false),[tallyRows,setTallyRows]=useState([{id:uid(),label:"",total:12,step:1}]);
+    [estimatedPomodoros, setEstimatedPomodoros] = useState(0);
   return (
     <div
       className="overlay"
@@ -1802,7 +1798,7 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
         onSubmit={(e) => {
           e.preventDefault();
           if (title.trim())
-            onSave({ title, projectId, due, time, estimatedPomodoros, tally:null,tallies:tallyEnabled?tallyRows.map(r=>({...r,count:0,total:Math.max(1,Number(r.total)||1),step:Math.max(1,Number(r.step)||1)})):[] });
+            onSave({ title, projectId, due, time, estimatedPomodoros, tally:null,tallies:[] });
         }}
       >
         <div className="sheet-top">
@@ -1845,16 +1841,14 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
             />
           </label>
           <label>
-            시간 (선택)
+            <span className="time-label-row">시간 (선택) <button type="button" aria-label="시간 초기화" title="시간 초기화" onClick={()=>setTime("")}>↺</button></span>
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-            /><button type="button" aria-label="시간 삭제" onClick={()=>setTime("")} style={{marginLeft:5}}>×</button>
+            />
           </label>
         </div>
-        <label style={{display:"flex",alignItems:"center",gap:8}}><input type="checkbox" checked={tallyEnabled} onChange={e=>setTallyEnabled(e.target.checked)}/> 횟수 기록 사용</label>
-        {tallyEnabled&&<div>{tallyRows.map((r,i)=><div key={r.id} style={{margin:"10px 0",padding:10,border:"1px solid #eee5f3",borderRadius:12}}><input aria-label={`횟수 항목 ${i+1} 이름`} placeholder="예: 물 마시기 / 호흡" value={r.label} onChange={e=>setTallyRows(rows=>rows.map(x=>x.id===r.id?{...x,label:e.target.value}:x))}/><div className="field-row"><label>총 횟수<input type="number" min="1" value={r.total} onChange={e=>setTallyRows(rows=>rows.map(x=>x.id===r.id?{...x,total:e.target.value}:x))}/></label><label>탭별 횟수<input type="number" min="1" value={r.step} onChange={e=>setTallyRows(rows=>rows.map(x=>x.id===r.id?{...x,step:e.target.value}:x))}/></label></div><button type="button" onClick={()=>setTallyRows(rows=>rows.filter(x=>x.id!==r.id))}>× 행 삭제</button></div>)}<button type="button" onClick={()=>setTallyRows(rows=>[...rows,{id:uid(),label:"",total:12,step:1}])}>+ 횟수 행 추가</button></div>}
         <PomEstimatePicker
           value={estimatedPomodoros}
           onChange={setEstimatedPomodoros}
@@ -2002,18 +1996,14 @@ function EditTask({
             />
           </label>
           <label>
-            시간
+            <span className="time-label-row">시간 <button type="button" title="시간 초기화" aria-label="시간 초기화" onClick={()=>onChange({time:""})}>↺</button></span>
             <input
               type="time"
-              value={task.time}
+              value={task.time || ""}
               onChange={(e) => onChange({ time: e.target.value })}
             />
           </label>
         </div>
-        <label>총 횟수 (0이면 사용 안 함)<input type="number" min="0" value={task.tally?.total||0} onChange={e=>onChange({tally:Number(e.target.value)>0?{count:task.tally?.count||0,total:Number(e.target.value),step:task.tally?.step||1}:null})}/></label>
-        {!!task.tally?.total&&<label>탭별 횟수<input type="number" min="1" value={task.tally.step||1} onChange={e=>onChange({tally:{...task.tally,step:Math.max(1,Number(e.target.value)||1)}})}/></label>}
-        <div><h3>횟수형 활동</h3>{(task.tallies||[]).map((r,i)=><div key={r.id||i} style={{borderBottom:"1px solid #eee",padding:8}}><input aria-label="횟수 항목 이름" value={r.label||""} onChange={e=>onChange({tallies:task.tallies.map((x,j)=>j===i?{...x,label:e.target.value}:x)})}/><div className="field-row"><label>총 횟수<input type="number" min="1" value={r.total} onChange={e=>onChange({tallies:task.tallies.map((x,j)=>j===i?{...x,total:Math.max(1,Number(e.target.value)||1)}:x)})}/></label><label>탭별 횟수<input type="number" min="1" value={r.step} onChange={e=>onChange({tallies:task.tallies.map((x,j)=>j===i?{...x,step:Math.max(1,Number(e.target.value)||1)}:x)})}/></label></div><button type="button" onClick={()=>onChange({tallies:task.tallies.filter((_,j)=>j!==i)})}>행 삭제</button></div>)}<button type="button" onClick={()=>onChange({tallies:[...(task.tallies||[]),{id:uid(),label:"",count:0,total:12,step:1}]})}>+ 횟수 행 추가</button></div>
-        <button type="button" onClick={()=>onChange({time:""})}>× 시간 지우기</button>
         <PomEstimatePicker
           value={task.estimatedPomodoros}
           onChange={(value) => onChange({ estimatedPomodoros: value })}

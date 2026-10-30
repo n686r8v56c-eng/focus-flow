@@ -1429,3 +1429,12 @@ body,
 
 .project-summary .project-add-compact { min-width:34px; min-height:34px; width:34px; height:34px; padding:6px; border-radius:10px; flex-shrink:0; }
 .project-summary button[aria-label="선택 프로젝트 이름 수정"], .project-summary button[aria-label="선택 프로젝트 삭제"] { width:34px; height:34px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+/* Today's Kanban cards: compact while retaining tallies and checkable subtasks. */
+.today-compact-card { padding: 8px 9px; }
+.today-compact-card .task-title { margin: 3px 0; line-height: 1.25; }
+.today-compact-card .task-head { gap: 4px; }
+.today-compact-card .task-foot:empty { display: none; }
+.today-compact-card .card-subtasks { margin-top: 4px; }
+.time-label-row {display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.time-label-row button {font-size:16px;min-height:28px;min-width:32px;padding:2px 6px;border:1px solid #e7dcf1;border-radius:8px;color:#8f78bb;background:#f7f2fb;}
