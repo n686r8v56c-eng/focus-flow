@@ -1,0 +1,43 @@
+name: Focus Flow - Calendar Extra Count
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: focus-flow-calendar-extra-count
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Add extra count to calendar dots
+        run: |
+          echo ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnA9UGF0aCgnc3JjL0FwcC5qc3gnKQpzPXAucmVhZF90ZXh0KGVuY29kaW5nPSd1dGYtOCcpCm5lZWRsZT0nJycgICAgICAgICAgICAgICAgICAgICAge2l0ZW1zLnNsaWNlKDAsIDUpLm1hcCgodCkgPT4gKAogICAgICAgICAgICAgICAgICAgICAgICA8aQogICAgICAgICAgICAgICAgICAgICAgICAgIGtleT17dC5pZH0KICAgICAgICAgICAgICAgICAgICAgICAgICBzdHlsZT17ewogICAgICAgICAgICAgICAgICAgICAgICAgICAgYmFja2dyb3VuZDogdGFza1Byb2plY3QodCk/LmNvbG9yIHx8ICIjYWFhIiwKICAgICAgICAgICAgICAgICAgICAgICAgICB9fQogICAgICAgICAgICAgICAgICAgICAgICAvPgogICAgICAgICAgICAgICAgICAgICAgKSl9JycnCnJlcGxhY2VtZW50PW5lZWRsZSsnJycKICAgICAgICAgICAgICAgICAgICAgIHtpdGVtcy5sZW5ndGggPiA1ICYmICgKICAgICAgICAgICAgICAgICAgICAgICAgPHNwYW4gY2xhc3NOYW1lPSJjYWxlbmRhci1leHRyYS1jb3VudCIgYXJpYS1sYWJlbD17YOy2lOqwgCDsnbzsoJUgJHtpdGVtcy5sZW5ndGggLSA1feqwnGB9PgogICAgICAgICAgICAgICAgICAgICAgICAgICt7aXRlbXMubGVuZ3RoIC0gNX0KICAgICAgICAgICAgICAgICAgICAgICAgPC9zcGFuPgogICAgICAgICAgICAgICAgICAgICAgKX0nJycKaWYgJ2NsYXNzTmFtZT0iY2FsZW5kYXItZXh0cmEtY291bnQiJyBub3QgaW4gczoKICAgIGlmIHMuY291bnQobmVlZGxlKSE9MTogcmFpc2UgU3lzdGVtRXhpdCgnQ2FsZW5kYXIgZG90cyBsYXlvdXQgY2hhbmdlZDogc3RvcHBpbmcgc2FmZWx5JykKICAgIHAud3JpdGVfdGV4dChzLnJlcGxhY2UobmVlZGxlLHJlcGxhY2VtZW50LDEpLGVuY29kaW5nPSd1dGYtOCcpCmNzcz1QYXRoKCdzcmMvc3R5bGUuY3NzJykKdD1jc3MucmVhZF90ZXh0KGVuY29kaW5nPSd1dGYtOCcpCm1hcmtlcj0nLyogRm9jdXMgRmxvdyBjYWxlbmRhciBleHRyYSBjb3VudCAqLycKaWYgbWFya2VyIG5vdCBpbiB0OgogICAgdCArPSAnXG4nICsgbWFya2VyICsgJ1xuJyArICcubW9udGgtZ3JpZC5kYXlzIC5kYXktY2VsbCAuZG90cyB7IHdpZHRoOjEwMCU7IGFsaWduLWl0ZW1zOmNlbnRlcjsgbWluLXdpZHRoOjA7IH1cbi5tb250aC1ncmlkLmRheXMgLmRheS1jZWxsIC5jYWxlbmRhci1leHRyYS1jb3VudCB7IGZvbnQtc2l6ZToxMHB4OyBsaW5lLWhlaWdodDoxOyBmb250LXdlaWdodDo3MDA7IGNvbG9yOiM4NDZhYmQ7IHdoaXRlLXNwYWNlOm5vd3JhcDsgfVxuJwogICAgY3NzLndyaXRlX3RleHQodCxlbmNvZGluZz0ndXRmLTgnKQphc3NlcnQgJ2NhbGVuZGFyLWV4dHJhLWNvdW50JyBpbiBwLnJlYWRfdGV4dCgpIGFuZCBtYXJrZXIgaW4gY3NzLnJlYWRfdGV4dCgpCg== | base64 -d > /tmp/fix_dots.py
+          python3 /tmp/fix_dots.py
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit verified calendar fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for f in ('src/App.jsx','src/style.css'):
+              p=Path(f)
+              s=p.read_text(encoding='utf-8')
+              p.write_text('\n'.join(line.rstrip(' \t\r') for line in s.split('\n')),encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx src/style.css
+          git diff --cached --check
+          if git diff --cached --quiet; then echo 'Already updated'; exit 0; fi
+          git commit -m 'Show +N for additional calendar tasks after five dots'
+          git push origin HEAD:main
