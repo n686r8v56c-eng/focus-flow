@@ -48,7 +48,7 @@ export function App({
     setData = onDataChange;
   const [tab, setTab] = useState("today"),
     [selectedProject, setSelectedProject] = useState("p1"),
-    [projectSort, setProjectSort] = useState("manual"),
+    [projectSort, setProjectSort] = useState("earliest"),
     [karmaCategory, setKarmaCategory] = useState("me"),
     [karmaDraft, setKarmaDraft] = useState(""),
     [calendarView, setCalendarView] = useState("month"),
@@ -999,7 +999,9 @@ export function App({
         onPointerUp={clearPinHold}
         onPointerCancel={clearPinHold}
         onContextMenu={e => { e.preventDefault(); clearPinHold(); setPinMenuId(t.id); }}
-        style={{WebkitTouchCallout:'none'}}>
+        onSelectStart={e => e.preventDefault()}
+        onDragStart={e => e.preventDefault()}
+        style={{WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none',touchAction:'pan-y'}}>
         <div className="project-list-item">
           <button
             className={"check-btn " + (t.status === "done" ? "checked" : "")}
@@ -1009,7 +1011,7 @@ export function App({
           >
             {t.status === "done" && <Check size={15} />}
           </button>
-          <div className="list-middle" onClick={() => {if(pinMenuId!==t.id)setEditing(t.id)}}>
+          <div className="list-middle" onClick={() => {if(pinMenuId!==t.id)setEditing(t.id)}} style={{WebkitUserSelect:'none',userSelect:'none',WebkitTouchCallout:'none'}}>
             <strong className={t.status === "done" ? "struck" : ""}>
               {Number.isFinite(t.pinOrder) ? '⭐ ' : ''}{t.title}
             </strong>
@@ -1113,7 +1115,6 @@ export function App({
         <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,margin:"12px 0 8px"}}>
           <label htmlFor="project-task-sort" style={{fontSize:12,color:"#8b7b9d"}}>정렬하기</label>
           <select id="project-task-sort" aria-label="프로젝트 할 일 정렬" value={projectSort} onChange={e=>setProjectSort(e.target.value)} style={{maxWidth:"72%",padding:"9px 12px",border:"1px solid #e4daee",borderRadius:10,background:"white",color:"#6f568e"}}>
-            <option value="manual">↕ 직접 정렬</option>
             <option value="earliest">↑ 가까운 일정부터</option>
             <option value="latest">↓ 먼 일정부터</option>
           </select>
