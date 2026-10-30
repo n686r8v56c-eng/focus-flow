@@ -48,6 +48,7 @@ export function App({
     setData = onDataChange;
   const [tab, setTab] = useState("today"),
     [selectedProject, setSelectedProject] = useState("p1"),
+    [projectSort, setProjectSort] = useState("manual"),
     [karmaCategory, setKarmaCategory] = useState("me"),
     [karmaDraft, setKarmaDraft] = useState(""),
     [calendarView, setCalendarView] = useState("month"),
@@ -194,21 +195,30 @@ export function App({
     }));
     setSelectedProject(data.projects.find(p => p.id !== item.id)?.id || "");
   };
-  const moveProjectTask = (movingId, targetId) => {
+  const projectSortCompare = (a,b) => {
+    const dateA = a.due || "9999-12-31";
+    const dateB = b.due || "9999-12-31";
+    if (dateA !== dateB) return projectSort === "latest" ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
+    if (Boolean(a.time) !== Boolean(b.time)) return a.time ? -1 : 1;
+    if (a.time && b.time && a.time !== b.time) return a.time.localeCompare(b.time);
+    return (a.title || "").localeCompare(b.title || "", "ko");
+  };
+  const moveProjectTask = (movingId, targetId, placeAfter = false) => {
     if (!targetId || movingId === targetId) return;
     update(d => {
       const moving = d.tasks.find(t => t.id === movingId);
       const target = d.tasks.find(t => t.id === targetId);
       if (!moving || !target || moving.projectId !== target.projectId || moving.status !== target.status) return d;
       const group = d.tasks.filter(t => t.projectId === moving.projectId && t.status === moving.status)
-        .sort((a,b) => (a.order ?? 0)-(b.order ?? 0) || (a.due || "9999").localeCompare(b.due || "9999") || (a.time || "").localeCompare(b.time || ""));
+        .sort((a,b)=>(a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||""));
       const reordered = group.filter(t => t.id !== movingId);
-      const destination = reordered.findIndex(t => t.id === targetId);
-      if (destination < 0) return d;
-      reordered.splice(destination, 0, moving);
+      const at = reordered.findIndex(t => t.id === targetId);
+      if (at < 0) return d;
+      reordered.splice(at + (placeAfter ? 1 : 0), 0, moving);
       const positions = new Map(reordered.map((t,i)=>[t.id,i]));
-      return {...d, tasks: d.tasks.map(t => positions.has(t.id) ? {...t,order:positions.get(t.id)} : t)};
+      return {...d,tasks:d.tasks.map(t=>positions.has(t.id)?{...t,order:positions.get(t.id)}:t)};
     });
+    setProjectSort("manual");
   };
   const dragProjectTask = useRef(null);
   const projectDragCleanup = useRef(null);
@@ -220,52 +230,58 @@ export function App({
     const button = event.currentTarget;
     const row = button.closest('[data-project-task-id]');
     if (!row) return;
-    try { button.setPointerCapture(event.pointerId); } catch {}
-    const startY = event.clientY;
-    let targetId = null;
-    const prior = { transform: row.style.transform, boxShadow: row.style.boxShadow, background: row.style.background, opacity: row.style.opacity, transition: row.style.transition, zIndex: row.style.zIndex, position: row.style.position };
-    row.style.transition = 'transform 120ms ease, box-shadow 120ms ease, background 120ms ease';
+    try {button.setPointerCapture(event.pointerId)} catch {}
+    const initialY = event.clientY;
+    let position = null;
+    const prior = {transform:row.style.transform,boxShadow:row.style.boxShadow,background:row.style.background,opacity:row.style.opacity,zIndex:row.style.zIndex,position:row.style.position,transition:row.style.transition};
+    row.style.transition = 'transform 120ms ease, box-shadow 120ms ease';
     row.style.transform = 'scale(1.025)';
-    row.style.boxShadow = '0 8px 24px rgba(127,97,181,.24), inset 0 0 0 2px #a58bd8';
     row.style.background = '#f7f2ff';
-    row.style.position = 'relative';
-    row.style.zIndex = '3';
+    row.style.boxShadow = '0 8px 24px rgba(127,97,181,.24), inset 0 0 0 2px #a58bd8';
+    row.style.position = 'relative';row.style.zIndex='3';
     if (navigator.vibrate) try {navigator.vibrate(12)} catch {}
-    const resetHighlights = () => {
-      for (const item of document.querySelectorAll('[data-project-task-id]')) if (item !== row) item.style.boxShadow = '';
+    const clearTargets = () => {
+      document.querySelectorAll('[data-project-task-id]').forEach(el=>{
+        if (el !== row) el.style.boxShadow='';
+      });
     };
     const move = e => {
       if (e.pointerId !== event.pointerId) return;
       e.preventDefault();
-      resetHighlights();
-      row.style.opacity = '.88';
-      // Hide the pointer-captured handle when hit-testing the target row.
-      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-project-task-id]');
-      const id = target?.getAttribute('data-project-task-id');
-      targetId = id && id !== task.id && target.getAttribute('data-project-status') === task.status ? id : null;
-      if (targetId) target.style.boxShadow = 'inset 0 4px #a58bd8, 0 0 0 2px #a58bd8';
-      // Intentionally do not reorder in pointermove; commit exactly once on release.
+      clearTargets();
+      position = null;
+      // Position is determined by each visible row's midpoint. Works in both directions.
+      const rows = [...document.querySelectorAll('[data-project-task-id]')]
+        .filter(el=>el !== row && el.getAttribute('data-project-status')===task.status);
+      const hovered = rows.find(el=>{const r=el.getBoundingClientRect();return e.clientY>=r.top&&e.clientY<=r.bottom;});
+      if (!hovered) return;
+      const r=hovered.getBoundingClientRect();
+      const after=e.clientY>=r.top+r.height/2;
+      position={id:hovered.getAttribute('data-project-task-id'),after};
+      hovered.style.boxShadow=after?'inset 0 -4px #a58bd8':'inset 0 4px #a58bd8';
     };
     const cleanup = () => {
       window.removeEventListener('pointermove',move);
       window.removeEventListener('pointerup',end);
       window.removeEventListener('pointercancel',cancel);
-      try { button.releasePointerCapture(event.pointerId); } catch {}
-      Object.entries(prior).forEach(([key,value]) => {row.style[key] = value;});
-      resetHighlights();
-      projectDragCleanup.current = null;
+      try {button.releasePointerCapture(event.pointerId)} catch {}
+      Object.entries(prior).forEach(([key,value])=>{row.style[key]=value});
+      clearTargets();
+      projectDragCleanup.current=null;
     };
-    const end = e => {
+    const end=e=>{
       if (e.pointerId !== event.pointerId) return;
-      const id = targetId;
+      // Recalculate on release, so the last pointer position is authoritative.
+      move(e);
+      const drop=position;
       cleanup();
-      if (id && Math.abs(e.clientY-startY) >= 6) moveProjectTask(task.id,id);
+      if (drop && Math.abs(e.clientY-initialY)>=5) moveProjectTask(task.id,drop.id,drop.after);
     };
-    const cancel = () => cleanup();
+    const cancel=()=>cleanup();
     window.addEventListener('pointermove',move,{passive:false});
     window.addEventListener('pointerup',end);
     window.addEventListener('pointercancel',cancel);
-    projectDragCleanup.current = cleanup;
+    projectDragCleanup.current=cleanup;
   };
   const removeTask = (id) => {
     update((d) => ({ ...d, tasks: d.tasks.filter((t) => t.id !== id) }));
@@ -1015,7 +1031,7 @@ export function App({
   }
   function Projects() {
     const selected = project(selectedProject),
-      items = data.tasks.filter((t) => t.projectId === selectedProject).sort((a,b)=>(a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||"")),
+      items = data.tasks.filter((t) => t.projectId === selectedProject).sort((a,b)=>projectSort === "manual" ? ((a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||"")) : projectSortCompare(a,b)),
       pending = items.filter((t) => t.status !== "done"),
       done = items.filter((t) => t.status === "done");
     const renderItem = (t) => (
@@ -1123,6 +1139,14 @@ export function App({
             </button>
           </div>
         )}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,margin:"12px 0 8px"}}>
+          <label htmlFor="project-task-sort" style={{fontSize:12,color:"#8b7b9d"}}>정렬하기</label>
+          <select id="project-task-sort" aria-label="프로젝트 할 일 정렬" value={projectSort} onChange={e=>setProjectSort(e.target.value)} style={{maxWidth:"72%",padding:"9px 12px",border:"1px solid #e4daee",borderRadius:10,background:"white",color:"#6f568e"}}>
+            <option value="manual">↕ 직접 정렬</option>
+            <option value="earliest">↑ 가까운 일정부터</option>
+            <option value="latest">↓ 먼 일정부터</option>
+          </select>
+        </div>
         <div className="project-task-list">
           {pending.map(renderItem)}
           {pending.length === 0 && (
