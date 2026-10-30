@@ -770,10 +770,9 @@ export function App({
           <div style={{minWidth:0,flex:'1 1 auto'}}>
             <div className="eyebrow" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6',display:'flex',alignItems:'flex-end',minHeight:28,paddingBottom:1}}>
               {new Date(visibleDate+'T12:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})}
-              <span aria-label="날짜 이동" style={{display:'inline-flex',alignItems:'center',gap:3,marginLeft:10,fontSize:12,fontWeight:600,color:'#957bb6',whiteSpace:'nowrap'}}>
-                <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:2,minWidth:20,background:'transparent',color:'inherit',border:0}}><ChevronLeft size={14}/></button>
-                <span>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
-                <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:2,minWidth:20,background:'transparent',color:'inherit',border:0}}><ChevronRight size={14}/></button>
+              <span aria-label="날짜 이동" style={{display:'inline-flex',alignItems:'center',gap:2,marginLeft:8,fontSize:'inherit',fontWeight:'inherit',color:'inherit',whiteSpace:'nowrap',verticalAlign:'baseline'}}>
+                <button type="button" aria-label="이전 날짜" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{appearance:'none',padding:0,width:16,height:18,minWidth:16,display:'inline-flex',alignItems:'center',justifyContent:'center',background:'transparent',color:'inherit',border:0,font:'inherit',lineHeight:1,cursor:'pointer'}}>{'<'}</button>
+                <button type="button" aria-label="다음 날짜" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{appearance:'none',padding:0,width:16,height:18,minWidth:16,display:'inline-flex',alignItems:'center',justifyContent:'center',background:'transparent',color:'inherit',border:0,font:'inherit',lineHeight:1,cursor:'pointer'}}>{'>'}</button>
               </span>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,whiteSpace:'nowrap'}}>
