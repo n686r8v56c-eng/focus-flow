@@ -1,7 +1,16 @@
 import React from "react";
 export function linkedSteps(w, source) {
  const items=w.steps ?? w.sequenceSteps ?? w.sequence?.steps ?? w.sequence?.items ?? w.movements ?? w.exercises;
- if(Array.isArray(items)&&items.length) return items.slice(0,200).map((s,i)=>({key:String(s?.id??s?.stepId??`step-${i}`),label:String(typeof s==="string"?s:s?.name??s?.title??s?.label??`동작 ${i+1}`)}));
+ if(Array.isArray(items)&&items.length) return items.slice(0,300).map((s,i)=>{
+  const step=typeof s==="string"?{name:s}:(s||{});
+  const key=String(step.key??step.id??step.stepId??`step-${i}`);
+  const name=String(step.name??step.title??step.label??step.poseName??`동작 ${i+1}`);
+  const details=[step.side && step.side!=="기본" ? step.side : null,
+    Number(step.beats)>0 ? `${step.beats}박` : null,
+    Number(step.reps)>0 ? `${step.reps}회` : null,
+    Number(step.sets)>0 ? `${step.sets}세트` : null].filter(Boolean);
+  return {key,label:details.length?`${name} · ${details.join(" · ")}`:name};
+ });
  if(source!=="mind" || (w.kind!=="breath" && !/나디\s*쇼다나/.test(w.title??"")))return [];
  const count=Number(w.repetitions??w.repeatCount??w.count??w.rounds??(String(w.title??"").match(/(\d+)\s*회/)||[])[1]);
  if(!Number.isInteger(count)||count<1||count>108)return [];
