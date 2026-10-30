@@ -176,6 +176,73 @@ export function App({
       status,
       completedAt: status === "done" ? new Date().toISOString() : null,
     });
+  const deleteSelectedProject = () => {
+    const item = data.projects.find(p => p.id === selectedProject);
+    if (!item || !window.confirm(`프로젝트 “${item.name}”을 삭제할까?\n소속 할 일은 삭제하지 않고 개인 일정으로 옮겨져.`)) return;
+    update(d => ({
+      ...d,
+      projects: d.projects.filter(p => p.id !== item.id),
+      tasks: d.tasks.map(t => t.projectId === item.id ? {...t, projectId: null} : t),
+    }));
+    setSelectedProject(data.projects.find(p => p.id !== item.id)?.id || "");
+  };
+  const moveProjectTask = (movingId, targetId) => {
+    if (!targetId || movingId === targetId) return;
+    update(d => {
+      const moving = d.tasks.find(t => t.id === movingId);
+      const target = d.tasks.find(t => t.id === targetId);
+      if (!moving || !target || moving.projectId !== target.projectId || moving.status !== target.status) return d;
+      const group = d.tasks.filter(t => t.projectId === moving.projectId && t.status === moving.status)
+        .sort((a,b) => (a.order ?? 0)-(b.order ?? 0) || (a.due || "9999").localeCompare(b.due || "9999") || (a.time || "").localeCompare(b.time || ""));
+      const reordered = group.filter(t => t.id !== movingId);
+      const destination = reordered.findIndex(t => t.id === targetId);
+      if (destination < 0) return d;
+      reordered.splice(destination, 0, moving);
+      const positions = new Map(reordered.map((t,i)=>[t.id,i]));
+      return {...d, tasks: d.tasks.map(t => positions.has(t.id) ? {...t,order:positions.get(t.id)} : t)};
+    });
+  };
+  const dragProjectTask = useRef(null);
+  const projectDragCleanup = useRef(null);
+  useEffect(() => () => projectDragCleanup.current?.(), []);
+  const startProjectDrag = (event, task) => {
+    if (event.button !== 0 && event.pointerType === "mouse") return;
+    event.preventDefault();
+    const element = event.currentTarget;
+    const handle = element.closest('[data-project-task-id]');
+    if (!handle) return;
+    const startY = event.clientY;
+    let moved = false;
+    let targetId = null;
+    const clear = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', cancel);
+      if (handle) { handle.style.opacity = ''; handle.style.outline = ''; }
+      for (const row of document.querySelectorAll('[data-project-task-id]')) row.style.boxShadow = '';
+      dragProjectTask.current = null;
+      projectDragCleanup.current = null;
+    };
+    const move = e => {
+      if (Math.abs(e.clientY - startY) > 5) moved = true;
+      if (!moved) return;
+      handle.style.opacity = '.65';
+      for (const row of document.querySelectorAll('[data-project-task-id]')) row.style.boxShadow = '';
+      const el = document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-project-task-id]');
+      const id = el?.getAttribute('data-project-task-id');
+      if (id && id !== task.id && el.getAttribute('data-project-status') === task.status) {
+        targetId = id;
+        el.style.boxShadow = 'inset 0 3px #a58bd8';
+      } else targetId = null;
+    };
+    const end = () => { const id = targetId; clear(); if (moved && id) moveProjectTask(task.id,id); };
+    const cancel = () => clear();
+    dragProjectTask.current = task.id;
+    window.addEventListener('pointermove',move,{passive:true});
+    window.addEventListener('pointerup',end);
+    window.addEventListener('pointercancel',cancel);
+    projectDragCleanup.current = clear;
+  };
   const removeTask = (id) => {
     update((d) => ({ ...d, tasks: d.tasks.filter((t) => t.id !== id) }));
     setEditing(null);
@@ -928,7 +995,7 @@ export function App({
       pending = items.filter((t) => t.status !== "done"),
       done = items.filter((t) => t.status === "done");
     const renderItem = (t) => (
-      <div key={t.id} className="project-item-wrap">
+      <div key={t.id} className="project-item-wrap" data-project-task-id={t.id} data-project-status={t.status}>
         <div className="project-list-item">
           <button
             className={"check-btn " + (t.status === "done" ? "checked" : "")}
@@ -951,7 +1018,7 @@ export function App({
           <div onClick={() => setEditing(t.id)} style={{ cursor: "pointer" }}>
             <TaskEstimate count={t.estimatedPomodoros} />
           </div>
-          <div style={{display:"flex",flexDirection:"column"}}><button type="button" aria-label="위로 이동" onClick={()=>{const list=t.status==="done"?done:pending;const i=list.findIndex(x=>x.id===t.id);if(i>0)reorderTask(t.id,list[i-1].id,t.status)}}>▲</button><button type="button" aria-label="아래로 이동" onClick={()=>{const list=t.status==="done"?done:pending;const i=list.findIndex(x=>x.id===t.id);if(i>=0&&i<list.length-1)reorderTask(list[i+1].id,t.id,t.status)}}>▼</button></div>
+          <button type="button" aria-label="길게 눌러 순서 변경" onPointerDown={e=>startProjectDrag(e,t)} style={{touchAction:"none",cursor:"grab",fontSize:22,color:"#9f8db7",padding:"8px",userSelect:"none",flexShrink:0}}>⠿</button>
           <ChevronRight
             size={17}
             color="#b8b0be"
@@ -994,7 +1061,7 @@ export function App({
           프로젝트 목록
           <select
             className="select-full"
-            value={selectedProject}
+            value={selected?.id || ""}
             onChange={(e) => setSelectedProject(e.target.value)}
           >
             {data.projects.map((p) => (
@@ -1018,6 +1085,7 @@ export function App({
                 {done.length}/{items.length}개 완료
               </p>
             </div>
+            <button type="button" className="secondary" onClick={deleteSelectedProject} aria-label="선택 프로젝트 삭제" style={{marginLeft:"auto",padding:"10px",color:"#bf667c"}}><Trash2 size={18}/></button>
             <button
               className="secondary add-only"
               aria-label="투두 추가"
