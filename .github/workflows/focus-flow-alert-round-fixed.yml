@@ -3,9 +3,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-concurrency:
-  group: focus-flow-alert-round
-  cancel-in-progress: false
 jobs:
   build-and-update:
     runs-on: ubuntu-latest
@@ -13,49 +10,51 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          persist-credentials: true
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-      - name: Fix label and order regardless of indentation
+      - name: Apply both UI changes safely
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-          path = Path('src/App.jsx')
-          source = path.read_text(encoding='utf-8')
-          pattern = re.compile(r'<label\b[^>]*className="tick-option"[^>]*>.*?</label>', re.S)
-          labels = list(pattern.finditer(source))
-          alarm = [m for m in labels if 'checked={alarmEnabled}' in m.group()]
-          ticking = [m for m in labels if 'checked={tickSound}' in m.group()]
-          if len(alarm) != 1 or len(ticking) != 1:
-              raise SystemExit(f'Expected exactly one alarm and tick switch; found {len(alarm)}, {len(ticking)}')
-          alarm_match, tick_match = alarm[0], ticking[0]
-          alert = alarm_match.group()
-          alert = alert.replace('집중 종료 알림음', '집중 종료 알림')
-          alert = re.sub(r'\s+style=\{\{\s*marginTop:\s*12\s*\}\}', '', alert, count=1)
-          if alarm_match.start() > tick_match.start():
-              # Remove the original alarm block and insert directly above tick label.
-              source = source[:alarm_match.start()] + source[alarm_match.end():]
-              tick_match = next(m for m in pattern.finditer(source) if 'checked={tickSound}' in m.group())
-              source = source[:tick_match.start()] + alert + '\n              ' + source[tick_match.start():]
+          p=Path('src/App.jsx')
+          s=p.read_text(encoding='utf-8')
+          pattern=re.compile(r'<label\b[^>]*className="tick-option"[^>]*>.*?</label>',re.S)
+          blocks=list(pattern.finditer(s))
+          alarm=[m for m in blocks if 'checked={alarmEnabled}' in m.group()]
+          ticks=[m for m in blocks if 'checked={tickSound}' in m.group()]
+          if len(alarm)!=1 or len(ticks)!=1:
+              raise SystemExit('Expected one alarm switch and one ticking switch')
+          old=alarm[0]
+          new=re.sub(r'\s+style=\{\{\s*marginTop:\s*12\s*\}\}', '',old.group(),count=1)
+          new=new.replace('집중 종료 알림음','집중 종료 알림')
+          if old.start()>ticks[0].start():
+              s=s[:old.start()]+s[old.end():]
+              marker=re.search(r'<label\b[^>]*className="tick-option"[^>]*>.*?checked=\{tickSound\}.*?</label>',s,re.S)
+              if not marker:
+                  raise SystemExit('Tick switch disappeared')
+              s=s[:marker.start()]+new+'\n              '+s[marker.start():]
           else:
-              source = source[:alarm_match.start()] + alert + source[alarm_match.end():]
-          source = re.sub(r'^[ \t]*<div className="timer-round">완료한 집중 \{round\}회</div>\n?', '', source, count=1, flags=re.M)
-          if source.count('checked={alarmEnabled}') != 1 or source.count('checked={tickSound}') != 1:
-              raise SystemExit('Validation failed: duplicated switch')
-          if source.index('checked={alarmEnabled}') >= source.index('checked={tickSound}'):
-              raise SystemExit('Validation failed: alert still below tick')
-          if '완료한 집중 {round}회' in source or '집중 종료 알림음 <small>' in source:
-              raise SystemExit('Validation failed: old UI remains')
-          path.write_text(source, encoding='utf-8')
+              s=s[:old.start()]+new+s[old.end():]
+          s=re.sub(r'^\s*<div className="timer-round">완료한 집중 \{round\}회</div>\s*\n','\n',s,count=1,flags=re.M)
+          # Previous run failed because its generated JSX had a trailing blank.
+          s='\n'.join(line.rstrip(' \t\r') for line in s.split('\n'))
+          if s.index('checked={alarmEnabled}') >= s.index('checked={tickSound}'):
+              raise SystemExit('Alarm is not above ticking sound')
+          if '완료한 집중 {round}회' in s or '집중 종료 알림음 <small>' in s:
+              raise SystemExit('Old UI still exists')
+          p.write_text(s,encoding='utf-8')
           PY
       - name: Install dependencies
         run: npm ci
-      - name: Build
+      - name: Production build
         run: npm run build
-      - name: Commit verified UI only
+      - name: Commit verified changes
         run: |
+          set -e
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src/App.jsx
@@ -63,6 +62,6 @@ jobs:
           if git diff --cached --quiet; then
             echo 'Already applied'
           else
-            git commit -m 'Move completion alert above ticking and hide duplicate focus count'
+            git commit -m 'Move focus completion alert and remove duplicate count'
             git push origin HEAD:main
           fi
