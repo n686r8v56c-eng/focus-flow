@@ -793,46 +793,48 @@ export function App({
             <b>{todayNotDone.filter((t) => t.due && t.due < today).length}</b>
           </span>
         </div>
-        <div className="kanban">
-          {[
-            ["todo", "할 일"],
-            ["doing", "진행 중"],
-            ["done", "완료"],
-          ].map(([key, label]) => (
-            <div
-              key={key}
-              className="lane"
-              data-today-kanban-lane={key}
-            >
-              <div className={"lane-head " + key}>
-                <span>{label}</span>
-                <small>
-                  {todayTasks.filter((t) => t.status === key).length}
-                </small>
+        <section aria-label="오늘의 할 일 체크리스트" style={{display:'grid',gap:10,marginBottom:18}}>
+          {todayTasks.filter(t=>t.status!=='done').map(t=>{
+            const subtasks=t.subtasks||[];
+            const count=subtasks.filter(x=>x.done).length;
+            const proj=taskProject(t);
+            return <div key={t.id} className="today-list-row" onPointerDown={e=>{if(!e.target.closest('button,input,a,select,label'))beginPinHold(e,t.id)}} onPointerMove={trackPinHold} onPointerUp={clearPinHold} onPointerCancel={clearPinHold} onContextMenu={e=>{e.preventDefault();clearPinHold();setPinMenuId(t.id)}} style={{background:'white',border:'1px solid #e9e1f0',borderRadius:16,padding:'12px 13px',WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <button type="button" onClick={()=>completeOrStatus(t,'done')} aria-label={`${t.title} 완료`} style={{width:30,height:30,flexShrink:0,border:'2px solid #ac98c7',borderRadius:'50%',background:'white'}}/>
+                <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>{if(pinMenuId!==t.id)setEditing(t.id)}}>
+                  <div style={{display:'flex',alignItems:'center',gap:5,fontWeight:700,fontSize:14,overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)&&<span>⭐</span>}{t.title}</div>
+                  <div style={{fontSize:11,color:'#978aa5',marginTop:3}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
+                  {!!t.estimatedPomodoros&&<div style={{marginTop:4,display:'flex'}}><TaskEstimate count={t.estimatedPomodoros}/></div>}
+                </div>
+                {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`} style={{flexShrink:0}}>
+                  <circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/>
+                  <circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/>
+                </svg>}
               </div>
-              <div className="lane-content">
-                {todayTasks
-                  .filter((t) => t.status === key)
-                  .map(t => <div key={t.id} className="today-kanban-task-row" style={{display:'flex',alignItems:'stretch',gap:5}}>
-                    <button type="button" aria-label={`${t.title} 칸반 이동 손잡이`}
-                      onClick={e=>e.stopPropagation()}
-                      onPointerDown={handleKanbanPointerDown}
-                      onPointerUp={e=>handleKanbanPointerUp(e,t.id)}
-                      onPointerCancel={handleKanbanPointerCancel}
-                      style={{touchAction:'none',userSelect:'none',WebkitUserSelect:'none',WebkitTouchCallout:'none',flex:'0 0 26px',padding:0,border:0,background:'transparent',color:'#a18bbe',borderRadius:7,fontSize:19,cursor:'grab'}}
-                    >⠿</button>
-                    <div style={{flex:1,minWidth:0}}><TaskCard task={t}/></div>
-                  </div>)}
-                {!todayTasks.some((t) => t.status === key) && (
-                  <div className="empty-lane">여기로 카드를 끌어와</div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+              {subtasks.length>0&&<div style={{margin:'9px 0 0 40px',display:'grid',gap:6,borderTop:'1px solid #f3eef6',paddingTop:8}}>
+                {subtasks.map(sub=><label key={sub.id} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:sub.done?'#aaa':'#675b70'}} onClick={e=>e.stopPropagation()}>
+                  <input type="checkbox" checked={!!sub.done} onChange={e=>changeTask(t.id,{subtasks:subtasks.map(x=>x.id===sub.id?{...x,done:e.target.checked}:x)})} style={{accentColor:'#9c85cd'}}/>
+                  <span style={{textDecoration:sub.done?'line-through':'none'}}>{sub.text}</span>
+                </label>)}
+              </div>}
+              {pinMenuId===t.id&&<div onClick={e=>e.stopPropagation()} style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:8}}><button type="button" onClick={()=>togglePin(t)}>{Number.isFinite(t.pinOrder)?'☆ 고정 해제':'⭐ 맨 위에 고정'}</button><button type="button" onClick={()=>setPinMenuId(null)}>닫기</button></div>}
+            </div>;
+          })}
+          {!todayTasks.some(t=>t.status!=='done')&&<div style={{padding:18,textAlign:'center',color:'#a397ae'}}>남은 할 일이 없어 🎉</div>}
+          {todayTasks.some(t=>t.status==='done')&&<div style={{fontSize:12,fontWeight:700,color:'#9889aa',marginTop:8}}>완료한 할 일 ({todayTasks.filter(t=>t.status==='done').length})</div>}
+          {todayTasks.filter(t=>t.status==='done').map(t=>{
+            const proj=taskProject(t);
+            const subtasks=t.subtasks||[];
+            const count=subtasks.filter(x=>x.done).length;
+            return <div key={t.id} style={{background:'#f4f1f6',border:'1px solid #e9e3ee',borderRadius:16,padding:'11px 13px',display:'flex',alignItems:'center',gap:10,color:'#9a93a2'}}>
+              <button type="button" aria-label={`${t.title} 완료 취소`} onClick={()=>completeOrStatus(t,'todo')} style={{width:30,height:30,flexShrink:0,borderRadius:'50%',background:'#e4ddee',border:'2px solid #a58fc6',color:'#876bb5',fontWeight:700}}>✓</button>
+              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}{t.title}</div><div style={{fontSize:11,marginTop:3}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div>
+              {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`}><circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/><circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/></svg>}
+            </div>;
+          })}
+        </section>
         <p className="hint">
-          미완료 투두는 다음 날 자동으로 오늘에 표시돼. 원래 날짜와 시간은
-          보존해. 약속처럼 날짜가 중요한 일정은 자동으로 변경되지 않아.
+          미완료 투두는 다음 날에도 표시돼. 완료한 일은 아래에 모아 보여줘. 원래 날짜와 시간은 보존해.
         </p>
         <LinkedActivities
           source="study" client={bridgeClient} userId={bridgeUserId} today={today}
