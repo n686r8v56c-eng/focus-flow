@@ -1,0 +1,87 @@
+name: Focus Flow - Inline Date and Project Color Dots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply both UI changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("src/App.jsx")
+          s = p.read_text(encoding="utf-8")
+          a = s.index("function Kanban()")
+          b = s.index("function CalendarChecklist(",a)
+          part = s[a:b]
+          def replace_once(old, new):
+              global part
+              if part.count(old) != 1:
+                  raise RuntimeError(f"Unexpected Today layout anchor ({part.count(old)} matches): {old[:90]}")
+              part = part.replace(old, new, 1)
+
+          oldnav = """          <div style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
+                      <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:5,minWidth:28}}><ChevronLeft size={17}/></button>
+                      <span style={{fontSize:12,whiteSpace:'nowrap',minWidth:24,textAlign:'center'}}>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
+                      <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:5,minWidth:28}}><ChevronRight size={17}/></button>
+                      <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center'}}><Plus size={20}/></button>
+                    </div>"""
+          newnav = """          <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center',flexShrink:0}}><Plus size={20}/></button>"""
+          if oldnav in part:
+              replace_once(oldnav,newnav)
+              oldbadge = """              <ProgressBadge done={todayTasks.filter(t=>t.status==='done').length} total={todayTasks.length}/>"""
+              newbadge = """              <ProgressBadge done={todayTasks.filter(t=>t.status==='done').length} total={todayTasks.length}/>
+                        <div aria-label="날짜 이동" style={{display:'inline-flex',alignItems:'center',gap:1,flexShrink:0,color:'#9484a5',fontSize:11,fontWeight:600,whiteSpace:'nowrap'}}>
+                          <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:'2px',minWidth:18,background:'transparent',color:'inherit',border:0}}><ChevronLeft size={13}/></button>
+                          <span>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
+                          <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:'2px',minWidth:18,background:'transparent',color:'inherit',border:0}}><ChevronRight size={13}/></button>
+                        </div>"""
+              replace_once(oldbadge,newbadge)
+          else:
+              # The previous inline-date workflow might already be applied.
+              if 'aria-label="날짜 이동"' not in part:
+                  raise RuntimeError("Date navigation layout not recognized")
+
+          # Show existing project colors; preserve all date and metadata.
+          oldmeta = """<div style={{fontSize:11,color:'#978aa5',marginTop:2}}>{proj?.name||'개인 일정'}"""
+          newmeta = """<div style={{fontSize:11,color:'#978aa5',marginTop:2,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}"""
+          if oldmeta in part:
+              replace_once(oldmeta,newmeta)
+          elif 'background:proj?.color||' not in part:
+              raise RuntimeError("Pending task project label not found")
+
+          oldcompleted = """<div style={{fontSize:11,marginTop:3}}>{proj?.name||'개인 일정'}"""
+          newcompleted = """<div style={{fontSize:11,marginTop:3,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}"""
+          if oldcompleted in part:
+              replace_once(oldcompleted,newcompleted)
+          elif part.count("background:proj?.color||") < 2:
+              raise RuntimeError("Completed task project label not found")
+
+          s = s[:a] + part + s[b:]
+          p.write_text("\n".join(line.rstrip() for line in s.splitlines()) + "\n",encoding="utf-8")
+          print("Today inline navigation and project-color dots updated")
+          PY
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Commit verified changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m "Inline date navigation and restore project color dots in Today"
+            git push
+          fi
