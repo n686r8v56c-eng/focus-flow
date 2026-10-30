@@ -256,7 +256,7 @@ export function App({
           t.completedAt &&
           localDate(new Date(t.completedAt)) === visibleDate),
     )
-    .sort((a,b) => (a.order??0)-(b.order??0) || (a.time||"99:99").localeCompare(b.time||"99:99"));
+    .sort((a,b) => {const ap=Number.isFinite(a.pinOrder),bp=Number.isFinite(b.pinOrder); if(ap!==bp)return ap?-1:1; if(ap&&bp)return a.pinOrder-b.pinOrder;return (a.order??0)-(b.order??0)||(a.time||"99:99").localeCompare(b.time||"99:99");});
   const plannedTasks = data.tasks.filter((t) => t.due && t.status !== "done");
   const todayNotDone = todayTasks.filter((t) => t.status !== "done");
   const selectedPomTask = data.tasks.find((t) => t.id === pomTask);
@@ -601,9 +601,13 @@ export function App({
     return (
       <div
         className={"task-card " + (compact ? "compact" : "")}
-        onClick={() => setEditing(task.id)}
-        draggable
-        onDragStart={(e) => e.dataTransfer.setData("text/plain", task.id)}
+        onClick={() => {if(pinMenuId!==task.id)setEditing(task.id)}}
+        onPointerDown={(e) => { if (!e.target.closest('button,input,a,select')) beginPinHold(e,task.id); }}
+        onPointerMove={trackPinHold}
+        onPointerUp={clearPinHold}
+        onPointerCancel={clearPinHold}
+        onContextMenu={(e) => {e.preventDefault();clearPinHold();setPinMenuId(task.id);}}
+        style={{WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none'}}
       >
         <div className="task-head">
           <span
@@ -620,7 +624,6 @@ export function App({
           <div className="task-title" style={{ flex: 1, minWidth: 0 }}>
             {task.title}
           </div>
-          <TaskEstimate count={task.estimatedPomodoros} />
         </div>
         {task.tally?.total > 0 && <button type="button" aria-label={`${task.title} 횟수 추가`} onClick={e=>{e.stopPropagation();advanceTally(task)}} style={{width:"100%",border:0,textAlign:"left",marginTop:6,padding:"8px 10px",borderRadius:9,fontWeight:650,background:`linear-gradient(to right,#efb7bc ${Math.min(100,100*(task.tally.count||0)/task.tally.total)}%,#f2eef5 0%)`}}>{task.tally.count||0}/{task.tally.total} · +{task.tally.step||1}</button>}
         {(task.tallies||[]).map((counter,i)=><button key={counter.id||i} type="button" aria-label={`${counter.label||task.title} 횟수 추가`} onClick={e=>{e.stopPropagation();advanceMultiTally(task,i)}} style={{width:"100%",border:0,textAlign:"left",marginTop:6,padding:"8px 10px",borderRadius:9,fontWeight:650,background:`linear-gradient(to right,#efb7bc ${Math.min(100,100*(counter.count||0)/Math.max(1,counter.total))}%,#f2eef5 0%)`}}>{counter.label?counter.label+" · ":""}{counter.count||0}/{counter.total} · +{counter.step||1}</button>)}
@@ -652,6 +655,10 @@ export function App({
             ))}
           </div>
         )}
+        {pinMenuId===task.id && <div className="today-pin-actions" onClick={e=>e.stopPropagation()} style={{padding:'8px 0',display:'flex',justifyContent:'flex-end',gap:10}}>
+          <button type="button" onClick={e=>{e.stopPropagation();togglePin(task)}}>{Number.isFinite(task.pinOrder)?'☆ 고정 해제':'⭐ 맨 위에 고정'}</button>
+          <button type="button" onClick={e=>{e.stopPropagation();setPinMenuId(null)}}>닫기</button>
+        </div>}
       </div>
     );
   }
@@ -754,13 +761,6 @@ export function App({
             <div
               key={key}
               className="lane"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const id = e.dataTransfer.getData("text/plain");
-                const t = data.tasks.find((t) => t.id === id);
-                if (t) completeOrStatus(t, key);
-              }}
             >
               <div className={"lane-head " + key}>
                 <span>{label}</span>
@@ -771,9 +771,7 @@ export function App({
               <div className="lane-content">
                 {todayTasks
                   .filter((t) => t.status === key)
-                  .map((t,i,list) => (
-                    <div key={t.id} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();e.stopPropagation();reorderTask(e.dataTransfer.getData("text/plain"),t.id,key)}}><TaskCard task={t}/><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button type="button" aria-label="카드 위로 이동" disabled={i===0} onClick={()=>reorderTask(t.id,list[i-1]?.id,key)}>↑</button><button type="button" aria-label="카드 아래로 이동" disabled={i===list.length-1} onClick={()=>reorderTask(list[i+1]?.id,t.id,key)}>↓</button></div></div>
-                  ))}
+                  .map(t => <TaskCard key={t.id} task={t}/>)}
                 {!todayTasks.some((t) => t.status === key) && (
                   <div className="empty-lane">여기로 카드를 끌어와</div>
                 )}
@@ -788,22 +786,19 @@ export function App({
         <LinkedActivities
           source="study" client={bridgeClient} userId={bridgeUserId} today={today}
           checks={data.activityChecks || {}}
-          onCheck={(key, done) => setData({...data, activityChecks:{...(data.activityChecks || {}),[key]:{done}}})}
+          onCheck={(key, done, pinOrder) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{})}}}))}
         />
         <HomeWorkouts
           client={bridgeClient}
           userId={bridgeUserId}
           today={today}
           checks={data.homeWorkoutChecks || {}}
-          onCheck={(key, done) => setData({
-            ...data,
-            homeWorkoutChecks: {...(data.homeWorkoutChecks || {}), [key]: {done}},
-          })}
+          onCheck={(key, done, pinOrder) => setData(d=>({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks||{}),[key]:{...(d.homeWorkoutChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{})}}}))}
         />
         <LinkedActivities
           source="mind" client={bridgeClient} userId={bridgeUserId} today={today}
           checks={data.activityChecks || {}}
-          onCheck={(key, done) => setData({...data, activityChecks:{...(data.activityChecks || {}),[key]:{done}}})}
+          onCheck={(key, done, pinOrder) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{})}}}))}
         />
       </>
     );

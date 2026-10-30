@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Check, ChevronRight } from "lucide-react";
 const SOURCES={study:{origin:"https://memory-lab.pages.dev",title:"오늘 할 공부",name:"MEMORY LAB"},mind:{origin:"https://mind-flow-4r3.pages.dev",title:"오늘 할 명상",name:"Mind Flow"}};
 export function LinkedActivities({ client, userId, today, checks = {}, onCheck, source }) {
@@ -121,6 +121,16 @@ export function LinkedActivities({ client, userId, today, checks = {}, onCheck, 
     Array.isArray(snapshot?.activities) ? snapshot.activities : []
   ).filter((w) => w.date === today);
   const checkKey = (w) => JSON.stringify([link?.id, w.date, w.videoId || w.id]);
+  const [pinMenu, setPinMenu] = useState(null);
+  const holdTimer=useRef(null);
+  const holdStart=useRef(null);
+  const startHold=(e,key)=>{if(e.pointerType==='mouse'&&e.button!==0)return; clearTimeout(holdTimer.current);holdStart.current={x:e.clientX,y:e.clientY};holdTimer.current=setTimeout(()=>{setPinMenu(key);holdTimer.current=null},500)};
+  const moveHold=e=>{if(holdStart.current&&(Math.abs(e.clientX-holdStart.current.x)>12||Math.abs(e.clientY-holdStart.current.y)>12))clearTimeout(holdTimer.current)};
+  const stopHold=()=>{clearTimeout(holdTimer.current);holdTimer.current=null;holdStart.current=null};
+  useEffect(()=>()=>clearTimeout(holdTimer.current),[]);
+  const pinRank=w=>Number.isFinite(checks[checkKey(w)]?.pinOrder)?checks[checkKey(w)].pinOrder:null;
+  const togglePinned=w=>{const key=checkKey(w);const rank=pinRank(w);const next=rank===null?Math.max(0,...Object.values(checks).map(x=>Number.isFinite(x?.pinOrder)?x.pinOrder:0))+1:null;onCheck?.(key,isDone(w),next);setPinMenu(null)};
+
   const isDone = (w) => typeof checks[checkKey(w)]?.done === "boolean" ? checks[checkKey(w)].done : w.status === "done";
   const href = (w) => {
     try {
@@ -217,13 +227,15 @@ export function LinkedActivities({ client, userId, today, checks = {}, onCheck, 
       )}
       {activities.length > 0 && <p className="hint" role="status">{activities.filter(isDone).length} / {activities.length}개 완료</p>}
       <ul aria-label={title+" 목록"} style={{listStyle:"none",padding:0,margin:0,display:"grid",gap:10}}>
-        {activities.map(w => {
+        {activities.slice().sort((a,b)=>{const x=pinRank(a),y=pinRank(b);return x===null&&y===null?0:x===null?1:y===null?-1:x-y}).map(w => {
           const done = isDone(w);
-          return <li key={w.id} style={{display:"flex",alignItems:"center",gap:8,padding:12,border:"1px solid #e9e1f0",borderRadius:16,background:done?"#f5f3f7":"white",color:done?"#938c9c":"#40384b"}}>
+          return <li key={w.id} onPointerDown={e=>{if(!e.target.closest('button,a,input'))startHold(e,checkKey(w))}} onPointerMove={moveHold} onPointerUp={stopHold} onPointerCancel={stopHold} onContextMenu={e=>{e.preventDefault();stopHold();setPinMenu(checkKey(w))}} style={{display:"flex",alignItems:"center",gap:8,padding:12,border:"1px solid #e9e1f0",borderRadius:16,background:done?"#f5f3f7":"white",color:done?"#938c9c":"#40384b",WebkitUserSelect:'none',userSelect:'none',WebkitTouchCallout:'none',flexWrap:'wrap'}}>
+            {pinRank(w)!==null&&<span aria-label="고정됨">⭐</span>}
+            {pinMenu===checkKey(w)&&<div style={{order:5,width:'100%',display:'flex',gap:12,justifyContent:'flex-end'}}><button type="button" onClick={()=>togglePinned(w)}>{pinRank(w)!==null?'☆ 고정 해제':'⭐ 맨 위에 고정'}</button><button type="button" onClick={()=>setPinMenu(null)}>닫기</button></div>}
             <button type="button" role="checkbox" aria-checked={done} aria-label={`${w.title} 완료`} disabled={!onCheck} onClick={() => onCheck(checkKey(w), !done)} style={{width:44,height:44,flexShrink:0,display:"grid",placeItems:"center",padding:0,border:0,background:"transparent",color:done?"#9c91ad":"#a68fc5",cursor:"pointer"}}>
               <span style={{width:26,height:26,border:"2px solid currentColor",borderRadius:"50%",display:"grid",placeItems:"center",background:done?"#e5e0ed":"white"}}>{done && <Check size={17} strokeWidth={3}/>}</span>
             </button>
-            <a href={href(w)} target="_blank" rel="noopener noreferrer" style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:10,color:"inherit",textDecoration:"none",padding:"6px 0"}}>
+            <a onPointerDown={e=>startHold(e,checkKey(w))} onPointerMove={moveHold} onPointerUp={stopHold} onContextMenu={e=>{e.preventDefault();stopHold();setPinMenu(checkKey(w))}} href={href(w)} target="_blank" rel="noopener noreferrer" style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:10,color:"inherit",textDecoration:"none",padding:"6px 0"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:650,lineHeight:1.5,overflowWrap:"anywhere",textDecoration:done?"line-through":"none"}}>{w.title}</div>
                 <div style={{fontSize:12,marginTop:4,color:done?"#a19aa8":"#9687a5"}}>{{new:"신규 암기",review:"복습",breath:"호흡",mantra:"만트라"}[w.kind] || "일정"}{w.minutes > 0 ? ` · ${w.minutes}분` : ""} · {name}에서 열기</div>
