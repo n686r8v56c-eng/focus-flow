@@ -1,0 +1,91 @@
+name: Focus Flow - Compact Project and Linked Today Cards
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply compact UI changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          app=Path('src/App.jsx'); s=app.read_text(encoding='utf-8')
+          start=s.index('  function Projects() {'); end=s.index('  function Pomodoro() {',start)
+          block=s[start:end]
+          pattern=r'''          <button\s*\n            className=\{"check-btn " \+ \(t\.status === "done" \? "checked" : ""\)\}\s*\n            onClick=\{\(\) =>\s*\n              completeOrStatus\(t, t\.status === "done" \? "todo" : "done"\)\s*\n            \}\s*\n          >\s*\n            \{t\.status === "done" && <Check size=\{15\} />\}\s*\n          </button>\s*\n'''
+          block,n=re.subn(pattern,'',block,count=1)
+          assert n==1, f'Project checkbox anchor differs, matches={n}'
+          # Restrict compactness to project task rows, not elsewhere
+          block=block.replace('className="project-list-item"','className="project-list-item compact-project-row"',1)
+          s=s[:start]+block+s[end:]
+          # Add icon-only estimate in the Today task card, leaving project view as-is.
+          start=s.index('  function TaskCard(');end=s.index('  function Kanban()',start); block=s[start:end]
+          needle='''          <div className="task-title" style={{ flex: 1, minWidth: 0 }}>
+                      {task.title}
+                    </div>'''
+          assert block.count(needle)==1,'Today card title anchor differs'
+          block=block.replace(needle,needle+'\n          <TaskEstimate count={task.estimatedPomodoros} />',1)
+          s=s[:start]+block+s[end:]
+          app.write_text('\n'.join(x.rstrip(' \t\r') for x in s.split('\n')),encoding='utf-8')
+          
+          for filename,marker in [('src/LinkedActivities.jsx','{activities.slice().sort'),('src/HomeWorkouts.jsx','{workouts.slice().sort')]:
+           p=Path(filename);s=p.read_text(encoding='utf-8')
+           assert marker in s, f'{filename} list anchor not found'
+           # This class affects only Focus Flow linked cards; do not change fetching or check/pin behavior.
+           target='<li key={w.id} onPointerDown='
+           assert s.count(target)==1, f'{filename}: expected exactly one linked activity card'
+           s=s.replace(target,'<li className="linked-today-compact" key={w.id} onPointerDown=',1)
+           p.write_text('\n'.join(x.rstrip(' \t\r') for x in s.split('\n')),encoding='utf-8')
+          
+          css=Path('src/style.css');s=css.read_text(encoding='utf-8')
+          block='''
+          /* Focus Flow: compact project list and linked Today cards */
+          .project-task-list .compact-project-row {
+            padding: 9px 12px;
+            gap: 9px;
+            min-height: 52px;
+          }
+          .project-task-list .compact-project-row .list-middle { gap: 2px; }
+          .project-task-list .compact-project-row .task-pom-estimate { justify-content: center; }
+          .linked-today-compact {
+            padding: 7px 9px !important;
+            gap: 5px !important;
+            border-radius: 12px !important;
+            min-height: 54px;
+          }
+          .linked-today-compact > button[role="checkbox"] {
+            width: 34px !important;
+            height: 36px !important;
+          }
+          .linked-today-compact > a { padding: 1px 0 !important; gap: 5px !important; }
+          .linked-today-compact > a > div > div { line-height: 1.35 !important; }
+          .linked-today-compact > a > div > div + div { margin-top: 2px !important; }
+          .today-compact-card .task-pom-estimate { max-width: 90px; }
+          .today-compact-card .task-pom-estimate svg { flex-shrink: 0; }
+          '''
+          if '/* Focus Flow: compact project list and linked Today cards */' not in s:s+='\n'+block
+          css.write_text('\n'.join(x.rstrip(' \t\r') for x in s.split('\n')),encoding='utf-8')
+          PY
+      - name: Install dependencies and build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit verified changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx src/LinkedActivities.jsx src/HomeWorkouts.jsx src/style.css
+          git diff --cached --check
+          if git diff --cached --quiet; then echo 'Already applied'; exit 0; fi
+          git commit -m 'Compact project and linked Today cards; show pomodoro icons'
+          git push origin HEAD:main
