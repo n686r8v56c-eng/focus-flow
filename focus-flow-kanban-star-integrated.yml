@@ -1,0 +1,158 @@
+name: Focus Flow - Today Kanban Handle and Pinned Stars
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply integrated UI changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('src/App.jsx')
+          s=p.read_text(encoding='utf-8')
+          # Visible star on pinned TODAY cards, same as project cards.
+          old='''          <div className="task-title" style={{ flex: 1, minWidth: 0 }}>
+                      {task.title}
+                    </div>'''
+          new='''          <div className="task-title" style={{ flex: 1, minWidth: 0 }}>
+                      {Number.isFinite(task.pinOrder) && <span aria-label="고정됨" style={{marginRight:4}}>⭐</span>}
+                      {task.title}
+                    </div>'''
+          if new not in s:
+              if s.count(old)!=1: raise SystemExit('Today card title anchor changed; no files modified')
+              s=s.replace(old,new,1)
+          # Touch/pointer-based drag handle. Only in today Kanban; separate from long-press pin gesture.
+          marker='  const moveTodayKanbanFromHandle = (taskId, targetStatus) => {'
+          if marker not in s:
+              anchor='  function TaskCard({ task, compact = false }) {'
+              if s.count(anchor)!=1: raise SystemExit('Today TaskCard anchor changed')
+              helper='''  const moveTodayKanbanFromHandle = (taskId, targetStatus) => {
+              if (!['todo','doing','done'].includes(targetStatus)) return;
+              update(d => ({...d, tasks: d.tasks.map(t => t.id !== taskId ? t : ({
+                ...t, status: targetStatus,
+                completedAt: targetStatus === 'done' ? (t.completedAt || new Date().toISOString()) : null
+              }))}));
+            };
+            const handleKanbanPointerDown = (e) => {
+              if (e.pointerType === 'mouse' && e.button !== 0) return;
+              e.stopPropagation();
+              clearPinHold();
+              const handle=e.currentTarget;
+              handle.dataset.dragging='true';
+              handle.style.background='#efe7fb';
+              handle.style.color='#795bb4';
+              try { handle.setPointerCapture(e.pointerId); } catch {}
+            };
+            const handleKanbanPointerUp = (e, taskId) => {
+              e.stopPropagation();
+              const handle=e.currentTarget;
+              if (handle.dataset.dragging !== 'true') return;
+              handle.dataset.dragging='false';
+              handle.style.background='';
+              handle.style.color='';
+              const el=document.elementFromPoint(e.clientX,e.clientY);
+              const lane=el?.closest('[data-today-kanban-lane]');
+              if (lane) moveTodayKanbanFromHandle(taskId,lane.getAttribute('data-today-kanban-lane'));
+              try { handle.releasePointerCapture(e.pointerId); } catch {}
+            };
+            const handleKanbanPointerCancel = e => {
+              const handle=e.currentTarget;
+              handle.dataset.dragging='false';
+              handle.style.background='';
+              handle.style.color='';
+            };
+          '''
+              s=s.replace(anchor,helper+anchor,1)
+          # Small grip button shown before each today task card (not in project tab)
+          old='''.map(t => <TaskCard key={t.id} task={t}/>)'''
+          new='''.map(t => <div key={t.id} className="today-kanban-task-row" style={{display:'flex',alignItems:'stretch',gap:5}}>
+                              <button type="button" aria-label={`${t.title} 칸반 이동 손잡이`}
+                                onClick={e=>e.stopPropagation()}
+                                onPointerDown={handleKanbanPointerDown}
+                                onPointerUp={e=>handleKanbanPointerUp(e,t.id)}
+                                onPointerCancel={handleKanbanPointerCancel}
+                                style={{touchAction:'none',userSelect:'none',WebkitUserSelect:'none',WebkitTouchCallout:'none',flex:'0 0 26px',padding:0,border:0,background:'transparent',color:'#a18bbe',borderRadius:7,fontSize:19,cursor:'grab'}}
+                              >⠿</button>
+                              <div style={{flex:1,minWidth:0}}><TaskCard task={t}/></div>
+                            </div>)'''
+          if new not in s:
+              if s.count(old)!=1: raise SystemExit('Kanban task list anchor changed')
+              s=s.replace(old,new,1)
+          old='''              key={key}
+                        className="lane"
+                      >'''
+          new='''              key={key}
+                        className="lane"
+                        data-today-kanban-lane={key}
+                      >'''
+          if new not in s:
+              if s.count(old)!=1: raise SystemExit('Kanban lane anchor changed')
+              s=s.replace(old,new,1)
+          # Compact header: one row, only plus icon. Progress still visible underneath.
+          old='''        <div className="section-top">
+                    <div>
+                      <div className="eyebrow">
+                        {new Date(visibleDate+"T12:00:00").toLocaleDateString("ko-KR", {
+                          month: "long",
+                          day: "numeric",
+                          weekday: "long",
+                        })}
+                      </div>
+                      <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}><h1>오늘의 할 일</h1><ProgressBadge done={todayTasks.filter(t=>t.status === "done").length} total={todayTasks.length}/></div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:4}}><button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))}><ChevronLeft size={18}/></button><span style={{fontSize:12}}>{visibleDate===today?"오늘":visibleDate}</span><button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))}><ChevronRight size={18}/></button></div>
+                    <button
+                      className="primary small"
+                      onClick={() => {
+                        setModal("task");
+                        setEditing(null);
+                      }}
+                    >
+                      <Plus size={16} /> 추가
+                    </button>
+                  </div>'''
+          new='''        <div className="today-heading-compact" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'nowrap',width:'100%'}}>
+                    <div style={{minWidth:0,flex:'1 1 auto'}}>
+                      <div className="eyebrow" style={{fontSize:11,whiteSpace:'nowrap'}}>
+                        {new Date(visibleDate+'T12:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})}
+                      </div>
+                      <h1 style={{fontSize:'clamp(19px,5vw,27px)',whiteSpace:'nowrap',margin:0}}>오늘의 할 일</h1>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
+                      <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:5,minWidth:28}}><ChevronLeft size={17}/></button>
+                      <span style={{fontSize:12,whiteSpace:'nowrap',minWidth:24,textAlign:'center'}}>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
+                      <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:5,minWidth:28}}><ChevronRight size={17}/></button>
+                      <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center'}}><Plus size={20}/></button>
+                    </div>
+                  </div>
+                  <div style={{margin:'2px 0 12px'}}><ProgressBadge done={todayTasks.filter(t=>t.status === 'done').length} total={todayTasks.length}/></div>'''
+          if new not in s:
+              if s.count(old)!=1: raise SystemExit('Today heading anchor changed')
+              s=s.replace(old,new,1)
+          # Do not touch data schema or Supabase.
+          # Remove trailing whitespace newly introduced to pass git diff check.
+          s='\n'.join(line.rstrip() for line in s.split('\n'))
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Install
+        run: npm install
+      - name: Build
+        run: npm run build
+      - name: Commit verified changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git diff --cached --check
+          git commit -m "Add today kanban handle and pinned stars"
+          git push
