@@ -1,0 +1,96 @@
+name: Focus Flow - Today Header and Task Pomodoros
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Update Today heading and task labels only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("src/App.jsx")
+          s = p.read_text(encoding="utf-8")
+          start = s.index("function Kanban()")
+          end = s.index("function CalendarChecklist(", start)
+          part = s[start:end]
+
+          def replace_once(old, new):
+              global part
+              n = part.count(old)
+              if n != 1:
+                  raise RuntimeError(f"Expected one matching Today fragment, got {n}: {old[:70]!r}")
+              part = part.replace(old, new, 1)
+
+          replace_once(
+          """<div className="today-heading-compact" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'nowrap',width:'100%'}}>""",
+          """<div className="today-heading-compact" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'nowrap',width:'100%',marginBottom:12}}>"""
+          )
+          replace_once(
+          """<div style={{minWidth:0,flex:'1 1 auto'}}>""",
+          """<div style={{minWidth:0,flex:'1 1 auto'}}>"""
+          ) if False else None
+
+          replace_once(
+          """<div className="eyebrow" style={{fontSize:11,whiteSpace:'nowrap'}}>""",
+          """<div className="eyebrow" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6'}}>"""
+          )
+          replace_once(
+          """<h1 style={{fontSize:'clamp(19px,5vw,27px)',whiteSpace:'nowrap',margin:0}}>오늘의 할 일</h1>""",
+          """<div style={{display:'flex',alignItems:'baseline',gap:8,whiteSpace:'nowrap'}}>
+                        <h1 style={{fontSize:'clamp(21px,5.5vw,29px)',whiteSpace:'nowrap',margin:0}}>오늘의 할 일</h1>
+                        <ProgressBadge done={todayTasks.filter(t=>t.status==='done').length} total={todayTasks.length}/>
+                      </div>"""
+          )
+          replace_once(
+          """<div style={{margin:'2px 0 12px'}}><ProgressBadge done={todayTasks.filter(t=>t.status === 'done').length} total={todayTasks.length}/></div>""",
+          ""
+          )
+          first = part.index('        <div className="metrics">')
+          last = part.index('        <section aria-label="오늘의 할 일 체크리스트"', first)
+          part = part[:first] + part[last:]
+
+          # Icons only in today's checklist rows, not in calendar, project or stored values.
+          replace_once(
+          """<div style={{display:'flex',alignItems:'center',gap:5,fontWeight:700,fontSize:14,overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)&&<span>⭐</span>}{t.title}</div>""",
+          """<div style={{display:'flex',alignItems:'center',gap:5,fontWeight:700,fontSize:14,overflowWrap:'anywhere'}}>
+                              {Number.isFinite(t.pinOrder)&&<span>⭐</span>}
+                              <span>{t.title}</span>
+                              {!!t.estimatedPomodoros && <span style={{display:'inline-flex',flexShrink:0,alignItems:'center',gap:2}}><TaskEstimate count={t.estimatedPomodoros}/></span>}
+                            </div>"""
+          )
+          replace_once(
+          """<div style={{fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}{t.title}</div>""",
+          """<div style={{display:'flex',alignItems:'center',gap:5,fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}<span>{t.title}</span>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div>"""
+          )
+
+          s = s[:start] + part + s[end:]
+          s = "\n".join(line.rstrip() for line in s.splitlines()) + "\n"
+          p.write_text(s,encoding="utf-8")
+          print("Applied compact heading and per-task estimate icons.")
+          PY
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Commit verified source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m "Align Today heading and add estimated Pomodoros by task"
+            git push
+          fi
