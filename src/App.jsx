@@ -21,6 +21,7 @@ import "./style.css";
 import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
+import { CalendarExternal } from "./CalendarExternal.jsx";
 import {
   CLOCK_SOUNDS,
   clockType,
@@ -753,7 +754,7 @@ export function App({
     const categories=["오늘의 할 일","공부","운동","명상"];
     const tasks=dateItems(date);
     const category=t=>{const name=((taskProject(t)?.name||"")+" "+t.title).toLowerCase();if(/명상|호흡|만트라/.test(name))return "명상";if(/운동|헬스|근력|스트레칭|요가|필라테스/.test(name))return "운동";if(/공부|암기|논점|학습|중국어|독서/.test(name))return "공부";return "오늘의 할 일"};
-    return <div className="day-checklists">{categories.map(group=><section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}><h3 style={{fontSize:14,margin:"4px 0 8px"}}>{group}</h3>{tasks.filter(t=>category(t)===group).map(t=><label key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",color:t.status==="done"?"#aaa":"#574b65"}}><input type="checkbox" checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/><span style={{textDecoration:t.status==="done"?"line-through":"none",flex:1}}>{t.title}</span><small>{t.time||""}</small></label>)}{!tasks.some(t=>category(t)===group)&&<span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}</section>)}</div>;
+    return <div className="day-checklists">{categories.map(group=><section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}><h3 style={{fontSize:14,margin:"4px 0 8px"}}>{group}</h3>{tasks.filter(t=>category(t)===group).map(t=><label key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",color:t.status==="done"?"#aaa":"#574b65"}}><input type="checkbox" checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/><span style={{textDecoration:t.status==="done"?"line-through":"none",flex:1}}>{t.title}</span><small>{t.time||""}</small></label>)}{group === "오늘의 할 일" && !tasks.some(t=>category(t)===group) && <span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}{group !== "오늘의 할 일" && <CalendarExternal source={group === "공부" ? "study" : group === "운동" ? "workout" : "mind"} date={date} client={bridgeClient} userId={bridgeUserId} checks={group === "운동" ? (data.homeWorkoutChecks || {}) : (data.activityChecks || {})} onCheck={(key, done) => update(d => group === "운동" ? ({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks || {}),[key]:{done}}}) : ({...d, activityChecks:{...(d.activityChecks || {}),[key]:{done}}}))} />}</section>)}</div>;
   }
   function Calendar() {
     const base = new Date(focusDate + "T12:00:00"),
@@ -878,11 +879,7 @@ export function App({
             </div>
             <div className="selected-day-agenda">
               <h2>{focusDate} 일정</h2>
-              {dateItems(focusDate).length ? (
-                <CalendarChecklist date={focusDate}/>
-              ) : (
-                <p>등록된 일정이 없어.</p>
-              )}
+              <CalendarChecklist date={focusDate}/>
             </div>
           </>
         ) : (
@@ -899,9 +896,7 @@ export function App({
                 </div>
                 <div className="agenda-items">
                   <CalendarChecklist date={date}/>
-                  {dateItems(date).length === 0 && (
-                    <span className="empty-day">등록된 일정이 없어</span>
-                  )}
+
                 </div>
               </div>
             ))}
