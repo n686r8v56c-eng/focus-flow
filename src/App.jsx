@@ -768,11 +768,11 @@ export function App({
         </div>
         <div className="today-heading-compact" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'nowrap',width:'100%',marginBottom:12}}>
           <div style={{minWidth:0,flex:'1 1 auto'}}>
-            <div className="eyebrow" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6'}}>
+            <div className="eyebrow" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6',display:'flex',alignItems:'flex-end',minHeight:28,paddingBottom:1}}>
               {new Date(visibleDate+'T12:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})}
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,whiteSpace:'nowrap'}}>
-              <h1 style={{fontSize:'clamp(21px,5.5vw,29px)',whiteSpace:'nowrap',margin:0}}>오늘의 할 일</h1>
+              <h1 style={{fontSize:27,letterSpacing:'-0.8px',whiteSpace:'nowrap',margin:'5px 0 0'}}>오늘의 할 일</h1>
               <ProgressBadge done={todayTasks.filter(t=>t.status==='done').length} total={todayTasks.length}/>
             </div>
           </div>
