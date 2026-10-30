@@ -1,0 +1,63 @@
+name: Focus Flow - Fix Calendar Flicker
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: focus-flow-calendar-flicker
+  cancel-in-progress: false
+jobs:
+  fix-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Fix repeated calendar remounts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.jsx')
+          s=p.read_text(encoding='utf-8')
+          if 'function CalendarChecklist({date})' not in s:
+              raise SystemExit('CalendarChecklist missing; no changes made')
+          # Calendar is called as a render helper already. Calling this helper
+          # directly keeps the React tree for CalendarExternal stable between
+          # once-per-second updates of the clock in App.
+          changes={
+              '<CalendarChecklist date={focusDate}/>':'{CalendarChecklist({date:focusDate})}',
+              '<CalendarChecklist date={date}/>':'{CalendarChecklist({date})}',
+          }
+          for old,new in changes.items():
+              if old not in s and new not in s:
+                  raise SystemExit(f'Unexpected source; missing {old}')
+              s=s.replace(old,new)
+          if '<CalendarChecklist date=' in s:
+              raise SystemExit('Unexpected remaining remounting checklist')
+          assert '{CalendarChecklist({date:focusDate})}' in s
+          assert '{CalendarChecklist({date})}' in s
+          # Remove incidental trailing whitespace to avoid git diff --check failures.
+          s='\n'.join(line.rstrip(' \t\r') for line in s.split('\n'))
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit verified fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'Already applied'
+          else
+            git commit -m 'Keep linked calendar items mounted during second-by-second clock updates'
+            git push origin HEAD:main
+          fi
