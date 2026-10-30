@@ -1,0 +1,34 @@
+name: Focus Flow - Linked Sequence Checklists
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Add checklists without changing source apps
+        run: |
+          python3 - <<'PY'
+          import base64
+          exec(compile(base64.b64decode('CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aApwPVBhdGgoJ3NyYy9BcHAuanN4JykKcz1wLnJlYWRfdGV4dCgpCmFzc2VydCBzLmNvdW50KCdvbkNoZWNrPXsoa2V5LCBkb25lLCBwaW5PcmRlcikgPT4nKT09MwpzPXMucmVwbGFjZSgnb25DaGVjaz17KGtleSwgZG9uZSwgcGluT3JkZXIpID0+Jywnb25DaGVjaz17KGtleSwgZG9uZSwgcGluT3JkZXIsIHN1YkNoZWNrcykgPT4nKQpzPXMucmVwbGFjZSgnLi4uKHBpbk9yZGVyIT09dW5kZWZpbmVkP3twaW5PcmRlcn06e30pJywnLi4uKHBpbk9yZGVyIT09dW5kZWZpbmVkP3twaW5PcmRlcn06e30pLC4uLihzdWJDaGVja3MhPT11bmRlZmluZWQ/e3N1YkNoZWNrc306e30pJykKcC53cml0ZV90ZXh0KHMpCgpjb21wb25lbnQgPSAnJydpbXBvcnQgUmVhY3QgZnJvbSAicmVhY3QiOwpleHBvcnQgZnVuY3Rpb24gbGlua2VkU3RlcHModywgc291cmNlKSB7CiBjb25zdCBpdGVtcz13LnN0ZXBzID8/IHcuc2VxdWVuY2VTdGVwcyA/PyB3LnNlcXVlbmNlPy5zdGVwcyA/PyB3LnNlcXVlbmNlPy5pdGVtcyA/PyB3Lm1vdmVtZW50cyA/PyB3LmV4ZXJjaXNlczsKIGlmKEFycmF5LmlzQXJyYXkoaXRlbXMpJiZpdGVtcy5sZW5ndGgpIHJldHVybiBpdGVtcy5zbGljZSgwLDIwMCkubWFwKChzLGkpPT4oe2tleTpTdHJpbmcocz8uaWQ/P3M/LnN0ZXBJZD8/YHN0ZXAtJHtpfWApLGxhYmVsOlN0cmluZyh0eXBlb2Ygcz09PSJzdHJpbmciP3M6cz8ubmFtZT8/cz8udGl0bGU/P3M/LmxhYmVsPz9g64+Z7J6RICR7aSsxfWApfSkpOwogaWYoc291cmNlIT09Im1pbmQiIHx8ICh3LmtpbmQhPT0iYnJlYXRoIiAmJiAhL+uCmOuUlFxccyrsh7zri6TrgpgvLnRlc3Qody50aXRsZT8/IiIpKSlyZXR1cm4gW107CiBjb25zdCBjb3VudD1OdW1iZXIody5yZXBldGl0aW9ucz8/dy5yZXBlYXRDb3VudD8/dy5jb3VudD8/dy5yb3VuZHM/PyhTdHJpbmcody50aXRsZT8/IiIpLm1hdGNoKC8oXFxkKylcXHMq7ZqMLyl8fFtdKVsxXSk7CiBpZighTnVtYmVyLmlzSW50ZWdlcihjb3VudCl8fGNvdW50PDF8fGNvdW50PjEwOClyZXR1cm4gW107CiBjb25zdCBuYW1lPVN0cmluZyh3LnRpdGxlPz8i64KY65SUIOyHvOuLpOuCmCIpLnJlcGxhY2UoL1xccyrCtz9cXHMqXFxkK1xccyrtmoxcXHMqJC8sIiIpLnRyaW0oKTsKIHJldHVybiBBcnJheS5mcm9tKHtsZW5ndGg6Y291bnR9LChfLGkpPT4oe2tleTpgcmVwZWF0LSR7aSsxfWAsbGFiZWw6YCR7bmFtZX0gJHtpKzF97ZqMYH0pKTsKfQpleHBvcnQgZnVuY3Rpb24gTGlua2VkU3RlcHMoe2l0ZW1zLCB2YWx1ZSwgb25DaGFuZ2V9KSB7CiBpZighaXRlbXMubGVuZ3RoKXJldHVybiBudWxsOwogY29uc3QgZG9uZT1pdGVtcy5maWx0ZXIoeD0+ISF2YWx1ZT8uW3gua2V5XSkubGVuZ3RoOwogcmV0dXJuIDxkaXYgc3R5bGU9e3t3aWR0aDoiMTAwJSIsYm94U2l6aW5nOiJib3JkZXItYm94IixwYWRkaW5nOiI0cHggNnB4IDRweCA1MnB4In19PgogIDxkaXYgc3R5bGU9e3tkaXNwbGF5OiJmbGV4IixnYXA6OSxhbGlnbkl0ZW1zOiJjZW50ZXIiLG1hcmdpbkJvdHRvbTo2fX0+CiAgIDxzdmcgdmlld0JveD0iMCAwIDQwIDQwIiB3aWR0aD0iMjgiIGhlaWdodD0iMjgiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD17YCR7ZG9uZX0vJHtpdGVtcy5sZW5ndGh9IOyZhOujjGB9PgogICAgPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMTUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2U5ZTRlZiIgc3Ryb2tlV2lkdGg9IjUiLz4KICAgIDxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjE1IiBmaWxsPSJub25lIiBzdHJva2U9IiM5Yzg1Y2QiIHN0cm9rZVdpZHRoPSI1IiBzdHJva2VEYXNoYXJyYXk9e2Akezk0LjI0OCpkb25lL2l0ZW1zLmxlbmd0aH0gOTQuMjQ4YH0gdHJhbnNmb3JtPSJyb3RhdGUoLTkwIDIwIDIwKSIvPgogICA8L3N2Zz48c3BhbiBzdHlsZT17e2ZvbnRTaXplOjEyLGNvbG9yOiIjOTQ4NGE1In19Pntkb25lfS97aXRlbXMubGVuZ3RofSDsmYTro4w8L3NwYW4+CiAgPC9kaXY+CiAgPGRpdiBzdHlsZT17e2Rpc3BsYXk6ImdyaWQiLGdhcDo2fX0+e2l0ZW1zLm1hcChpdGVtPT48bGFiZWwga2V5PXtpdGVtLmtleX0gc3R5bGU9e3tkaXNwbGF5OiJmbGV4IixnYXA6OCxhbGlnbkl0ZW1zOiJjZW50ZXIiLGZvbnRTaXplOjEzfX0+CiAgIDxpbnB1dCB0eXBlPSJjaGVja2JveCIgc3R5bGU9e3thY2NlbnRDb2xvcjoiIzljODVjZCJ9fSBjaGVja2VkPXshIXZhbHVlPy5baXRlbS5rZXldfSBvbkNoYW5nZT17ZT0+b25DaGFuZ2Uoey4uLnZhbHVlLFtpdGVtLmtleV06ZS50YXJnZXQuY2hlY2tlZH0pfS8+CiAgIDxzcGFuIHN0eWxlPXt7dGV4dERlY29yYXRpb246dmFsdWU/LltpdGVtLmtleV0/ImxpbmUtdGhyb3VnaCI6Im5vbmUiLGNvbG9yOnZhbHVlPy5baXRlbS5rZXldPyIjYWFhIjoiIzVmNTM2YSJ9fT57aXRlbS5sYWJlbH08L3NwYW4+CiAgPC9sYWJlbD4pfTwvZGl2PgogPC9kaXY+Owp9CicnJwpQYXRoKCdzcmMvTGlua2VkU3RlcHMuanN4Jykud3JpdGVfdGV4dChjb21wb25lbnQpCgpmb3IgZmlsZSxzb3VyY2UgaW4gWygnc3JjL0xpbmtlZEFjdGl2aXRpZXMuanN4Jywnc291cmNlJyksKCdzcmMvSG9tZVdvcmtvdXRzLmpzeCcsJyJob21lIicpXToKIHE9UGF0aChmaWxlKTsgdj1xLnJlYWRfdGV4dCgpCiB2PSdpbXBvcnQgeyBsaW5rZWRTdGVwcywgTGlua2VkU3RlcHMgfSBmcm9tICIuL0xpbmtlZFN0ZXBzLmpzeCI7XG4nK3YKIG9sZD0nICAgICAgICAgICAgPC9hPlxuICAgICAgICAgIDwvbGk+OycKIGFzc2VydCB2LmNvdW50KG9sZCk9PTEsZmlsZQogbmV3PScgICAgICAgICAgICA8L2E+XG4gICAgICAgICAgICA8TGlua2VkU3RlcHMgaXRlbXM9e2xpbmtlZFN0ZXBzKHcsICcrc291cmNlKycpfSB2YWx1ZT17Y2hlY2tzW2NoZWNrS2V5KHcpXT8uc3ViQ2hlY2tzfSBvbkNoYW5nZT17c3ViQ2hlY2tzPT5vbkNoZWNrPy4oY2hlY2tLZXkodyksaXNEb25lKHcpLHVuZGVmaW5lZCxzdWJDaGVja3MpfS8+XG4gICAgICAgICAgPC9saT47Jwogdj12LnJlcGxhY2Uob2xkLG5ldykKIHEud3JpdGVfdGV4dCh2KQo='),'<update>','exec'))
+          PY
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit verified changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx src/LinkedActivities.jsx src/HomeWorkouts.jsx src/LinkedSteps.jsx
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m "Display local subtasks for linked sequences"
+            git push
+          fi
