@@ -223,19 +223,27 @@ export function App({
     try { button.setPointerCapture(event.pointerId); } catch {}
     const startY = event.clientY;
     let targetId = null;
+    const prior = { transform: row.style.transform, boxShadow: row.style.boxShadow, background: row.style.background, opacity: row.style.opacity, transition: row.style.transition, zIndex: row.style.zIndex, position: row.style.position };
+    row.style.transition = 'transform 120ms ease, box-shadow 120ms ease, background 120ms ease';
+    row.style.transform = 'scale(1.025)';
+    row.style.boxShadow = '0 8px 24px rgba(127,97,181,.24), inset 0 0 0 2px #a58bd8';
+    row.style.background = '#f7f2ff';
+    row.style.position = 'relative';
+    row.style.zIndex = '3';
+    if (navigator.vibrate) try {navigator.vibrate(12)} catch {}
     const resetHighlights = () => {
-      for (const item of document.querySelectorAll('[data-project-task-id]')) item.style.boxShadow = '';
+      for (const item of document.querySelectorAll('[data-project-task-id]')) if (item !== row) item.style.boxShadow = '';
     };
     const move = e => {
       if (e.pointerId !== event.pointerId) return;
       e.preventDefault();
       resetHighlights();
-      row.style.opacity = '.7';
+      row.style.opacity = '.88';
       // Hide the pointer-captured handle when hit-testing the target row.
       const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-project-task-id]');
       const id = target?.getAttribute('data-project-task-id');
       targetId = id && id !== task.id && target.getAttribute('data-project-status') === task.status ? id : null;
-      if (targetId) target.style.boxShadow = 'inset 0 3px #a58bd8';
+      if (targetId) target.style.boxShadow = 'inset 0 4px #a58bd8, 0 0 0 2px #a58bd8';
       // Intentionally do not reorder in pointermove; commit exactly once on release.
     };
     const cleanup = () => {
@@ -243,7 +251,7 @@ export function App({
       window.removeEventListener('pointerup',end);
       window.removeEventListener('pointercancel',cancel);
       try { button.releasePointerCapture(event.pointerId); } catch {}
-      row.style.opacity = '';
+      Object.entries(prior).forEach(([key,value]) => {row.style[key] = value;});
       resetHighlights();
       projectDragCleanup.current = null;
     };
@@ -1013,6 +1021,7 @@ export function App({
     const renderItem = (t) => (
       <div key={t.id} className="project-item-wrap" data-project-task-id={t.id} data-project-status={t.status}>
         <div className="project-list-item">
+          <button type="button" aria-label="드래그하여 순서 변경" onPointerDown={e=>startProjectDrag(e,t)} onContextMenu={e=>e.preventDefault()} onDragStart={e=>e.preventDefault()} style={{touchAction:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",cursor:"grab",fontSize:24,color:"#9f8db7",padding:"10px 6px",userSelect:"none",flexShrink:0}}>⠿</button>
           <button
             className={"check-btn " + (t.status === "done" ? "checked" : "")}
             onClick={() =>
@@ -1034,7 +1043,6 @@ export function App({
           <div onClick={() => setEditing(t.id)} style={{ cursor: "pointer" }}>
             <TaskEstimate count={t.estimatedPomodoros} />
           </div>
-          <button type="button" aria-label="드래그하여 순서 변경" onPointerDown={e=>startProjectDrag(e,t)} onContextMenu={e=>e.preventDefault()} onDragStart={e=>e.preventDefault()} style={{touchAction:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",cursor:"grab",fontSize:22,color:"#9f8db7",padding:"8px",userSelect:"none",flexShrink:0}}>⠿</button>
           <ChevronRight
             size={17}
             color="#b8b0be"
