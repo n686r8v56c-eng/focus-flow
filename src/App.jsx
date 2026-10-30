@@ -770,15 +770,16 @@ export function App({
           <div style={{minWidth:0,flex:'1 1 auto'}}>
             <div className="eyebrow" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6',display:'flex',alignItems:'flex-end',minHeight:28,paddingBottom:1}}>
               {new Date(visibleDate+'T12:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})}
+              <span aria-label="날짜 이동" style={{display:'inline-flex',alignItems:'center',gap:3,marginLeft:10,fontSize:12,fontWeight:600,color:'#957bb6',whiteSpace:'nowrap'}}>
+                <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:2,minWidth:20,background:'transparent',color:'inherit',border:0}}><ChevronLeft size={14}/></button>
+                <span>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
+                <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:2,minWidth:20,background:'transparent',color:'inherit',border:0}}><ChevronRight size={14}/></button>
+              </span>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,whiteSpace:'nowrap'}}>
               <h1 style={{fontSize:27,letterSpacing:'-0.8px',whiteSpace:'nowrap',margin:'5px 0 0'}}>오늘의 할 일</h1>
               <ProgressBadge done={todayTasks.filter(t=>t.status==='done').length} total={todayTasks.length}/>
-              <div aria-label="날짜 이동" style={{display:'inline-flex',alignItems:'center',gap:1,flexShrink:0,color:'#9484a5',fontSize:11,fontWeight:600,whiteSpace:'nowrap'}}>
-                <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:'2px',minWidth:18,background:'transparent',color:'inherit',border:0}}><ChevronLeft size={13}/></button>
-                <span>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
-                <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:'2px',minWidth:18,background:'transparent',color:'inherit',border:0}}><ChevronRight size={13}/></button>
-              </div>
+
             </div>
           </div>
           <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center',flexShrink:0}}><Plus size={20}/></button>
