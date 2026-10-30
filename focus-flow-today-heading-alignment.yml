@@ -1,0 +1,48 @@
+name: Focus Flow - Align Today Heading with Study
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Adjust Today header typography
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.jsx')
+          s=p.read_text(encoding='utf-8')
+          a=s.index('function Kanban()')
+          b=s.index('function CalendarChecklist(',a)
+          x=s[a:b]
+          changes={
+              "<div className=\"eyebrow\" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6'}}>": "<div className=\"eyebrow\" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6',display:'flex',alignItems:'flex-end',minHeight:28,paddingBottom:1}}>",
+              "<h1 style={{fontSize:'clamp(21px,5.5vw,29px)',whiteSpace:'nowrap',margin:0}}>오늘의 할 일</h1>": "<h1 style={{fontSize:27,letterSpacing:'-0.8px',whiteSpace:'nowrap',margin:'5px 0 0'}}>오늘의 할 일</h1>",
+          }
+          for old,new in changes.items():
+              if x.count(old)!=1:
+                  raise RuntimeError('Header changed: '+old[:60])
+              x=x.replace(old,new,1)
+          s=s[:a]+x+s[b:]
+          p.write_text('\n'.join(line.rstrip() for line in s.splitlines())+'\n',encoding='utf-8')
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Commit after successful build
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m 'Align Today heading typography with study section'
+            git push
+          fi
