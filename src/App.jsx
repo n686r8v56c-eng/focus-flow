@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ChevronDown,
   Trash2,
+  Pencil,
   X,
   Check,
   Play,
@@ -176,6 +177,13 @@ export function App({
       status,
       completedAt: status === "done" ? new Date().toISOString() : null,
     });
+  const renameSelectedProject = () => {
+  const target = data.projects.find(p => p.id === selectedProject);
+  if (!target) return;
+  const next = window.prompt("프로젝트 이름 수정", target.name);
+  if (next === null || !next.trim() || next.trim() === target.name) return;
+  update(d => ({ ...d, projects: d.projects.map(p => p.id === target.id ? {...p, name: next.trim()} : p) }));
+};
   const deleteSelectedProject = () => {
     const item = data.projects.find(p => p.id === selectedProject);
     if (!item || !window.confirm(`프로젝트 “${item.name}”을 삭제할까?\n소속 할 일은 삭제하지 않고 개인 일정으로 옮겨져.`)) return;
@@ -206,42 +214,50 @@ export function App({
   const projectDragCleanup = useRef(null);
   useEffect(() => () => projectDragCleanup.current?.(), []);
   const startProjectDrag = (event, task) => {
-    if (event.button !== 0 && event.pointerType === "mouse") return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     event.preventDefault();
-    const element = event.currentTarget;
-    const handle = element.closest('[data-project-task-id]');
-    if (!handle) return;
+    projectDragCleanup.current?.();
+    const button = event.currentTarget;
+    const row = button.closest('[data-project-task-id]');
+    if (!row) return;
+    try { button.setPointerCapture(event.pointerId); } catch {}
     const startY = event.clientY;
-    let moved = false;
     let targetId = null;
-    const clear = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', end);
-      window.removeEventListener('pointercancel', cancel);
-      if (handle) { handle.style.opacity = ''; handle.style.outline = ''; }
-      for (const row of document.querySelectorAll('[data-project-task-id]')) row.style.boxShadow = '';
-      dragProjectTask.current = null;
-      projectDragCleanup.current = null;
+    const resetHighlights = () => {
+      for (const item of document.querySelectorAll('[data-project-task-id]')) item.style.boxShadow = '';
     };
     const move = e => {
-      if (Math.abs(e.clientY - startY) > 5) moved = true;
-      if (!moved) return;
-      handle.style.opacity = '.65';
-      for (const row of document.querySelectorAll('[data-project-task-id]')) row.style.boxShadow = '';
-      const el = document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-project-task-id]');
-      const id = el?.getAttribute('data-project-task-id');
-      if (id && id !== task.id && el.getAttribute('data-project-status') === task.status) {
-        targetId = id;
-        el.style.boxShadow = 'inset 0 3px #a58bd8';
-      } else targetId = null;
+      if (e.pointerId !== event.pointerId) return;
+      e.preventDefault();
+      resetHighlights();
+      row.style.opacity = '.7';
+      // Hide the pointer-captured handle when hit-testing the target row.
+      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-project-task-id]');
+      const id = target?.getAttribute('data-project-task-id');
+      targetId = id && id !== task.id && target.getAttribute('data-project-status') === task.status ? id : null;
+      if (targetId) target.style.boxShadow = 'inset 0 3px #a58bd8';
+      // Intentionally do not reorder in pointermove; commit exactly once on release.
     };
-    const end = () => { const id = targetId; clear(); if (moved && id) moveProjectTask(task.id,id); };
-    const cancel = () => clear();
-    dragProjectTask.current = task.id;
-    window.addEventListener('pointermove',move,{passive:true});
+    const cleanup = () => {
+      window.removeEventListener('pointermove',move);
+      window.removeEventListener('pointerup',end);
+      window.removeEventListener('pointercancel',cancel);
+      try { button.releasePointerCapture(event.pointerId); } catch {}
+      row.style.opacity = '';
+      resetHighlights();
+      projectDragCleanup.current = null;
+    };
+    const end = e => {
+      if (e.pointerId !== event.pointerId) return;
+      const id = targetId;
+      cleanup();
+      if (id && Math.abs(e.clientY-startY) >= 6) moveProjectTask(task.id,id);
+    };
+    const cancel = () => cleanup();
+    window.addEventListener('pointermove',move,{passive:false});
     window.addEventListener('pointerup',end);
     window.addEventListener('pointercancel',cancel);
-    projectDragCleanup.current = clear;
+    projectDragCleanup.current = cleanup;
   };
   const removeTask = (id) => {
     update((d) => ({ ...d, tasks: d.tasks.filter((t) => t.id !== id) }));
@@ -1018,7 +1034,7 @@ export function App({
           <div onClick={() => setEditing(t.id)} style={{ cursor: "pointer" }}>
             <TaskEstimate count={t.estimatedPomodoros} />
           </div>
-          <button type="button" aria-label="길게 눌러 순서 변경" onPointerDown={e=>startProjectDrag(e,t)} style={{touchAction:"none",cursor:"grab",fontSize:22,color:"#9f8db7",padding:"8px",userSelect:"none",flexShrink:0}}>⠿</button>
+          <button type="button" aria-label="드래그하여 순서 변경" onPointerDown={e=>startProjectDrag(e,t)} onContextMenu={e=>e.preventDefault()} onDragStart={e=>e.preventDefault()} style={{touchAction:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",cursor:"grab",fontSize:22,color:"#9f8db7",padding:"8px",userSelect:"none",flexShrink:0}}>⠿</button>
           <ChevronRight
             size={17}
             color="#b8b0be"
@@ -1085,7 +1101,8 @@ export function App({
                 {done.length}/{items.length}개 완료
               </p>
             </div>
-            <button type="button" className="secondary" onClick={deleteSelectedProject} aria-label="선택 프로젝트 삭제" style={{marginLeft:"auto",padding:"10px",color:"#bf667c"}}><Trash2 size={18}/></button>
+            <button type="button" className="secondary" onClick={renameSelectedProject} aria-label="선택 프로젝트 이름 수정" style={{marginLeft:"auto",padding:"10px",color:"#8d6dce"}}><Pencil size={18}/></button>
+            <button type="button" className="secondary" onClick={deleteSelectedProject} aria-label="선택 프로젝트 삭제" style={{padding:"10px",color:"#bf667c"}}><Trash2 size={18}/></button>
             <button
               className="secondary add-only"
               aria-label="투두 추가"

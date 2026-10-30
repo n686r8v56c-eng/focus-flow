@@ -1423,3 +1423,6 @@ body,
 /* Focus Flow calendar extra count */
 .month-grid.days .day-cell .dots { width:100%; align-items:center; min-width:0; }
 .month-grid.days .day-cell .calendar-extra-count { font-size:10px; line-height:1; font-weight:700; color:#846abd; white-space:nowrap; }
+
+/* Safari project drag handle protection */
+.project-item-wrap button[aria-label="드래그하여 순서 변경"] { touch-action:none!important; user-select:none!important; -webkit-user-select:none!important; -webkit-touch-callout:none!important; }
