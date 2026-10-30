@@ -739,7 +739,7 @@ export function App({
                 weekday: "long",
               })}
             </div>
-            <h1>오늘의 할 일</h1>
+            <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}><h1>오늘의 할 일</h1><ProgressBadge done={todayTasks.filter(t=>t.status === "done").length} total={todayTasks.length}/></div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:4}}><button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))}><ChevronLeft size={18}/></button><span style={{fontSize:12}}>{visibleDate===today?"오늘":visibleDate}</span><button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))}><ChevronRight size={18}/></button></div>
           <button
@@ -819,7 +819,7 @@ export function App({
     const categories=["오늘의 할 일","공부","운동","명상"];
     const tasks=dateItems(date);
     const category=t=>{const name=((taskProject(t)?.name||"")+" "+t.title).toLowerCase();if(/명상|호흡|만트라/.test(name))return "명상";if(/운동|헬스|근력|스트레칭|요가|필라테스/.test(name))return "운동";if(/공부|암기|논점|학습|중국어|독서/.test(name))return "공부";return "오늘의 할 일"};
-    return <div className="day-checklists">{categories.map(group=><section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}><h3 style={{fontSize:14,margin:"4px 0 8px"}}>{group}</h3>{tasks.filter(t=>category(t)===group).map(t=><label key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",color:t.status==="done"?"#aaa":"#574b65"}}><input type="checkbox" checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/><span style={{textDecoration:t.status==="done"?"line-through":"none",flex:1}}>{t.title}</span><span style={{display:"inline-flex",alignItems:"center",gap:6}}><TaskEstimate count={t.estimatedPomodoros}/><small>{t.time||""}</small></span></label>)}{group === "오늘의 할 일" && !tasks.some(t=>category(t)===group) && <span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}{group !== "오늘의 할 일" && <CalendarExternal source={group === "공부" ? "study" : group === "운동" ? "workout" : "mind"} date={date} client={bridgeClient} userId={bridgeUserId} checks={group === "운동" ? (data.homeWorkoutChecks || {}) : (data.activityChecks || {})} onCheck={(key, done) => update(d => group === "운동" ? ({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks || {}),[key]:{done}}}) : ({...d, activityChecks:{...(d.activityChecks || {}),[key]:{done}}}))} />}</section>)}</div>;
+    return <div className="day-checklists">{categories.map(group=><section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}>{group === "오늘의 할 일" && <h3 style={{fontSize:14,margin:"4px 0 8px",display:"flex",gap:8,alignItems:"baseline"}}>{group}<ProgressBadge done={tasks.filter(t=>category(t)===group && t.status==="done").length} total={tasks.filter(t=>category(t)===group).length}/></h3>}{tasks.filter(t=>category(t)===group).map(t=><label key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",color:t.status==="done"?"#aaa":"#574b65"}}><input type="checkbox" checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/><span style={{textDecoration:t.status==="done"?"line-through":"none",flex:1}}>{t.title}</span><span style={{display:"inline-flex",alignItems:"center",gap:6}}><TaskEstimate count={t.estimatedPomodoros}/><small>{t.time||""}</small></span></label>)}{group === "오늘의 할 일" && !tasks.some(t=>category(t)===group) && <span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}{group !== "오늘의 할 일" && <CalendarExternal heading={group} localTotal={tasks.filter(t=>category(t)===group).length} localDone={tasks.filter(t=>category(t)===group && t.status==="done").length} source={group === "공부" ? "study" : group === "운동" ? "workout" : "mind"} date={date} client={bridgeClient} userId={bridgeUserId} checks={group === "운동" ? (data.homeWorkoutChecks || {}) : (data.activityChecks || {})} onCheck={(key, done) => update(d => group === "운동" ? ({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks || {}),[key]:{done}}}) : ({...d, activityChecks:{...(d.activityChecks || {}),[key]:{done}}}))} />}</section>)}</div>;
   }
   function Calendar() {
     const base = new Date(focusDate + "T12:00:00"),
@@ -1713,6 +1713,10 @@ function PomClock({ filled = true, size = 20 }) {
       />
     </svg>
   );
+}
+function ProgressBadge({done = 0, total = 0}) {
+  const pct = total ? Math.round(done / total * 100) : 0;
+  return <span aria-label={`진행률 ${done}/${total}, ${pct}%`} style={{fontSize:11,color:"#9484a5",fontWeight:600,whiteSpace:"nowrap"}}>{done}/{total} · {pct}%</span>;
 }
 function TaskEstimate({ count }) {
   const n = pomCount(count);

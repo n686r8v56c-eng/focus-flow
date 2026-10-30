@@ -145,7 +145,7 @@ export function HomeWorkouts({ client, userId, today, checks = {}, onCheck }) {
       <div className="section-top">
         <div>
           <a className="eyebrow" href={HOME} target="_blank" rel="noopener noreferrer" aria-label="HOME FIT 앱 열기" title="HOME FIT 앱 열기" style={{display:"inline-block",color:"#957bb6",textDecoration:"none",cursor:"pointer",minHeight:28,paddingTop:4}}>HOME FIT <span aria-hidden="true" style={{fontSize:12}}>↗</span></a>
-          <h1>오늘 할 운동</h1>
+          <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}><h1>오늘 할 운동</h1><span aria-label="진행률" style={{fontSize:11,color:"#9484a5",fontWeight:600,whiteSpace:"nowrap"}}>{workouts.filter(isDone).length}/{workouts.length} · {workouts.length ? Math.round(100*workouts.filter(isDone).length/workouts.length) : 0}%</span></div>
         </div>
         <button
           className="secondary"

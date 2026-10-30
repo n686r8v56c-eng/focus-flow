@@ -5,7 +5,7 @@ const sources = {
   mind: { label: "Mind Flow", home: "https://mind-flow-4r3.pages.dev", link: "focus_activity_links", snapshot: "focus_activity_snapshots", field: "activities", extra: true },
   workout: { label: "HOME FIT", home: "https://home-fit-11n.pages.dev", link: "focus_home_links", snapshot: "focus_home_snapshots", field: "workouts", extra: false },
 };
-export function CalendarExternal({ source, date, client, userId, checks = {}, onCheck }) {
+export function CalendarExternal({ source, date, client, userId, checks = {}, onCheck, heading, localTotal = 0, localDone = 0 }) {
   const config = sources[source];
   const [result, setResult] = useState({ list: [], linkId: null });
   useEffect(() => {
@@ -35,8 +35,15 @@ export function CalendarExternal({ source, date, client, userId, checks = {}, on
     try { const u = new URL(item.url); return u.origin === config.home ? u.href : config.home; }
     catch { return config.home; }
   };
-  if (!list.length) return null;
+  const linkedDone = list.filter(item => {
+    const key = JSON.stringify([result.linkId, item.date, item.videoId || item.id]);
+    return typeof checks[key]?.done === "boolean" ? checks[key].done : item.status === "done";
+  }).length;
+  const total = localTotal + list.length;
+  const doneCount = localDone + linkedDone;
+  const pct = total ? Math.round(100 * doneCount / total) : 0;
   return <div aria-label={config.label + " 연동 일정"}>
+    {heading && <h3 style={{fontSize:14,margin:"4px 0 8px",display:"flex",gap:8,alignItems:"baseline"}}>{heading}<span aria-label={`진행률 ${doneCount}/${total}, ${pct}%`} style={{fontSize:11,color:"#9484a5",fontWeight:600,whiteSpace:"nowrap"}}>{doneCount}/{total} · {pct}%</span></h3>}
     {list.map(item => {
       const key = JSON.stringify([result.linkId, item.date, item.videoId || item.id]);
       const done = typeof checks[key]?.done === "boolean" ? checks[key].done : item.status === "done";
