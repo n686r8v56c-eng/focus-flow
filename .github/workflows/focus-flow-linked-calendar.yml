@@ -37,6 +37,17 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # Remove trailing spaces from generated source before staging.
+          python3 - <<'PYCLEAN'
+          from pathlib import Path
+          for filename in ('src/App.jsx', 'src/CalendarExternal.jsx', 'src/style.css'):
+              p = Path(filename)
+              if p.exists():
+                  content = p.read_text(encoding='utf-8')
+                  cleaned = '\n'.join(line.rstrip(' \t\r') for line in content.split('\n'))
+                  if cleaned != content:
+                      p.write_text(cleaned, encoding='utf-8')
+          PYCLEAN
           git add src/App.jsx src/CalendarExternal.jsx src/style.css
           git diff --cached --check
           if git diff --cached --quiet; then echo 'Already applied'; exit 0; fi
