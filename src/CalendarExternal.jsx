@@ -1,3 +1,4 @@
+import { linkedSteps, LinkedSteps } from "./LinkedSteps.jsx";
 import React, { useEffect, useState } from "react";
 
 const sources = {
@@ -47,11 +48,19 @@ export function CalendarExternal({ source, date, client, userId, checks = {}, on
     {list.map(item => {
       const key = JSON.stringify([result.linkId, item.date, item.videoId || item.id]);
       const done = typeof checks[key]?.done === "boolean" ? checks[key].done : item.status === "done";
-      return <div key={key} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", color:done?"#aaa":"#574b65" }}>
-        <input type="checkbox" aria-label={item.title + " 완료"} checked={done} disabled={!onCheck} onChange={e => onCheck(key,e.target.checked)} />
-        <a href={destination(item)} target="_blank" rel="noopener noreferrer" style={{ flex:1,minWidth:0,overflowWrap:"anywhere",color:"inherit",textDecoration:done?"line-through":"none" }}>
-          {item.title} <span style={{fontSize:10,color:"#9c8bac"}}>↗ {config.label}</span>
-        </a>
+      const steps = linkedSteps(item, source);
+      const subChecks = checks[key]?.subChecks || {};
+      return <div key={key} style={{ padding:"8px 0", color:done?"#aaa":"#574b65" }}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <input type="checkbox" aria-label={item.title + " 완료"} checked={done} disabled={!onCheck} onChange={e => {
+            const next=e.target.checked;
+            onCheck?.(key,next,undefined,steps.length?Object.fromEntries(steps.map(s=>[s.key,next])):undefined);
+          }}/>
+          <a href={destination(item)} target="_blank" rel="noopener noreferrer" style={{ flex:1,minWidth:0,overflowWrap:"anywhere",color:"inherit",textDecoration:done?"line-through":"none" }}>
+            {item.title} <span style={{fontSize:10,color:"#9c8bac"}}>↗ {config.label}</span>
+          </a>
+        </div>
+        {steps.length>0&&<LinkedSteps items={steps} value={subChecks} onChange={next=>onCheck?.(key,done,undefined,next)}/>}
       </div>;
     })}
   </div>;

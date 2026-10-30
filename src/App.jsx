@@ -854,7 +854,36 @@ export function App({
     const categories=["오늘의 할 일","공부","운동","명상"];
     const tasks=dateItems(date);
     const category=t=>{const name=((taskProject(t)?.name||"")+" "+t.title).toLowerCase();if(/명상|호흡|만트라/.test(name))return "명상";if(/운동|헬스|근력|스트레칭|요가|필라테스/.test(name))return "운동";if(/공부|암기|논점|학습|중국어|독서/.test(name))return "공부";return "오늘의 할 일"};
-    return <div className="day-checklists">{categories.map(group=><section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}>{group === "오늘의 할 일" && <h3 style={{fontSize:14,margin:"4px 0 8px",display:"flex",gap:8,alignItems:"baseline"}}>{group}<ProgressBadge done={tasks.filter(t=>category(t)===group && t.status==="done").length} total={tasks.filter(t=>category(t)===group).length}/></h3>}{tasks.filter(t=>category(t)===group).map(t=><label key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",color:t.status==="done"?"#aaa":"#574b65"}}><input type="checkbox" checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/><span style={{textDecoration:t.status==="done"?"line-through":"none",flex:1}}>{t.title}</span><span style={{display:"inline-flex",alignItems:"center",gap:6}}><TaskEstimate count={t.estimatedPomodoros}/><small>{t.time||""}</small></span></label>)}{group === "오늘의 할 일" && !tasks.some(t=>category(t)===group) && <span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}{group !== "오늘의 할 일" && <CalendarExternal heading={group} localTotal={tasks.filter(t=>category(t)===group).length} localDone={tasks.filter(t=>category(t)===group && t.status==="done").length} source={group === "공부" ? "study" : group === "운동" ? "workout" : "mind"} date={date} client={bridgeClient} userId={bridgeUserId} checks={group === "운동" ? (data.homeWorkoutChecks || {}) : (data.activityChecks || {})} onCheck={(key, done) => update(d => group === "운동" ? ({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks || {}),[key]:{done}}}) : ({...d, activityChecks:{...(d.activityChecks || {}),[key]:{done}}}))} />}</section>)}</div>;
+    return <div className="day-checklists">{categories.map(group=>{
+      const local=tasks.filter(t=>category(t)===group);
+      return <section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}>
+        {group === "오늘의 할 일" && <h3 style={{fontSize:14,margin:"4px 0 8px",display:"flex",gap:8,alignItems:"baseline"}}>{group}<ProgressBadge done={local.filter(t=>t.status==="done").length} total={local.length}/></h3>}
+        {local.map(t=>{
+          const subs=Array.isArray(t.subtasks)?t.subtasks:[];
+          const complete=t.status==="done";
+          return <div key={t.id} style={{padding:"8px 0",color:complete?"#aaa":"#574b65"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <input type="checkbox" aria-label={`${t.title} 완료`} checked={complete} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/>
+              <span style={{textDecoration:complete?"line-through":"none",flex:1,minWidth:0,overflowWrap:"anywhere"}}>{t.title}</span>
+              <span style={{display:"inline-flex",alignItems:"center",gap:6}}><TaskEstimate count={t.estimatedPomodoros}/><small>{t.time||""}</small></span>
+            </div>
+            {subs.length>0&&<div style={{padding:"6px 0 2px 40px",display:"grid",gap:7}}>
+              <span style={{fontSize:11,color:"#9484a5"}}>{subs.filter(s=>s.done).length}/{subs.length} 완료</span>
+              {subs.map((sub,i)=><label key={sub.id??i} style={{display:"flex",alignItems:"center",gap:9,fontSize:13,color:sub.done?"#aaa":"#574b65"}}>
+                <input type="checkbox" checked={!!sub.done} onChange={e=>changeTask(t.id,{subtasks:subs.map((s,j)=>(sub.id!=null?s.id===sub.id:j===i)?{...s,done:e.target.checked}:s)})}/>
+                <span style={{textDecoration:sub.done?"line-through":"none"}}>{sub.text}</span>
+              </label>)}
+            </div>}
+          </div>;
+        })}
+        {group === "오늘의 할 일" && local.length===0 && <span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}
+        {group!=="오늘의 할 일"&&<CalendarExternal heading={group} localTotal={local.length} localDone={local.filter(t=>t.status==="done").length} source={group==="공부"?"study":group==="운동"?"workout":"mind"} date={date} client={bridgeClient} userId={bridgeUserId} checks={group==="운동"?(data.homeWorkoutChecks||{}):(data.activityChecks||{})} onCheck={(key,done,pinOrder,subChecks)=>update(d=>{
+          const field=group==="운동"?"homeWorkoutChecks":"activityChecks";
+          const prev=d[field]?.[key]||{};
+          return {...d,[field]:{...(d[field]||{}),[key]:{...prev,done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}};
+        })}/>}
+      </section>;
+    })}</div>;
   }
   function Calendar() {
     const base = new Date(focusDate + "T12:00:00"),
