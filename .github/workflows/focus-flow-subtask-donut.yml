@@ -1,0 +1,65 @@
+name: Focus Flow - Hollow Subtask Progress Ring
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply hollow progress ring
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('src/App.jsx')
+          s=p.read_text(encoding='utf-8')
+          start=s.index('function TaskCard(')
+          end=s.index('function Kanban()',start)
+          section=s[start:end]
+          # Apply only to today's cards, not the project list or Pomodoro dial.
+          # Remove a prior solid-circle implementation if it exists.
+          section=re.sub(r'\s*<div[^>]*className="subtask-progress-ring"[^>]*>.*?</div>', '', section, flags=re.S)
+          section=re.sub(r'\s*<span[^>]*className="subtask-progress-ring"[^>]*>.*?</span>', '', section, flags=re.S)
+          ring='''          {total > 0 && (
+                      <svg viewBox="0 0 40 40" width="36" height="36" role="img"
+                        aria-label={`서브태스크 진행률 ${Math.round(complete / total * 100)}%`}
+                        style={{ flexShrink: 0, display: 'block' }}>
+                        <circle cx="20" cy="20" r="15" fill="none" stroke="#e9e4ef" strokeWidth="5" />
+                        <circle cx="20" cy="20" r="15" fill="none" stroke="#9c85cd" strokeWidth="5"
+                          strokeDasharray={`${(complete / total) * (2 * Math.PI * 15)} ${2 * Math.PI * 15}`}
+                          transform="rotate(-90 20 20)" strokeLinecap="butt"
+                          style={{ transition: 'stroke-dasharray 180ms ease' }} />
+                      </svg>
+                    )}
+          '''
+          marker='''          <TaskEstimate count={task.estimatedPomodoros} />'''
+          if section.count(marker)!=1:
+              raise SystemExit('Today card anchor unexpected; refusing to modify unrelated code')
+          # If a previous script already added a different progress indicator, replace it.
+          section=section.replace(marker,ring+marker,1)
+          s=s[:start]+section+s[end:]
+          s='\n'.join(line.rstrip() for line in s.split('\n'))
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit verified changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx
+          git diff --cached --check
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'Add hollow purple subtask progress ring to Today cards'
+          git push origin HEAD:main
