@@ -793,25 +793,24 @@ export function App({
             <b>{todayNotDone.filter((t) => t.due && t.due < today).length}</b>
           </span>
         </div>
-        <section aria-label="오늘의 할 일 체크리스트" style={{display:'grid',gap:10,marginBottom:18}}>
+        <section aria-label="오늘의 할 일 체크리스트" style={{display:'grid',gap:7,marginBottom:15}}>
           {todayTasks.filter(t=>t.status!=='done').map(t=>{
             const subtasks=t.subtasks||[];
             const count=subtasks.filter(x=>x.done).length;
             const proj=taskProject(t);
-            return <div key={t.id} className="today-list-row" onPointerDown={e=>{if(!e.target.closest('button,input,a,select,label'))beginPinHold(e,t.id)}} onPointerMove={trackPinHold} onPointerUp={clearPinHold} onPointerCancel={clearPinHold} onContextMenu={e=>{e.preventDefault();clearPinHold();setPinMenuId(t.id)}} style={{background:'white',border:'1px solid #e9e1f0',borderRadius:16,padding:'12px 13px',WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none'}}>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <button type="button" onClick={()=>completeOrStatus(t,'done')} aria-label={`${t.title} 완료`} style={{width:30,height:30,flexShrink:0,border:'2px solid #ac98c7',borderRadius:'50%',background:'white'}}/>
+            return <div key={t.id} className="today-list-row" onPointerDown={e=>{if(!e.target.closest('button,input,a,select,label'))beginPinHold(e,t.id)}} onPointerMove={trackPinHold} onPointerUp={clearPinHold} onPointerCancel={clearPinHold} onContextMenu={e=>{e.preventDefault();clearPinHold();setPinMenuId(t.id)}} style={{background:'white',border:'1px solid #e9e1f0',borderRadius:16,padding:'9px 12px',WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <button type="button" onClick={()=>completeOrStatus(t,'done')} aria-label={`${t.title} 완료`} style={{width:28,height:28,flexShrink:0,border:'2px solid #ac98c7',borderRadius:'50%',background:'white'}}/>
                 <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>{if(pinMenuId!==t.id)setEditing(t.id)}}>
                   <div style={{display:'flex',alignItems:'center',gap:5,fontWeight:700,fontSize:14,overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)&&<span>⭐</span>}{t.title}</div>
-                  <div style={{fontSize:11,color:'#978aa5',marginTop:3}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
-                  {!!t.estimatedPomodoros&&<div style={{marginTop:4,display:'flex'}}><TaskEstimate count={t.estimatedPomodoros}/></div>}
+                  <div style={{fontSize:11,color:'#978aa5',marginTop:2}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
                 </div>
                 {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`} style={{flexShrink:0}}>
                   <circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/>
                   <circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/>
                 </svg>}
               </div>
-              {subtasks.length>0&&<div style={{margin:'9px 0 0 40px',display:'grid',gap:6,borderTop:'1px solid #f3eef6',paddingTop:8}}>
+              {subtasks.length>0&&<div style={{margin:'6px 0 0 36px',display:'grid',gap:5,borderTop:'1px solid #f3eef6',paddingTop:6}}>
                 {subtasks.map(sub=><label key={sub.id} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:sub.done?'#aaa':'#675b70'}} onClick={e=>e.stopPropagation()}>
                   <input type="checkbox" checked={!!sub.done} onChange={e=>changeTask(t.id,{subtasks:subtasks.map(x=>x.id===sub.id?{...x,done:e.target.checked}:x)})} style={{accentColor:'#9c85cd'}}/>
                   <span style={{textDecoration:sub.done?'line-through':'none'}}>{sub.text}</span>
@@ -826,9 +825,9 @@ export function App({
             const proj=taskProject(t);
             const subtasks=t.subtasks||[];
             const count=subtasks.filter(x=>x.done).length;
-            return <div key={t.id} style={{background:'#f4f1f6',border:'1px solid #e9e3ee',borderRadius:16,padding:'11px 13px',display:'flex',alignItems:'center',gap:10,color:'#9a93a2'}}>
-              <button type="button" aria-label={`${t.title} 완료 취소`} onClick={()=>completeOrStatus(t,'todo')} style={{width:30,height:30,flexShrink:0,borderRadius:'50%',background:'#e4ddee',border:'2px solid #a58fc6',color:'#876bb5',fontWeight:700}}>✓</button>
-              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}{t.title}</div><div style={{fontSize:11,marginTop:3}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div>
+            return <div key={t.id} style={{background:'#f4f1f6',border:'1px solid #e9e3ee',borderRadius:16,padding:'9px 12px',display:'flex',alignItems:'center',gap:10,color:'#9a93a2'}}>
+              <button type="button" aria-label={`${t.title} 완료 취소`} onClick={()=>completeOrStatus(t,'todo')} style={{width:28,height:28,flexShrink:0,borderRadius:'50%',background:'#e4ddee',border:'2px solid #a58fc6',color:'#876bb5',fontWeight:700}}>✓</button>
+              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}{t.title}</div><div style={{fontSize:11,marginTop:3}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div></div>
               {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`}><circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/><circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/></svg>}
             </div>;
           })}
