@@ -1,0 +1,114 @@
+name: Focus Flow - Compact Today and Clean Task Form
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply UI changes
+        shell: bash
+        run: |
+          base64 -d > /tmp/patch_focus_today.py <<'END_PY_BASE64'
+          ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCmltcG9ydCByZQpwPVBhdGgoJ3NyYy9BcHAuanN4Jyk7
+          cz1wLnJlYWRfdGV4dCgpCmNzcz1QYXRoKCdzcmMvc3R5bGUuY3NzJyk7Yz1jc3MucmVhZF90ZXh0
+          KCkKIyBHbG9iYWxseSBrZWVwIHRoZSBzbWFsbCByZWQgcG9tb2Rvcm8gaWNvbnMsIHJlbW92ZSB0
+          aGUgdGV4dCBsYWJlbCBiZWxvdyB0aGVtLgpwYXQ9cidcbiAgICAgIDxzcGFuIHN0eWxlPVx7XHsg
+          Y29sb3I6ICIjY2U2Nzc1IiwgZm9udFNpemU6IDExLCB3aGl0ZVNwYWNlOiAibm93cmFwIiBcfVx9
+          PlxzKlx7blx97ZqMIMK3IFx7biBcKiAyNVx967aEXHMqPC9zcGFuPicKcyxuPXJlLnN1Ym4ocGF0
+          LCcnLHMsY291bnQ9MSk7YXNzZXJ0IG49PTEsKCdlc3RpbWF0ZScsbikKIyBzaG93IHJlZCBjbG9j
+          ayBpY29ucyBpbiBjYWxlbmRhciBsaXN0cyAobm8gdGltZSB0ZXh0IHJlbW92YWwpCm5lZWRsZT0n
+          PHNtYWxsPnt0LnRpbWV8fCIifTwvc21hbGw+PC9sYWJlbD4nCmFzc2VydCBzLmNvdW50KG5lZWRs
+          ZSk9PTEKcz1zLnJlcGxhY2UobmVlZGxlLCc8c3BhbiBzdHlsZT17e2Rpc3BsYXk6ImlubGluZS1m
+          bGV4IixhbGlnbkl0ZW1zOiJjZW50ZXIiLGdhcDo2fX0+PFRhc2tFc3RpbWF0ZSBjb3VudD17dC5l
+          c3RpbWF0ZWRQb21vZG9yb3N9Lz48c21hbGw+e3QudGltZXx8IiJ9PC9zbWFsbD48L3NwYW4+PC9s
+          YWJlbD4nLDEpCiMgYWRqdXN0IFRvZGF5IGNhcmQgbGF5b3V0LCByZXRhaW5pbmcgc3VidGFza3Mg
+          YW5kIHRhbGxpZXMKcz1zLnJlcGxhY2UoJzxkaXYgY2xhc3NOYW1lPSJ0YXNrLWhlYWQiPicsJzxk
+          aXYgY2xhc3NOYW1lPSJ0YXNrLWhlYWQiPicsMSkKcz1zLnJlcGxhY2UoJ2NsYXNzTmFtZT17InRh
+          c2stY2FyZCAiICsgKGNvbXBhY3QgPyAiY29tcGFjdCIgOiAiIil9JywgJ2NsYXNzTmFtZT17InRh
+          c2stY2FyZCB0b2RheS1jb21wYWN0LWNhcmQgIiArIChjb21wYWN0ID8gImNvbXBhY3QiIDogIiIp
+          fScsMSkKcz1zLnJlcGxhY2UoJzxkaXYgY2xhc3NOYW1lPSJ0YXNrLXRpdGxlIiBzdHlsZT17eyBm
+          bGV4OiAxLCBtaW5XaWR0aDogMCB9fT4nLCc8ZGl2IGNsYXNzTmFtZT0idGFzay10aXRsZSIgc3R5
+          bGU9e3sgZmxleDogMSwgbWluV2lkdGg6IDAgfX0+JywxKQojIFJlbW92ZSBvYnNvbGV0ZSB0YWxs
+          eSBjcmVhdGlvbiBVSSBidXQgcmV0YWluIGRlZmF1bHQgZW1wdHkgZmllbGRzIGFuZCBwcmV2aW91
+          c2x5IHN0b3JlZCBkYXRhLgpzPXMucmVwbGFjZSgnW2VzdGltYXRlZFBvbW9kb3Jvcywgc2V0RXN0
+          aW1hdGVkUG9tb2Rvcm9zXSA9IHVzZVN0YXRlKDApLFxuICAgIFt0YWxseUVuYWJsZWQsc2V0VGFs
+          bHlFbmFibGVkXT11c2VTdGF0ZShmYWxzZSksW3RhbGx5Um93cyxzZXRUYWxseVJvd3NdPXVzZVN0
+          YXRlKFt7aWQ6dWlkKCksbGFiZWw6IiIsdG90YWw6MTIsc3RlcDoxfV0pOycsICdbZXN0aW1hdGVk
+          UG9tb2Rvcm9zLCBzZXRFc3RpbWF0ZWRQb21vZG9yb3NdID0gdXNlU3RhdGUoMCk7JykKb2xkPSdv
+          blNhdmUoeyB0aXRsZSwgcHJvamVjdElkLCBkdWUsIHRpbWUsIGVzdGltYXRlZFBvbW9kb3Jvcywg
+          dGFsbHk6bnVsbCx0YWxsaWVzOnRhbGx5RW5hYmxlZD90YWxseVJvd3MubWFwKHI9Pih7Li4ucixj
+          b3VudDowLHRvdGFsOk1hdGgubWF4KDEsTnVtYmVyKHIudG90YWwpfHwxKSxzdGVwOk1hdGgubWF4
+          KDEsTnVtYmVyKHIuc3RlcCl8fDEpfSkpOltdIH0pOycKYXNzZXJ0IG9sZCBpbiBzCnM9cy5yZXBs
+          YWNlKG9sZCwnb25TYXZlKHsgdGl0bGUsIHByb2plY3RJZCwgZHVlLCB0aW1lLCBlc3RpbWF0ZWRQ
+          b21vZG9yb3MsIHRhbGx5Om51bGwsdGFsbGllczpbXSB9KTsnLDEpCnN0YXJ0PXMuaW5kZXgoJyAg
+          ICAgICAgPGxhYmVsIHN0eWxlPXt7ZGlzcGxheToiZmxleCIsYWxpZ25JdGVtczoiY2VudGVyIixn
+          YXA6OH19PjxpbnB1dCB0eXBlPSJjaGVja2JveCIgY2hlY2tlZD17dGFsbHlFbmFibGVkfScpCmVu
+          ZD1zLmluZGV4KCcgICAgICAgIDxQb21Fc3RpbWF0ZVBpY2tlcicsc3RhcnQpCnM9c1s6c3RhcnRd
+          K3NbZW5kOl0KIyBNb3ZlIHJlc2V0IHRvIHRpbWUgbGFiZWwsIG5ldyB0YXNrLgpvbGQ9JycnICAg
+          ICAgICAgICAg7Iuc6rCEICjshKDtg50pCiAgICAgICAgICAgIDxpbnB1dAogICAgICAgICAgICAg
+          IHR5cGU9InRpbWUiCiAgICAgICAgICAgICAgdmFsdWU9e3RpbWV9CiAgICAgICAgICAgICAgb25D
+          aGFuZ2U9eyhlKSA9PiBzZXRUaW1lKGUudGFyZ2V0LnZhbHVlKX0KICAgICAgICAgICAgLz48YnV0
+          dG9uIHR5cGU9ImJ1dHRvbiIgYXJpYS1sYWJlbD0i7Iuc6rCEIOyCreygnCIgb25DbGljaz17KCk9
+          PnNldFRpbWUoIiIpfSBzdHlsZT17e21hcmdpbkxlZnQ6NX19PsOXPC9idXR0b24+JycnCm5ldz0n
+          JycgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9InRpbWUtbGFiZWwtcm93Ij7si5zqsIQgKOyE
+          oO2DnSkgPGJ1dHRvbiB0eXBlPSJidXR0b24iIGFyaWEtbGFiZWw9IuyLnOqwhCDstIjquLDtmZQi
+          IHRpdGxlPSLsi5zqsIQg7LSI6riw7ZmUIiBvbkNsaWNrPXsoKT0+c2V0VGltZSgiIil9PuKGujwv
+          YnV0dG9uPjwvc3Bhbj4KICAgICAgICAgICAgPGlucHV0CiAgICAgICAgICAgICAgdHlwZT0idGlt
+          ZSIKICAgICAgICAgICAgICB2YWx1ZT17dGltZX0KICAgICAgICAgICAgICBvbkNoYW5nZT17KGUp
+          ID0+IHNldFRpbWUoZS50YXJnZXQudmFsdWUpfQogICAgICAgICAgICAvPicnJwphc3NlcnQgb2xk
+          IGluIHM7cz1zLnJlcGxhY2Uob2xkLG5ldywxKQojIEVkaXQgdGFzayByZW1vdmUgdGFsbHkgVUks
+          IG1haW50YWluIGFsbCBleGlzdGluZyB0YWxseSBwcm9wZXJ0aWVzIHVudG91Y2hlZC4Kc3RhcnQ9
+          cy5pbmRleCgnICAgICAgICA8bGFiZWw+7LSdIO2an+yImCAoMOydtOuptCDsgqzsmqkg7JWIIO2V
+          qCknKQplbmQ9cy5pbmRleCgnICAgICAgICA8UG9tRXN0aW1hdGVQaWNrZXInLHN0YXJ0KQpzPXNb
+          OnN0YXJ0XStzW2VuZDpdCm9sZD0nJycgICAgICAgICAgICDsi5zqsIQKICAgICAgICAgICAgPGlu
+          cHV0CiAgICAgICAgICAgICAgdHlwZT0idGltZSIKICAgICAgICAgICAgICB2YWx1ZT17dGFzay50
+          aW1lfQogICAgICAgICAgICAgIG9uQ2hhbmdlPXsoZSkgPT4gb25DaGFuZ2UoeyB0aW1lOiBlLnRh
+          cmdldC52YWx1ZSB9KX0KICAgICAgICAgICAgLz4nJycKbmV3PScnJyAgICAgICAgICAgIDxzcGFu
+          IGNsYXNzTmFtZT0idGltZS1sYWJlbC1yb3ciPuyLnOqwhCA8YnV0dG9uIHR5cGU9ImJ1dHRvbiIg
+          dGl0bGU9IuyLnOqwhCDstIjquLDtmZQiIGFyaWEtbGFiZWw9IuyLnOqwhCDstIjquLDtmZQiIG9u
+          Q2xpY2s9eygpPT5vbkNoYW5nZSh7dGltZToiIn0pfT7ihro8L2J1dHRvbj48L3NwYW4+CiAgICAg
+          ICAgICAgIDxpbnB1dAogICAgICAgICAgICAgIHR5cGU9InRpbWUiCiAgICAgICAgICAgICAgdmFs
+          dWU9e3Rhc2sudGltZSB8fCAiIn0KICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IG9uQ2hh
+          bmdlKHsgdGltZTogZS50YXJnZXQudmFsdWUgfSl9CiAgICAgICAgICAgIC8+JycnCmFzc2VydCBv
+          bGQgaW4gcztzPXMucmVwbGFjZShvbGQsbmV3LDEpCiMgU21hbGwgdGFyZ2V0ZWQgdG9kYXkgc3Bh
+          Y2luZywgYXZvaWQgYWZmZWN0aW5nIG90aGVyIGxpc3RzLgpjKz0nJydcbi8qIFRvZGF5J3MgS2Fu
+          YmFuIGNhcmRzOiBjb21wYWN0IHdoaWxlIHJldGFpbmluZyB0YWxsaWVzIGFuZCBjaGVja2FibGUg
+          c3VidGFza3MuICovCi50b2RheS1jb21wYWN0LWNhcmQgeyBwYWRkaW5nOiA4cHggOXB4OyB9Ci50
+          b2RheS1jb21wYWN0LWNhcmQgLnRhc2stdGl0bGUgeyBtYXJnaW46IDNweCAwOyBsaW5lLWhlaWdo
+          dDogMS4yNTsgfQoudG9kYXktY29tcGFjdC1jYXJkIC50YXNrLWhlYWQgeyBnYXA6IDRweDsgfQou
+          dG9kYXktY29tcGFjdC1jYXJkIC50YXNrLWZvb3Q6ZW1wdHkgeyBkaXNwbGF5OiBub25lOyB9Ci50
+          b2RheS1jb21wYWN0LWNhcmQgLmNhcmQtc3VidGFza3MgeyBtYXJnaW4tdG9wOiA0cHg7IH0KLnRp
+          bWUtbGFiZWwtcm93IHtkaXNwbGF5OmZsZXg7YWxpZ24taXRlbXM6Y2VudGVyO2p1c3RpZnktY29u
+          dGVudDpzcGFjZS1iZXR3ZWVuO2dhcDo4cHg7fQoudGltZS1sYWJlbC1yb3cgYnV0dG9uIHtmb250
+          LXNpemU6MTZweDttaW4taGVpZ2h0OjI4cHg7bWluLXdpZHRoOjMycHg7cGFkZGluZzoycHggNnB4
+          O2JvcmRlcjoxcHggc29saWQgI2U3ZGNmMTtib3JkZXItcmFkaXVzOjhweDtjb2xvcjojOGY3OGJi
+          O2JhY2tncm91bmQ6I2Y3ZjJmYjt9CicnJwpmb3IgZnAsdHh0IGluIFsocCxzKSwoY3NzLGMpXTog
+          ZnAud3JpdGVfdGV4dCgnXG4nLmpvaW4obGluZS5yc3RyaXAoJyBcdFxyJykgZm9yIGxpbmUgaW4g
+          dHh0LnNwbGl0KCdcbicpKSkKYXNzZXJ0ICd0YWxseUVuYWJsZWQnIG5vdCBpbiBzCmFzc2VydCAn
+          7Zqf7IiY7ZiVIO2ZnOuPmTwvaDM+JyBub3QgaW4gcwphc3NlcnQgJ2597ZqMIMK3IHtuICogMjV9
+          67aEJyBub3QgaW4gcwphc3NlcnQgJ+yLnOqwhCDstIjquLDtmZQnIGluIHMKcHJpbnQoJ1VJIHBh
+          dGNoIHZhbGlkYXRlZCcpCg==
+          END_PY_BASE64
+          python3 /tmp/patch_focus_today.py
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit verified source changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx src/style.css
+          git diff --cached --check
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'Compact today cards and simplify pomodoro and time UI'
+          git push origin HEAD:main
