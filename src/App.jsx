@@ -766,12 +766,15 @@ export function App({
             </div>
           ))}
         </div>
-        <div className="today-heading-compact" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'nowrap',width:'100%'}}>
+        <div className="today-heading-compact" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'nowrap',width:'100%',marginBottom:12}}>
           <div style={{minWidth:0,flex:'1 1 auto'}}>
-            <div className="eyebrow" style={{fontSize:11,whiteSpace:'nowrap'}}>
+            <div className="eyebrow" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6'}}>
               {new Date(visibleDate+'T12:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})}
             </div>
-            <h1 style={{fontSize:'clamp(19px,5vw,27px)',whiteSpace:'nowrap',margin:0}}>오늘의 할 일</h1>
+            <div style={{display:'flex',alignItems:'baseline',gap:8,whiteSpace:'nowrap'}}>
+              <h1 style={{fontSize:'clamp(21px,5.5vw,29px)',whiteSpace:'nowrap',margin:0}}>오늘의 할 일</h1>
+              <ProgressBadge done={todayTasks.filter(t=>t.status==='done').length} total={todayTasks.length}/>
+            </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
             <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:5,minWidth:28}}><ChevronLeft size={17}/></button>
@@ -780,19 +783,7 @@ export function App({
             <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center'}}><Plus size={20}/></button>
           </div>
         </div>
-        <div style={{margin:'2px 0 12px'}}><ProgressBadge done={todayTasks.filter(t=>t.status === 'done').length} total={todayTasks.length}/></div>
-        <div className="metrics">
-          <span>
-            전체 <b>{todayTasks.length}</b>
-          </span>
-          <span>
-            완료 <b>{todayTasks.filter((t) => t.status === "done").length}</b>
-          </span>
-          <span>
-            이월{" "}
-            <b>{todayNotDone.filter((t) => t.due && t.due < today).length}</b>
-          </span>
-        </div>
+
         <section aria-label="오늘의 할 일 체크리스트" style={{display:'grid',gap:7,marginBottom:15}}>
           {todayTasks.filter(t=>t.status!=='done').map(t=>{
             const subtasks=t.subtasks||[];
@@ -802,7 +793,11 @@ export function App({
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <button type="button" onClick={()=>completeOrStatus(t,'done')} aria-label={`${t.title} 완료`} style={{width:28,height:28,flexShrink:0,border:'2px solid #ac98c7',borderRadius:'50%',background:'white'}}/>
                 <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>{if(pinMenuId!==t.id)setEditing(t.id)}}>
-                  <div style={{display:'flex',alignItems:'center',gap:5,fontWeight:700,fontSize:14,overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)&&<span>⭐</span>}{t.title}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:5,fontWeight:700,fontSize:14,overflowWrap:'anywhere'}}>
+                    {Number.isFinite(t.pinOrder)&&<span>⭐</span>}
+                    <span>{t.title}</span>
+                    {!!t.estimatedPomodoros && <span style={{display:'inline-flex',flexShrink:0,alignItems:'center',gap:2}}><TaskEstimate count={t.estimatedPomodoros}/></span>}
+                  </div>
                   <div style={{fontSize:11,color:'#978aa5',marginTop:2}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
                 </div>
                 {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`} style={{flexShrink:0}}>
@@ -827,7 +822,7 @@ export function App({
             const count=subtasks.filter(x=>x.done).length;
             return <div key={t.id} style={{background:'#f4f1f6',border:'1px solid #e9e3ee',borderRadius:16,padding:'9px 12px',display:'flex',alignItems:'center',gap:10,color:'#9a93a2'}}>
               <button type="button" aria-label={`${t.title} 완료 취소`} onClick={()=>completeOrStatus(t,'todo')} style={{width:28,height:28,flexShrink:0,borderRadius:'50%',background:'#e4ddee',border:'2px solid #a58fc6',color:'#876bb5',fontWeight:700}}>✓</button>
-              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}{t.title}</div><div style={{fontSize:11,marginTop:3}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div></div>
+              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{display:'flex',alignItems:'center',gap:5,fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}<span>{t.title}</span>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div><div style={{fontSize:11,marginTop:3}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div></div>
               {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`}><circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/><circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/></svg>}
             </div>;
           })}
