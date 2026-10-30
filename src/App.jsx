@@ -774,14 +774,14 @@ export function App({
             <div style={{display:'flex',alignItems:'baseline',gap:8,whiteSpace:'nowrap'}}>
               <h1 style={{fontSize:27,letterSpacing:'-0.8px',whiteSpace:'nowrap',margin:'5px 0 0'}}>오늘의 할 일</h1>
               <ProgressBadge done={todayTasks.filter(t=>t.status==='done').length} total={todayTasks.length}/>
+              <div aria-label="날짜 이동" style={{display:'inline-flex',alignItems:'center',gap:1,flexShrink:0,color:'#9484a5',fontSize:11,fontWeight:600,whiteSpace:'nowrap'}}>
+                <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:'2px',minWidth:18,background:'transparent',color:'inherit',border:0}}><ChevronLeft size={13}/></button>
+                <span>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
+                <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:'2px',minWidth:18,background:'transparent',color:'inherit',border:0}}><ChevronRight size={13}/></button>
+              </div>
             </div>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
-            <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:5,minWidth:28}}><ChevronLeft size={17}/></button>
-            <span style={{fontSize:12,whiteSpace:'nowrap',minWidth:24,textAlign:'center'}}>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
-            <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:5,minWidth:28}}><ChevronRight size={17}/></button>
-            <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center'}}><Plus size={20}/></button>
-          </div>
+          <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center',flexShrink:0}}><Plus size={20}/></button>
         </div>
 
         <section aria-label="오늘의 할 일 체크리스트" style={{display:'grid',gap:7,marginBottom:15}}>
@@ -798,7 +798,7 @@ export function App({
                     <span>{t.title}</span>
                     {!!t.estimatedPomodoros && <span style={{display:'inline-flex',flexShrink:0,alignItems:'center',gap:2}}><TaskEstimate count={t.estimatedPomodoros}/></span>}
                   </div>
-                  <div style={{fontSize:11,color:'#978aa5',marginTop:2}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
+                  <div style={{fontSize:11,color:'#978aa5',marginTop:2,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
                 </div>
                 {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`} style={{flexShrink:0}}>
                   <circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/>
@@ -822,7 +822,7 @@ export function App({
             const count=subtasks.filter(x=>x.done).length;
             return <div key={t.id} style={{background:'#f4f1f6',border:'1px solid #e9e3ee',borderRadius:16,padding:'9px 12px',display:'flex',alignItems:'center',gap:10,color:'#9a93a2'}}>
               <button type="button" aria-label={`${t.title} 완료 취소`} onClick={()=>completeOrStatus(t,'todo')} style={{width:28,height:28,flexShrink:0,borderRadius:'50%',background:'#e4ddee',border:'2px solid #a58fc6',color:'#876bb5',fontWeight:700}}>✓</button>
-              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{display:'flex',alignItems:'center',gap:5,fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}<span>{t.title}</span>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div><div style={{fontSize:11,marginTop:3}}>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div></div>
+              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{display:'flex',alignItems:'center',gap:5,fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}<span>{t.title}</span>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div><div style={{fontSize:11,marginTop:3,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div></div>
               {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`}><circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/><circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/></svg>}
             </div>;
           })}
