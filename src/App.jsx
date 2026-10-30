@@ -879,7 +879,7 @@ export function App({
             </div>
             <div className="selected-day-agenda">
               <h2>{focusDate} 일정</h2>
-              <CalendarChecklist date={focusDate}/>
+              {CalendarChecklist({date:focusDate})}
             </div>
           </>
         ) : (
@@ -895,7 +895,7 @@ export function App({
                   {date === today && <span className="tiny-tag">오늘</span>}
                 </div>
                 <div className="agenda-items">
-                  <CalendarChecklist date={date}/>
+                  {CalendarChecklist({date})}
 
                 </div>
               </div>
