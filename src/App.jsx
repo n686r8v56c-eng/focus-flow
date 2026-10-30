@@ -57,6 +57,9 @@ export function App({
     [blockDraft, setBlockDraft] = useState(""),
     [blockEditing, setBlockEditing] = useState(null),
     [blockRange, setBlockRange] = useState(null),
+    [sleepEditing, setSleepEditing] = useState(false),
+    [sleepDraftStart, setSleepDraftStart] = useState("22:00"),
+    [sleepDraftEnd, setSleepDraftEnd] = useState("06:00"),
     [projectSort, setProjectSort] = useState("earliest"),
     [karmaCategory, setKarmaCategory] = useState("me"),
     [karmaDraft, setKarmaDraft] = useState(""),
@@ -1690,6 +1693,12 @@ export function App({
     setBlockDraft(block.title);
   };
   const selectBlockHour = (hour) => {
+    const sleep = blockMode === "actual" ? (data.timeBlockSleepActual?.[blockDate] || {start:22,end:6}) : {start:22,end:6};
+    const asleep = h => sleep.start > sleep.end ? (h >= sleep.start || h < sleep.end) : (h >= sleep.start && h < sleep.end);
+    if (asleep(hour)) {
+      if (blockMode === "actual") { setSleepDraftStart(`${pad(sleep.start)}:00`); setSleepDraftEnd(`${pad(sleep.end)}:00`); setSleepEditing(true); }
+      return;
+    }
     const current = timeBlocks.find(b => b.date === blockDate && (b.mode || "plan") === blockMode && hour >= b.start && hour < b.end);
     if (current) { openBlock(current); return; }
     if (blockFirst === null) {
@@ -1698,7 +1707,7 @@ export function App({
     } else {
       const start = Math.min(blockFirst, hour);
       const end = Math.max(blockFirst, hour) + 1;
-      const conflicts = timeBlocks.some(b => b.date === blockDate && (b.mode || "plan") === blockMode && b.start < end && start < b.end);
+      const conflicts = Array.from({length:end-start},(_,i)=>start+i).some(asleep) || timeBlocks.some(b => b.date === blockDate && (b.mode || "plan") === blockMode && b.start < end && start < b.end);
       if (!conflicts) setBlockRange({start,end});
       setBlockFirst(null);
     }
@@ -1713,6 +1722,19 @@ export function App({
   function TimeBlocks() {
     const blocks = timeBlocks.filter(b=>b.date===blockDate && (b.mode || "plan") === blockMode).sort((a,b)=>a.start-b.start);
     const day = new Date(blockDate+"T12:00:00");
+    const sleep = blockMode === "actual" ? (data.timeBlockSleepActual?.[blockDate] || {start:22,end:6}) : {start:22,end:6};
+    const isSleep = h => sleep.start > sleep.end ? (h >= sleep.start || h < sleep.end) : (h >= sleep.start && h < sleep.end);
+    // 06:00–22:00 is the 16-hour planning window. Count overlaps once.
+    const occupiedHours = new Set();
+    for (const b of blocks) {
+      const start = Number(b.start), end = Number(b.end);
+      if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+      for (let h = Math.max(6, Math.floor(start)); h < Math.min(22, Math.ceil(end)); h++) {
+        if (!isSleep(h)) occupiedHours.add(h);
+      }
+    }
+    const available = Array.from({length:16},(_,i)=>i+6).filter(h=>!isSleep(h)).length;
+    const allocated = occupiedHours.size;
     return <section className={`timeblock-page mode-${blockMode}`}>
       <div className="timeblock-head">
         <button aria-label="이전 날짜" onClick={()=>changeBlockDate(-1)}><ChevronLeft size={23}/></button>
@@ -1725,19 +1747,35 @@ export function App({
         <button type="button" role="tab" aria-selected={blockMode==="plan"} className={blockMode==="plan"?"active":""} onClick={()=>{setBlockMode("plan");setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>계획</button>
         <button type="button" role="tab" aria-selected={blockMode==="actual"} className={blockMode==="actual"?"active":""} onClick={()=>{setBlockMode("actual");setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>실제</button>
       </div>
-      <p className="timeblock-help">시간 칸 두 개를 톡톡 누르고 {blockMode==="plan"?"계획":"실제 한 일"}만 적으면 끝!</p>
+      <p className="timeblock-allocation" aria-live="polite">기배정 {allocated}시간 <span aria-hidden="true">·</span> 미배정 {Math.max(0,available - allocated)}시간</p>
       <div className="timeblock-grid">
         {Array.from({length:24},(_,hour)=>{
-          const block=blocks.find(b=>hour>=b.start&&hour<b.end);
-          const isStart=block?.start===hour;
-          const selected=blockRange && !blockEditing && hour>=blockRange.start&&hour<blockRange.end;
-          return <button type="button" key={hour} className={`timeblock-hour ${block?'occupied':''} ${selected?'selected':''}`}
-            aria-label={`${pad(hour)}시 ${block?.title||'시간 선택'}`} onClick={()=>selectBlockHour(hour)}>
+          const sleeping = isSleep(hour);
+          const block = sleeping ? null : blocks.find(b=>hour>=b.start&&hour<b.end);
+          const isStart = block?.start===hour;
+          const selected = !sleeping && blockRange && !blockEditing && hour>=blockRange.start&&hour<blockRange.end;
+          const sleepLabel = hour === sleep.start || hour === 0;
+          return <button type="button" key={hour} className={`timeblock-hour ${sleeping?'sleeping':''} ${block?'occupied':''} ${selected?'selected':''}`}
+            aria-label={`${pad(hour)}시 ${sleeping?'수면':block?.title||'시간 선택'}`} onClick={()=>selectBlockHour(hour)}>
             <span className="timeblock-hourlabel">{pad(hour)}:00</span>
-            <span className="timeblock-content">{isStart && <strong>{block.title}</strong>}{selected && !block && <span>선택 중</span>}</span>
+            <span className="timeblock-content">{sleeping && sleepLabel && <strong>☾ 수면 {pad(sleep.start)}:00–다음 날 {pad(sleep.end)}:00{blockMode==='actual'?' · 수정 가능':''}</strong>}{isStart && <strong>{block.title}</strong>}{selected && !block && <span>선택 중</span>}</span>
           </button>;
         })}
       </div>
+      {sleepEditing && blockMode === 'actual' && <div className="timeblock-overlay" onClick={()=>setSleepEditing(false)}>
+        <form className="timeblock-dialog" onClick={e=>e.stopPropagation()} onSubmit={e=>{
+          e.preventDefault();
+          const st=Number(sleepDraftStart.split(':')[0]), en=Number(sleepDraftEnd.split(':')[0]);
+          if(!Number.isInteger(st)||!Number.isInteger(en)||st===en)return;
+          setData(d=>({...d,timeBlockSleepActual:{...(d.timeBlockSleepActual||{}),[blockDate]:{start:st,end:en}}}));
+          setSleepEditing(false);setBlockFirst(null);setBlockRange(null);
+        }}>
+          <h3>실제 수면 시간</h3>
+          <p className="timeblock-sleep-help">시간 단위로 수정할 수 있어. 종료 시간은 다음 날 기준이야.</p>
+          <div className="timeblock-sleep-inputs"><label>취침 <input type="time" step="3600" value={sleepDraftStart} onChange={e=>setSleepDraftStart(e.target.value)}/></label><label>기상 <input type="time" step="3600" value={sleepDraftEnd} onChange={e=>setSleepDraftEnd(e.target.value)}/></label></div>
+          <div className="timeblock-actions"><button type="button" onClick={()=>{setData(d=>{const next={...(d.timeBlockSleepActual||{})};delete next[blockDate];return {...d,timeBlockSleepActual:next}});setSleepEditing(false)}}>기본 22–06으로</button><button type="button" onClick={()=>setSleepEditing(false)}>취소</button><button type="submit" className="timeblock-save">저장</button></div>
+        </form>
+      </div>}
       {blockRange && !blockEditing && <div className="timeblock-selection">
         <span>{pad(blockRange.start)}:00–{pad(blockRange.end)}:00</span>
         <button onClick={()=>{setBlockDraft("");setBlockEditing("new")}}>{blockMode==="plan"?"+ 계획 적기":"+ 실제 기록"}</button>

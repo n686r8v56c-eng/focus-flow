@@ -43,3 +43,13 @@
 .timeblock-page.mode-actual .timeblock-hour.selected .timeblock-content{background:#c9eadd;border-left-color:#65b6a0;color:#397a6a}
 .timeblock-page.mode-actual .timeblock-selection,.timeblock-page.mode-actual .timeblock-head{color:#529988}
 .timeblock-page.mode-actual .timeblock-selection button:nth-child(2),.timeblock-page.mode-actual .timeblock-actions .timeblock-save{background:#65b6a0;color:white}
+
+.timeblock-allocation{color:#9588a1;font-size:13px;line-height:1.5;margin:0 0 18px;font-weight:500}
+
+/* Default sleep is rendered, not inserted into saved plans. */
+.timeblock-hour.sleeping .timeblock-content{background:#eae7ef;border-left:4px solid #a8a0b1;color:#706879}
+.timeblock-hour.sleeping .timeblock-hourlabel{color:#9992a0}
+.timeblock-sleep-help{color:#80788a;font-size:13px;line-height:1.5}
+.timeblock-sleep-inputs{display:flex;gap:12px;margin:16px 0}
+.timeblock-sleep-inputs label{display:flex;flex:1;flex-direction:column;gap:8px;color:#706879;font-size:13px}
+.timeblock-sleep-inputs input{width:100%;min-width:0}
