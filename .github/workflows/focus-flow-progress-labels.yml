@@ -1,0 +1,95 @@
+name: Focus Flow - Today and Calendar Progress Labels
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply progress labels
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          
+          def edit(path,fn):
+           p=Path(path);s=p.read_text(); t=fn(s)
+           if t==s: raise RuntimeError(f'No changes in {path}')
+           p.write_text('\n'.join(line.rstrip() for line in t.splitlines())+'\n')
+          def once(s,a,b):
+           if s.count(a)!=1: raise RuntimeError(f'Expected once ({s.count(a)}): {a[:90]}')
+           return s.replace(a,b,1)
+          
+          def app(s):
+           s=once(s,'<h1>오늘의 할 일</h1>', '''<div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}><h1>오늘의 할 일</h1><ProgressBadge done={todayTasks.filter(t=>t.status === "done").length} total={todayTasks.length}/></div>''')
+           start=s.index('function CalendarChecklist({date}) {')
+           end=s.index('  function Calendar() {',start)
+           old=s[start:end]
+           old=once(old,'<h3 style={{fontSize:14,margin:"4px 0 8px"}}>{group}</h3>', '''{group === "오늘의 할 일" && <h3 style={{fontSize:14,margin:"4px 0 8px",display:"flex",gap:8,alignItems:"baseline"}}>{group}<ProgressBadge done={tasks.filter(t=>category(t)===group && t.status==="done").length} total={tasks.filter(t=>category(t)===group).length}/></h3>}''')
+           old=once(old,'<CalendarExternal source={group === "공부" ? "study" : group === "운동" ? "workout" : "mind"}', '<CalendarExternal heading={group} localTotal={tasks.filter(t=>category(t)===group).length} localDone={tasks.filter(t=>category(t)===group && t.status==="done").length} source={group === "공부" ? "study" : group === "운동" ? "workout" : "mind"}')
+           s=s[:start]+old+s[end:]
+           anchor='function TaskEstimate({ count }) {'
+           badge='''function ProgressBadge({done = 0, total = 0}) {
+            const pct = total ? Math.round(done / total * 100) : 0;
+            return <span aria-label={`진행률 ${done}/${total}, ${pct}%`} style={{fontSize:11,color:"#9484a5",fontWeight:600,whiteSpace:"nowrap"}}>{done}/{total} · {pct}%</span>;
+          }
+          '''
+           s=once(s,anchor,badge+anchor)
+           return s
+          
+          def linked(s):
+           s=once(s,'<h1>{title}</h1>','''<div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}><h1>{title}</h1><span aria-label="진행률" style={{fontSize:11,color:"#9484a5",fontWeight:600,whiteSpace:"nowrap"}}>{activities.filter(isDone).length}/{activities.length} · {activities.length ? Math.round(100*activities.filter(isDone).length/activities.length) : 0}%</span></div>''')
+           return s
+          
+          def workout(s):
+           s=once(s,'<h1>오늘 할 운동</h1>','''<div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}><h1>오늘 할 운동</h1><span aria-label="진행률" style={{fontSize:11,color:"#9484a5",fontWeight:600,whiteSpace:"nowrap"}}>{workouts.filter(isDone).length}/{workouts.length} · {workouts.length ? Math.round(100*workouts.filter(isDone).length/workouts.length) : 0}%</span></div>''')
+           return s
+          
+          def calendar(s):
+           s=once(s,'export function CalendarExternal({ source, date, client, userId, checks = {}, onCheck }) {','export function CalendarExternal({ source, date, client, userId, checks = {}, onCheck, heading, localTotal = 0, localDone = 0 }) {')
+           start=s.index('  if (!list.length) return null;')
+           end=s.index('    {list.map(item => {',start)
+           s=s[:start]+'''  const linkedDone = list.filter(item => {
+              const key = JSON.stringify([result.linkId, item.date, item.videoId || item.id]);
+              return typeof checks[key]?.done === "boolean" ? checks[key].done : item.status === "done";
+            }).length;
+            const total = localTotal + list.length;
+            const doneCount = localDone + linkedDone;
+            const pct = total ? Math.round(100 * doneCount / total) : 0;
+            return <div aria-label={config.label + " 연동 일정"}>
+              {heading && <h3 style={{fontSize:14,margin:"4px 0 8px",display:"flex",gap:8,alignItems:"baseline"}}>{heading}<span aria-label={`진행률 ${doneCount}/${total}, ${pct}%`} style={{fontSize:11,color:"#9484a5",fontWeight:600,whiteSpace:"nowrap"}}>{doneCount}/{total} · {pct}%</span></h3>}
+          '''+s[end:]
+           return s
+          
+          edit('src/App.jsx',app)
+          edit('src/LinkedActivities.jsx',linked)
+          edit('src/HomeWorkouts.jsx',workout)
+          edit('src/CalendarExternal.jsx',calendar)
+          print('Updated 4 UI files; data schema and Supabase unchanged.')
+          PY
+      - name: Install and build
+        run: |
+          npm install
+          npm run build
+      - name: Commit verified code only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx src/LinkedActivities.jsx src/HomeWorkouts.jsx src/CalendarExternal.jsx
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'Already applied'
+            exit 0
+          fi
+          git commit -m 'Show compact progress beside today and calendar section titles'
+          git push
