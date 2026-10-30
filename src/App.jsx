@@ -252,10 +252,16 @@ export function App({
   const visibleDate = viewDate;
   const timeText = (seconds) =>
     `${pad(Math.floor(seconds / 3600))}:${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`;
-  const remaining = (hour) => {
+  // Each session uses its own fixed window (local device time).
+  const sessionTimer = (startHour, endHour) => {
+    const start = new Date(clockNow);
+    start.setHours(startHour, 0, 0, 0);
     const end = new Date(clockNow);
-    end.setHours(hour, 0, 0, 0);
-    return timeText(Math.max(0, Math.ceil((end.getTime() - clockNow) / 1000)));
+    end.setHours(endHour, 0, 0, 0);
+    const total = end.getTime() - start.getTime();
+    const elapsed = Math.max(0, Math.min(total, clockNow - start.getTime()));
+    const remainingSeconds = Math.max(0, Math.ceil((end.getTime() - Math.max(clockNow, start.getTime())) / 1000));
+    return { text: timeText(remainingSeconds), progress: elapsed / total };
   };
   const todayTasks = data.tasks
     .filter(
@@ -733,45 +739,38 @@ export function App({
           }}
         >
           {[
-            [
-              "현재 시각",
-              `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
-            ],
-            ["오전 타이머", remaining(12)],
-            ["오후 타이머", remaining(18)],
-            ["저녁 타이머", remaining(22)],
-          ].map(([label, value], i) => (
+            { label: "현재 시각", text: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`, progress: null },
+            { label: "오전 타이머", ...sessionTimer(6, 12) },
+            { label: "오후 타이머", ...sessionTimer(12, 18) },
+            { label: "저녁 타이머", ...sessionTimer(18, 22) },
+          ].map(({ label, text, progress }, i) => (
             <div
               key={label}
+              role="timer"
+              aria-label={`${label}: ${text}${progress === null ? "" : `, ${Math.round(progress * 100)}% 경과`}`}
               style={{
                 padding: "15px 12px",
                 borderRadius: 15,
                 border: "1px solid #e9e1f0",
-                background: i === 0 ? "#f3edf9" : "white",
+                background: progress === null
+                  ? "#f3edf9"
+                  : `linear-gradient(to right, #e7d9f6 ${Math.round(progress * 100)}%, #ffffff ${Math.round(progress * 100)}%)`,
                 minWidth: 0,
+                transition: "background 0.5s ease",
               }}
             >
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "#8b7b9c",
-                  marginBottom: 7,
-                  fontWeight: 650,
-                }}
-              >
+              <div style={{ fontSize: 12, color: "#8b7b9c", marginBottom: 7, fontWeight: 650 }}>
                 {label}
               </div>
-              <div
-                style={{
-                  fontSize: "clamp(21px,6vw,30px)",
-                  fontWeight: 750,
-                  fontVariantNumeric: "tabular-nums",
-                  letterSpacing: "-.5px",
-                  color: i === 0 ? "#7854ab" : "#53465f",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {value}
+              <div style={{
+                fontSize: "clamp(21px,6vw,30px)",
+                fontWeight: 750,
+                fontVariantNumeric: "tabular-nums",
+                letterSpacing: "-.5px",
+                color: i === 0 ? "#7854ab" : "#53465f",
+                whiteSpace: "nowrap",
+              }}>
+                {text}
               </div>
             </div>
           ))}
