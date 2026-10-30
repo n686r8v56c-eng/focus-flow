@@ -1,0 +1,63 @@
+name: Focus Flow - Compact Today Checklist
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Remove today Pomodoro icons and tighten checklist rows
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("src/App.jsx")
+          s = p.read_text(encoding="utf-8")
+          start = s.index("function Kanban()")
+          end = s.index("function CalendarChecklist(", start)
+          body = s[start:end]
+          # Only alter the Today checklist, not project/calendar/Pomodoro screens.
+          icons_pending = """                  {!!t.estimatedPomodoros&&<div style={{marginTop:4,display:'flex'}}><TaskEstimate count={t.estimatedPomodoros}/></div>}
+          """
+          icons_done = """{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}"""
+          if icons_pending not in body or icons_done not in body:
+              raise SystemExit("Today checklist anchors changed; no files edited.")
+          body = body.replace(icons_pending, "", 1)
+          body = body.replace(icons_done, "", 1)
+          body = body.replace("gap:10,marginBottom:18", "gap:7,marginBottom:15", 1)
+          body = body.replace("borderRadius:16,padding:'12px 13px'", "borderRadius:16,padding:'9px 12px'", 1)
+          body = body.replace("alignItems:'center',gap:10", "alignItems:'center',gap:8", 1)
+          body = body.replace("width:30,height:30,flexShrink:0", "width:28,height:28,flexShrink:0", 1)
+          body = body.replace("marginTop:3}}>{proj?.name", "marginTop:2}}>{proj?.name", 1)
+          body = body.replace("margin:'9px 0 0 40px',display:'grid',gap:6", "margin:'6px 0 0 36px',display:'grid',gap:5", 1)
+          body = body.replace("paddingTop:8", "paddingTop:6", 1)
+          body = body.replace("borderRadius:16,padding:'11px 13px'", "borderRadius:16,padding:'9px 12px'", 1)
+          body = body.replace("width:30,height:30,flexShrink:0", "width:28,height:28,flexShrink:0", 1)
+          s = s[:start] + body + s[end:]
+          # Avoid the recurring trailing-whitespace failure on generated patches.
+          s = "\n".join(line.rstrip() for line in s.splitlines()) + "\n"
+          p.write_text(s, encoding="utf-8")
+          assert "오늘의 할 일 체크리스트" in s
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify production build
+        run: npm run build
+      - name: Commit only after successful build
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m "Compact today checklist and hide Pomodoro estimates"
+            git push
+          fi
