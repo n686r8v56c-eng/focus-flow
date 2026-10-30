@@ -624,6 +624,17 @@ export function App({
           <div className="task-title" style={{ flex: 1, minWidth: 0 }}>
             {task.title}
           </div>
+          {total > 0 && (
+            <svg viewBox="0 0 40 40" width="36" height="36" role="img"
+              aria-label={`서브태스크 진행률 ${Math.round(complete / total * 100)}%`}
+              style={{ flexShrink: 0, display: 'block' }}>
+              <circle cx="20" cy="20" r="15" fill="none" stroke="#e9e4ef" strokeWidth="5" />
+              <circle cx="20" cy="20" r="15" fill="none" stroke="#9c85cd" strokeWidth="5"
+                strokeDasharray={`${(complete / total) * (2 * Math.PI * 15)} ${2 * Math.PI * 15}`}
+                transform="rotate(-90 20 20)" strokeLinecap="butt"
+                style={{ transition: 'stroke-dasharray 180ms ease' }} />
+            </svg>
+          )}
           <TaskEstimate count={task.estimatedPomodoros} />
         </div>
         {task.tally?.total > 0 && <button type="button" aria-label={`${task.title} 횟수 추가`} onClick={e=>{e.stopPropagation();advanceTally(task)}} style={{width:"100%",border:0,textAlign:"left",marginTop:6,padding:"8px 10px",borderRadius:9,fontWeight:650,background:`linear-gradient(to right,#efb7bc ${Math.min(100,100*(task.tally.count||0)/task.tally.total)}%,#f2eef5 0%)`}}>{task.tally.count||0}/{task.tally.total} · +{task.tally.step||1}</button>}
