@@ -1,0 +1,162 @@
+name: Focus Flow - Project Sorting and Precise Drag
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: focus-flow-project-sort-drag
+  cancel-in-progress: false
+jobs:
+  verify-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Fix precise dragging and add date sorting
+        run: |
+          python3 - <<'PYAPPLY'
+          from pathlib import Path
+          import re
+          p=Path('src/App.jsx')
+          s=p.read_text(encoding='utf-8')
+          # Add local sorting mode: manual, earliest first, latest first.
+          state='    [projectSort, setProjectSort] = useState("manual"),\n'
+          if 'setProjectSort' not in s:
+              anchor='    [selectedProject, setSelectedProject] = useState("p1"),\n'
+              assert s.count(anchor)==1, 'project state anchor changed'
+              s=s.replace(anchor,anchor+state,1)
+          # Sorting: time-specified first within each day, then Korean alphabetical. No due date goes last.
+          start=s.index('  const moveProjectTask = (movingId, targetId) => {')
+          end=s.index('  const dragProjectTask = useRef(null);',start)
+          new_move='''  const projectSortCompare = (a,b) => {
+              const dateA = a.due || "9999-12-31";
+              const dateB = b.due || "9999-12-31";
+              if (dateA !== dateB) return projectSort === "latest" ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
+              if (Boolean(a.time) !== Boolean(b.time)) return a.time ? -1 : 1;
+              if (a.time && b.time && a.time !== b.time) return a.time.localeCompare(b.time);
+              return (a.title || "").localeCompare(b.title || "", "ko");
+            };
+            const moveProjectTask = (movingId, targetId, placeAfter = false) => {
+              if (!targetId || movingId === targetId) return;
+              update(d => {
+                const moving = d.tasks.find(t => t.id === movingId);
+                const target = d.tasks.find(t => t.id === targetId);
+                if (!moving || !target || moving.projectId !== target.projectId || moving.status !== target.status) return d;
+                const group = d.tasks.filter(t => t.projectId === moving.projectId && t.status === moving.status)
+                  .sort((a,b)=>(a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||""));
+                const reordered = group.filter(t => t.id !== movingId);
+                const at = reordered.findIndex(t => t.id === targetId);
+                if (at < 0) return d;
+                reordered.splice(at + (placeAfter ? 1 : 0), 0, moving);
+                const positions = new Map(reordered.map((t,i)=>[t.id,i]));
+                return {...d,tasks:d.tasks.map(t=>positions.has(t.id)?{...t,order:positions.get(t.id)}:t)};
+              });
+              setProjectSort("manual");
+            };
+          '''
+          s=s[:start]+new_move+s[end:]
+          # Replace drag logic, preserve iOS feedback and use target half (upper/lower) rather than fixed target insertion.
+          start=s.index('  const startProjectDrag = (event, task) => {')
+          end=s.index('  const removeTask = (id) => {',start)
+          new_drag='''  const startProjectDrag = (event, task) => {
+              if (event.pointerType === "mouse" && event.button !== 0) return;
+              event.preventDefault();
+              projectDragCleanup.current?.();
+              const button = event.currentTarget;
+              const row = button.closest('[data-project-task-id]');
+              if (!row) return;
+              try {button.setPointerCapture(event.pointerId)} catch {}
+              const initialY = event.clientY;
+              let position = null;
+              const prior = {transform:row.style.transform,boxShadow:row.style.boxShadow,background:row.style.background,opacity:row.style.opacity,zIndex:row.style.zIndex,position:row.style.position,transition:row.style.transition};
+              row.style.transition = 'transform 120ms ease, box-shadow 120ms ease';
+              row.style.transform = 'scale(1.025)';
+              row.style.background = '#f7f2ff';
+              row.style.boxShadow = '0 8px 24px rgba(127,97,181,.24), inset 0 0 0 2px #a58bd8';
+              row.style.position = 'relative';row.style.zIndex='3';
+              if (navigator.vibrate) try {navigator.vibrate(12)} catch {}
+              const clearTargets = () => {
+                document.querySelectorAll('[data-project-task-id]').forEach(el=>{
+                  if (el !== row) el.style.boxShadow='';
+                });
+              };
+              const move = e => {
+                if (e.pointerId !== event.pointerId) return;
+                e.preventDefault();
+                clearTargets();
+                position = null;
+                // Position is determined by each visible row's midpoint. Works in both directions.
+                const rows = [...document.querySelectorAll('[data-project-task-id]')]
+                  .filter(el=>el !== row && el.getAttribute('data-project-status')===task.status);
+                const hovered = rows.find(el=>{const r=el.getBoundingClientRect();return e.clientY>=r.top&&e.clientY<=r.bottom;});
+                if (!hovered) return;
+                const r=hovered.getBoundingClientRect();
+                const after=e.clientY>=r.top+r.height/2;
+                position={id:hovered.getAttribute('data-project-task-id'),after};
+                hovered.style.boxShadow=after?'inset 0 -4px #a58bd8':'inset 0 4px #a58bd8';
+              };
+              const cleanup = () => {
+                window.removeEventListener('pointermove',move);
+                window.removeEventListener('pointerup',end);
+                window.removeEventListener('pointercancel',cancel);
+                try {button.releasePointerCapture(event.pointerId)} catch {}
+                Object.entries(prior).forEach(([key,value])=>{row.style[key]=value});
+                clearTargets();
+                projectDragCleanup.current=null;
+              };
+              const end=e=>{
+                if (e.pointerId !== event.pointerId) return;
+                // Recalculate on release, so the last pointer position is authoritative.
+                move(e);
+                const drop=position;
+                cleanup();
+                if (drop && Math.abs(e.clientY-initialY)>=5) moveProjectTask(task.id,drop.id,drop.after);
+              };
+              const cancel=()=>cleanup();
+              window.addEventListener('pointermove',move,{passive:false});
+              window.addEventListener('pointerup',end);
+              window.addEventListener('pointercancel',cancel);
+              projectDragCleanup.current=cleanup;
+            };
+          '''
+          s=s[:start]+new_drag+s[end:]
+          old='''items = data.tasks.filter((t) => t.projectId === selectedProject).sort((a,b)=>(a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||"")),'''
+          new='''items = data.tasks.filter((t) => t.projectId === selectedProject).sort((a,b)=>projectSort === "manual" ? ((a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||"")) : projectSortCompare(a,b)),'''
+          assert s.count(old)==1, 'project list sort anchor not found'
+          s=s.replace(old,new,1)
+          anchor='''        <div className="project-task-list">
+                    {pending.map(renderItem)}'''
+          control='''        <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,margin:"12px 0 8px"}}>
+                    <label htmlFor="project-task-sort" style={{fontSize:12,color:"#8b7b9d"}}>정렬하기</label>
+                    <select id="project-task-sort" aria-label="프로젝트 할 일 정렬" value={projectSort} onChange={e=>setProjectSort(e.target.value)} style={{maxWidth:"72%",padding:"9px 12px",border:"1px solid #e4daee",borderRadius:10,background:"white",color:"#6f568e"}}>
+                      <option value="manual">↕ 직접 정렬</option>
+                      <option value="earliest">↑ 가까운 일정부터</option>
+                      <option value="latest">↓ 먼 일정부터</option>
+                    </select>
+                  </div>
+          '''
+          assert s.count(anchor)==1,'list insertion point changed'
+          s=s.replace(anchor,control+anchor,1)
+          # Normalize whitespace before git checks.
+          s='\n'.join(line.rstrip(' \t\r') for line in s.split('\n'))
+          assert 'projectSortCompare' in s and 'drop.after' in s and 'project-task-sort' in s
+          p.write_text(s,encoding='utf-8')
+          PYAPPLY
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit verified files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx
+          git diff --cached --check
+          if git diff --cached --quiet; then echo 'Nothing changed'; exit 0; fi
+          git commit -m 'Fix bidirectional drag ordering and add project date sort'
+          git push origin HEAD:main
