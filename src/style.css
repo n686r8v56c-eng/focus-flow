@@ -1426,3 +1426,6 @@ body,
 
 /* Safari project drag handle protection */
 .project-item-wrap button[aria-label="드래그하여 순서 변경"] { touch-action:none!important; user-select:none!important; -webkit-user-select:none!important; -webkit-touch-callout:none!important; }
+
+.project-summary .project-add-compact { min-width:34px; min-height:34px; width:34px; height:34px; padding:6px; border-radius:10px; flex-shrink:0; }
+.project-summary button[aria-label="선택 프로젝트 이름 수정"], .project-summary button[aria-label="선택 프로젝트 삭제"] { width:34px; height:34px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }

@@ -203,85 +203,36 @@ export function App({
     if (a.time && b.time && a.time !== b.time) return a.time.localeCompare(b.time);
     return (a.title || "").localeCompare(b.title || "", "ko");
   };
-  const moveProjectTask = (movingId, targetId, placeAfter = false) => {
-    if (!targetId || movingId === targetId) return;
-    update(d => {
-      const moving = d.tasks.find(t => t.id === movingId);
-      const target = d.tasks.find(t => t.id === targetId);
-      if (!moving || !target || moving.projectId !== target.projectId || moving.status !== target.status) return d;
-      const group = d.tasks.filter(t => t.projectId === moving.projectId && t.status === moving.status)
-        .sort((a,b)=>(a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||""));
-      const reordered = group.filter(t => t.id !== movingId);
-      const at = reordered.findIndex(t => t.id === targetId);
-      if (at < 0) return d;
-      reordered.splice(at + (placeAfter ? 1 : 0), 0, moving);
-      const positions = new Map(reordered.map((t,i)=>[t.id,i]));
-      return {...d,tasks:d.tasks.map(t=>positions.has(t.id)?{...t,order:positions.get(t.id)}:t)};
-    });
-    setProjectSort("manual");
+  const [pinMenuId, setPinMenuId] = useState(null);
+  const pinHold = useRef(null);
+  const pinHoldOrigin = useRef(null);
+  const clearPinHold = () => {
+    if (pinHold.current) clearTimeout(pinHold.current);
+    pinHold.current = null;
+    pinHoldOrigin.current = null;
   };
-  const dragProjectTask = useRef(null);
-  const projectDragCleanup = useRef(null);
-  useEffect(() => () => projectDragCleanup.current?.(), []);
-  const startProjectDrag = (event, task) => {
+  useEffect(() => () => clearPinHold(), []);
+  const beginPinHold = (event, id) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    event.preventDefault();
-    projectDragCleanup.current?.();
-    const button = event.currentTarget;
-    const row = button.closest('[data-project-task-id]');
-    if (!row) return;
-    try {button.setPointerCapture(event.pointerId)} catch {}
-    const initialY = event.clientY;
-    let position = null;
-    const prior = {transform:row.style.transform,boxShadow:row.style.boxShadow,background:row.style.background,opacity:row.style.opacity,zIndex:row.style.zIndex,position:row.style.position,transition:row.style.transition};
-    row.style.transition = 'transform 120ms ease, box-shadow 120ms ease';
-    row.style.transform = 'scale(1.025)';
-    row.style.background = '#f7f2ff';
-    row.style.boxShadow = '0 8px 24px rgba(127,97,181,.24), inset 0 0 0 2px #a58bd8';
-    row.style.position = 'relative';row.style.zIndex='3';
-    if (navigator.vibrate) try {navigator.vibrate(12)} catch {}
-    const clearTargets = () => {
-      document.querySelectorAll('[data-project-task-id]').forEach(el=>{
-        if (el !== row) el.style.boxShadow='';
-      });
-    };
-    const move = e => {
-      if (e.pointerId !== event.pointerId) return;
-      e.preventDefault();
-      clearTargets();
-      position = null;
-      // Position is determined by each visible row's midpoint. Works in both directions.
-      const rows = [...document.querySelectorAll('[data-project-task-id]')]
-        .filter(el=>el !== row && el.getAttribute('data-project-status')===task.status);
-      const hovered = rows.find(el=>{const r=el.getBoundingClientRect();return e.clientY>=r.top&&e.clientY<=r.bottom;});
-      if (!hovered) return;
-      const r=hovered.getBoundingClientRect();
-      const after=e.clientY>=r.top+r.height/2;
-      position={id:hovered.getAttribute('data-project-task-id'),after};
-      hovered.style.boxShadow=after?'inset 0 -4px #a58bd8':'inset 0 4px #a58bd8';
-    };
-    const cleanup = () => {
-      window.removeEventListener('pointermove',move);
-      window.removeEventListener('pointerup',end);
-      window.removeEventListener('pointercancel',cancel);
-      try {button.releasePointerCapture(event.pointerId)} catch {}
-      Object.entries(prior).forEach(([key,value])=>{row.style[key]=value});
-      clearTargets();
-      projectDragCleanup.current=null;
-    };
-    const end=e=>{
-      if (e.pointerId !== event.pointerId) return;
-      // Recalculate on release, so the last pointer position is authoritative.
-      move(e);
-      const drop=position;
-      cleanup();
-      if (drop && Math.abs(e.clientY-initialY)>=5) moveProjectTask(task.id,drop.id,drop.after);
-    };
-    const cancel=()=>cleanup();
-    window.addEventListener('pointermove',move,{passive:false});
-    window.addEventListener('pointerup',end);
-    window.addEventListener('pointercancel',cancel);
-    projectDragCleanup.current=cleanup;
+    clearPinHold();
+    pinHoldOrigin.current = {x:event.clientX,y:event.clientY,pointerId:event.pointerId};
+    pinHold.current = setTimeout(() => {
+      setPinMenuId(id);
+      pinHold.current = null;
+      pinHoldOrigin.current = null;
+    }, 550);
+  };
+  const trackPinHold = event => {
+    const origin=pinHoldOrigin.current;
+    if (origin && (Math.abs(event.clientX-origin.x)>12 || Math.abs(event.clientY-origin.y)>12)) clearPinHold();
+  };
+  const togglePin = task => {
+    update(d => {
+      const group=d.tasks.filter(t=>t.projectId===task.projectId && Number.isFinite(t.pinOrder));
+      const next=group.reduce((m,t)=>Math.max(m,t.pinOrder),0)+1;
+      return {...d,tasks:d.tasks.map(t=>t.id===task.id?{...t,pinOrder:Number.isFinite(t.pinOrder)?null:next}:t)};
+    });
+    setPinMenuId(null);
   };
   const removeTask = (id) => {
     update((d) => ({ ...d, tasks: d.tasks.filter((t) => t.id !== id) }));
@@ -1031,13 +982,25 @@ export function App({
   }
   function Projects() {
     const selected = project(selectedProject),
-      items = data.tasks.filter((t) => t.projectId === selectedProject).sort((a,b)=>projectSort === "manual" ? ((a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||"")) : projectSortCompare(a,b)),
+      items = data.tasks.filter((t) => t.projectId === selectedProject).sort((a,b)=>{
+        const ap=Number.isFinite(a.pinOrder),bp=Number.isFinite(b.pinOrder);
+        if(ap!==bp)return ap?-1:1;
+        if(ap && bp)return a.pinOrder-b.pinOrder;
+        return projectSort === "manual"
+          ? (a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||"")
+          : projectSortCompare(a,b);
+      }),
       pending = items.filter((t) => t.status !== "done"),
       done = items.filter((t) => t.status === "done");
     const renderItem = (t) => (
-      <div key={t.id} className="project-item-wrap" data-project-task-id={t.id} data-project-status={t.status}>
+      <div key={t.id} className="project-item-wrap" data-project-task-id={t.id}
+        onPointerDown={e => { if(!e.target.closest('button,input,a,select')) beginPinHold(e,t.id); }}
+        onPointerMove={trackPinHold}
+        onPointerUp={clearPinHold}
+        onPointerCancel={clearPinHold}
+        onContextMenu={e => { e.preventDefault(); clearPinHold(); setPinMenuId(t.id); }}
+        style={{WebkitTouchCallout:'none'}}>
         <div className="project-list-item">
-          <button type="button" aria-label="드래그하여 순서 변경" onPointerDown={e=>startProjectDrag(e,t)} onContextMenu={e=>e.preventDefault()} onDragStart={e=>e.preventDefault()} style={{touchAction:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",cursor:"grab",fontSize:24,color:"#9f8db7",padding:"10px 6px",userSelect:"none",flexShrink:0}}>⠿</button>
           <button
             className={"check-btn " + (t.status === "done" ? "checked" : "")}
             onClick={() =>
@@ -1046,9 +1009,9 @@ export function App({
           >
             {t.status === "done" && <Check size={15} />}
           </button>
-          <div className="list-middle" onClick={() => setEditing(t.id)}>
+          <div className="list-middle" onClick={() => {if(pinMenuId!==t.id)setEditing(t.id)}}>
             <strong className={t.status === "done" ? "struck" : ""}>
-              {t.title}
+              {Number.isFinite(t.pinOrder) ? '⭐ ' : ''}{t.title}
             </strong>
             <small>
               {t.due
@@ -1065,6 +1028,14 @@ export function App({
             onClick={() => setEditing(t.id)}
           />
         </div>
+        {pinMenuId === t.id && (
+          <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:8,padding:'8px 12px',background:'#f7f2ff'}}>
+            <button type="button" onClick={e=>{e.stopPropagation();togglePin(t)}} style={{padding:'10px 14px',borderRadius:10,background:'#fff',color:'#8061b6',fontWeight:700}}>
+              {Number.isFinite(t.pinOrder) ? '☆ 고정 해제' : '⭐ 맨 위에 고정'}
+            </button>
+            <button type="button" onClick={e=>{e.stopPropagation();setPinMenuId(null)}} style={{padding:'10px',color:'#8a8195'}}>닫기</button>
+          </div>
+        )}
         {t.subtasks.length > 0 && (
           <div className="inline-subtasks">
             {t.subtasks.map((sub) => (
@@ -1125,17 +1096,17 @@ export function App({
                 {done.length}/{items.length}개 완료
               </p>
             </div>
-            <button type="button" className="secondary" onClick={renameSelectedProject} aria-label="선택 프로젝트 이름 수정" style={{marginLeft:"auto",padding:"10px",color:"#8d6dce"}}><Pencil size={18}/></button>
-            <button type="button" className="secondary" onClick={deleteSelectedProject} aria-label="선택 프로젝트 삭제" style={{padding:"10px",color:"#bf667c"}}><Trash2 size={18}/></button>
+            <button type="button" className="secondary" onClick={renameSelectedProject} aria-label="선택 프로젝트 이름 수정" style={{marginLeft:"auto",padding:"6px",minWidth:34,minHeight:34,color:"#8d6dce"}}><Pencil size={16}/></button>
+            <button type="button" className="secondary" onClick={deleteSelectedProject} aria-label="선택 프로젝트 삭제" style={{padding:"6px",minWidth:34,minHeight:34,color:"#bf667c"}}><Trash2 size={16}/></button>
             <button
-              className="secondary add-only"
+              className="secondary add-only project-add-compact"
               aria-label="투두 추가"
               onClick={() => {
                 setEditing(null);
                 setModal("task");
               }}
             >
-              <Plus size={22} />
+              <Plus size={17} />
             </button>
           </div>
         )}
