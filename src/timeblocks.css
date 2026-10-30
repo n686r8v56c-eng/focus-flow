@@ -1,0 +1,45 @@
+/* Timeblock planner and compact Pomodoro shortcut */
+.header-actions{display:flex;align-items:center;gap:9px}
+.header-timer{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:0;border-radius:50%;background:#f2ecf9;color:#9476c8;cursor:pointer;flex-shrink:0}
+.header-timer.is-active{background:#a48ad3;color:white}
+.timeblock-page{max-width:760px;margin:0 auto;padding:12px 0 28px}
+.timeblock-head{display:flex;align-items:center;gap:7px;color:#8571a5}
+.timeblock-head button{background:transparent;border:0;color:inherit;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:5px;cursor:pointer}
+.timeblock-date{font-size:17px;font-weight:700;color:#5e4c7b}
+.timeblock-head .timeblock-today{margin-left:auto;border:1px solid #e7ddf1;border-radius:12px;padding:4px 12px}
+.timeblock-page h1{margin:18px 0 8px}
+.timeblock-help{color:#9588a1;font-size:13px;line-height:1.5;margin:0 0 18px}
+.timeblock-grid{border:1px solid #e9e2f0;border-radius:16px;overflow:hidden;background:#fff}
+.timeblock-hour{width:100%;display:flex;align-items:stretch;min-height:58px;background:white;border:0;border-bottom:1px solid #eee8f3;text-align:left;padding:0;cursor:pointer;color:#453e50}
+.timeblock-hour:last-child{border-bottom:0}
+.timeblock-hourlabel{width:76px;flex-shrink:0;align-self:flex-start;padding:14px 10px;font-size:13px;color:#958a9e}
+.timeblock-content{display:flex;align-items:center;padding:7px 12px;margin:3px 6px 3px 0;border-left:2px solid #eee8f3;flex:1;min-width:0;font-size:14px}
+.timeblock-hour.occupied .timeblock-content{background:#eee6fa;border-left:4px solid #a38ad4}
+.timeblock-hour.selected .timeblock-content{background:#e5daf8;border-left:4px solid #a38ad4;color:#7d62a6}
+.timeblock-content strong{overflow-wrap:anywhere}
+.timeblock-selection{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 0;color:#806aa5;font-size:14px}
+.timeblock-selection button{border:1px solid #e2d7ee;border-radius:11px;padding:9px 12px;background:white;color:#806aa5}
+.timeblock-selection button:nth-child(2){background:#a18bd2;color:#fff}
+.timeblock-overlay{position:fixed;inset:0;background:#29203366;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.timeblock-dialog{width:min(400px,100%);background:white;border-radius:20px;padding:22px;box-shadow:0 12px 50px #251b3030}
+.timeblock-dialog h3{font-size:18px;margin:0 0 17px;color:#554868}
+.timeblock-dialog input{width:100%;padding:13px;border:1px solid #ded3e9;border-radius:12px;font-size:16px}
+.timeblock-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+.timeblock-actions button{border:0;background:#f3eef8;color:#806ca4;border-radius:10px;padding:11px 14px}
+.timeblock-actions .timeblock-save{background:#a18bd2;color:white}
+.timeblock-actions .timeblock-delete{margin-right:auto;color:#bb6273}
+
+/* Today heading-to-collapse behavior: retain mounted sync components. */
+.today-heading-compact h1[role="button"]:focus-visible,.today-fold-wrapper h1:focus-visible{outline:2px solid #a38ad4;border-radius:5px}
+.today-fold-wrapper h1{cursor:pointer}
+.today-fold-wrapper.is-folded>section>:not(.section-top){display:none !important}
+.today-fold-wrapper.is-folded>section{padding-bottom:8px}
+/* Separate plan and actual in the same calendar grid. */
+.timeblock-switch{display:flex;width:max-content;max-width:100%;background:#f3edf9;padding:4px;gap:4px;border-radius:14px;margin:8px 0 14px}
+.timeblock-switch button{background:transparent;color:#8a7d9c;border:0;border-radius:10px;font-size:15px;font-weight:700;padding:9px 32px;cursor:pointer}
+.timeblock-switch button.active{background:#a38ad4;color:#fff}
+.timeblock-page.mode-actual .timeblock-switch button.active{background:#65b6a0}
+.timeblock-page.mode-actual .timeblock-hour.occupied .timeblock-content{background:#ddf3ea;border-left-color:#65b6a0}
+.timeblock-page.mode-actual .timeblock-hour.selected .timeblock-content{background:#c9eadd;border-left-color:#65b6a0;color:#397a6a}
+.timeblock-page.mode-actual .timeblock-selection,.timeblock-page.mode-actual .timeblock-head{color:#529988}
+.timeblock-page.mode-actual .timeblock-selection button:nth-child(2),.timeblock-page.mode-actual .timeblock-actions .timeblock-save{background:#65b6a0;color:white}

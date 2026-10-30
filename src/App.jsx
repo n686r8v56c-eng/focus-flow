@@ -16,9 +16,11 @@ import {
   Pause,
   Square,
   RotateCcw,
+  Clock3,
   Heart,
 } from "lucide-react";
 import "./style.css";
+import "./timeblocks.css";
 import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
@@ -48,6 +50,13 @@ export function App({
     setData = onDataChange;
   const [tab, setTab] = useState("today"),
     [selectedProject, setSelectedProject] = useState("p1"),
+    [blockDate, setBlockDate] = useState(localDate()),
+    [blockMode, setBlockMode] = useState("plan"),
+    [collapsedToday, setCollapsedToday] = useState({}),
+    [blockFirst, setBlockFirst] = useState(null),
+    [blockDraft, setBlockDraft] = useState(""),
+    [blockEditing, setBlockEditing] = useState(null),
+    [blockRange, setBlockRange] = useState(null),
     [projectSort, setProjectSort] = useState("earliest"),
     [karmaCategory, setKarmaCategory] = useState("me"),
     [karmaDraft, setKarmaDraft] = useState(""),
@@ -710,6 +719,7 @@ export function App({
       </div>
     );
   }
+  const toggleTodaySection = (key) => setCollapsedToday(prev => ({...prev,[key]:!prev[key]}));
   function Kanban() {
     return (
       <>
@@ -776,7 +786,7 @@ export function App({
               </span>
             </div>
             <div style={{display:'flex',alignItems:'baseline',gap:8,whiteSpace:'nowrap'}}>
-              <h1 style={{fontSize:27,letterSpacing:'-0.8px',whiteSpace:'nowrap',margin:'5px 0 0'}}>오늘의 할 일</h1>
+              <h1 role="button" tabIndex={0} aria-expanded={!collapsedToday.tasks} onClick={()=>toggleTodaySection("tasks")} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggleTodaySection("tasks")}}} style={{cursor:"pointer",fontSize:27,letterSpacing:'-0.8px',whiteSpace:'nowrap',margin:'5px 0 0'}}>오늘의 할 일</h1>
               <ProgressBadge done={todayTasks.filter(t=>t.status==='done').length} total={todayTasks.length}/>
 
             </div>
@@ -784,7 +794,7 @@ export function App({
           <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center',flexShrink:0}}><Plus size={20}/></button>
         </div>
 
-        <section aria-label="오늘의 할 일 체크리스트" style={{display:'grid',gap:7,marginBottom:15}}>
+        <section aria-label="오늘의 할 일 체크리스트" style={{display:collapsedToday.tasks?"none":'grid',gap:7,marginBottom:15}}>
           {todayTasks.filter(t=>t.status!=='done').map(t=>{
             const subtasks=t.subtasks||[];
             const count=subtasks.filter(x=>x.done).length;
@@ -827,14 +837,17 @@ export function App({
             </div>;
           })}
         </section>
-        <p className="hint">
+        {!collapsedToday.tasks && <p className="hint">
           미완료 투두는 다음 날에도 표시돼. 완료한 일은 아래에 모아 보여줘. 원래 날짜와 시간은 보존해.
-        </p>
+        </p>}
+        <div className={`today-fold-wrapper ${collapsedToday.study?"is-folded":""}`} onClickCapture={e=>{if(e.target.closest("h1")){e.stopPropagation();toggleTodaySection("study")}}}>
         <LinkedActivities
           source="study" client={bridgeClient} userId={bridgeUserId} today={today}
           checks={data.activityChecks || {}}
           onCheck={(key, done, pinOrder, subChecks) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}}))}
         />
+        </div>
+        <div className={`today-fold-wrapper ${collapsedToday.workout?"is-folded":""}`} onClickCapture={e=>{if(e.target.closest("h1")){e.stopPropagation();toggleTodaySection("workout")}}}>
         <HomeWorkouts
           client={bridgeClient}
           userId={bridgeUserId}
@@ -842,11 +855,14 @@ export function App({
           checks={data.homeWorkoutChecks || {}}
           onCheck={(key, done, pinOrder, subChecks) => setData(d=>({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks||{}),[key]:{...(d.homeWorkoutChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}}))}
         />
+        </div>
+        <div className={`today-fold-wrapper ${collapsedToday.mind?"is-folded":""}`} onClickCapture={e=>{if(e.target.closest("h1")){e.stopPropagation();toggleTodaySection("mind")}}}>
         <LinkedActivities
           source="mind" client={bridgeClient} userId={bridgeUserId} today={today}
           checks={data.activityChecks || {}}
           onCheck={(key, done, pinOrder, subChecks) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}}))}
         />
+        </div>
       </>
     );
   }
@@ -1661,6 +1677,86 @@ export function App({
       </div>
     );
   }
+  // Standalone daily time blocks, stored through the existing Focus Flow sync.
+  const timeBlocks = Array.isArray(data.timeBlocks) ? data.timeBlocks : [];
+  const changeBlockDate = (delta) => {
+    setBlockDate(d => dayAdd(d, delta));
+    setBlockFirst(null);
+    setBlockRange(null);
+  };
+  const openBlock = (block) => {
+    setBlockFirst(null);
+    setBlockRange({start:block.start,end:block.end});
+    setBlockEditing(block.id);
+    setBlockDraft(block.title);
+  };
+  const selectBlockHour = (hour) => {
+    const current = timeBlocks.find(b => b.date === blockDate && (b.mode || "plan") === blockMode && hour >= b.start && hour < b.end);
+    if (current) { openBlock(current); return; }
+    if (blockFirst === null) {
+      setBlockFirst(hour);
+      setBlockRange({start:hour,end:hour+1});
+    } else {
+      const start = Math.min(blockFirst, hour);
+      const end = Math.max(blockFirst, hour) + 1;
+      const conflicts = timeBlocks.some(b => b.date === blockDate && (b.mode || "plan") === blockMode && b.start < end && start < b.end);
+      if (!conflicts) setBlockRange({start,end});
+      setBlockFirst(null);
+    }
+  };
+  const saveTimeBlock = () => {
+    const title = blockDraft.trim();
+    if (!title || !blockRange) return;
+    setData(d => ({...d, timeBlocks:[...(Array.isArray(d.timeBlocks)?d.timeBlocks:[]).filter(b=>b.id!==blockEditing),
+      {id:blockEditing === "new" ? uid() : blockEditing,date:blockDate,mode:blockMode,start:blockRange.start,end:blockRange.end,title}]}));
+    setBlockRange(null);setBlockFirst(null);setBlockEditing(null);setBlockDraft("");
+  };
+  function TimeBlocks() {
+    const blocks = timeBlocks.filter(b=>b.date===blockDate && (b.mode || "plan") === blockMode).sort((a,b)=>a.start-b.start);
+    const day = new Date(blockDate+"T12:00:00");
+    return <section className={`timeblock-page mode-${blockMode}`}>
+      <div className="timeblock-head">
+        <button aria-label="이전 날짜" onClick={()=>changeBlockDate(-1)}><ChevronLeft size={23}/></button>
+        <div className="timeblock-date">{day.getMonth()+1}월 {day.getDate()}일 {"일월화수목금토"[day.getDay()]}요일</div>
+        <button aria-label="다음 날짜" onClick={()=>changeBlockDate(1)}><ChevronRight size={23}/></button>
+        <button className="timeblock-today" onClick={()=>{setBlockDate(localDate());setBlockFirst(null);setBlockRange(null)}}>오늘</button>
+      </div>
+      <h1>타임블록</h1>
+      <div className="timeblock-switch" role="tablist" aria-label="계획과 실제">
+        <button type="button" role="tab" aria-selected={blockMode==="plan"} className={blockMode==="plan"?"active":""} onClick={()=>{setBlockMode("plan");setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>계획</button>
+        <button type="button" role="tab" aria-selected={blockMode==="actual"} className={blockMode==="actual"?"active":""} onClick={()=>{setBlockMode("actual");setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>실제</button>
+      </div>
+      <p className="timeblock-help">시간 칸 두 개를 톡톡 누르고 {blockMode==="plan"?"계획":"실제 한 일"}만 적으면 끝!</p>
+      <div className="timeblock-grid">
+        {Array.from({length:24},(_,hour)=>{
+          const block=blocks.find(b=>hour>=b.start&&hour<b.end);
+          const isStart=block?.start===hour;
+          const selected=blockRange && !blockEditing && hour>=blockRange.start&&hour<blockRange.end;
+          return <button type="button" key={hour} className={`timeblock-hour ${block?'occupied':''} ${selected?'selected':''}`}
+            aria-label={`${pad(hour)}시 ${block?.title||'시간 선택'}`} onClick={()=>selectBlockHour(hour)}>
+            <span className="timeblock-hourlabel">{pad(hour)}:00</span>
+            <span className="timeblock-content">{isStart && <strong>{block.title}</strong>}{selected && !block && <span>선택 중</span>}</span>
+          </button>;
+        })}
+      </div>
+      {blockRange && !blockEditing && <div className="timeblock-selection">
+        <span>{pad(blockRange.start)}:00–{pad(blockRange.end)}:00</span>
+        <button onClick={()=>{setBlockDraft("");setBlockEditing("new")}}>{blockMode==="plan"?"+ 계획 적기":"+ 실제 기록"}</button>
+        <button onClick={()=>{setBlockRange(null);setBlockFirst(null)}}>취소</button>
+      </div>}
+      {blockEditing && blockRange && <div className="timeblock-overlay" onClick={()=>{setBlockEditing(null);setBlockRange(null);setBlockFirst(null)}}>
+        <form className="timeblock-dialog" onClick={e=>e.stopPropagation()} onSubmit={e=>{e.preventDefault();saveTimeBlock()}}>
+          <h3>{pad(blockRange.start)}:00 – {pad(blockRange.end)}:00</h3>
+          <input autoFocus maxLength={120} placeholder="무엇을 할까요?" value={blockDraft} onChange={e=>setBlockDraft(e.target.value)}/>
+          <div className="timeblock-actions">
+            {blockEditing!=="new"&&<button type="button" className="timeblock-delete" onClick={()=>{setData(d=>({...d,timeBlocks:(d.timeBlocks||[]).filter(b=>b.id!==blockEditing)}));setBlockEditing(null);setBlockRange(null)}}>삭제</button>}
+            <button type="button" onClick={()=>{setBlockEditing(null);setBlockRange(null)}}>취소</button>
+            <button type="submit" className="timeblock-save" disabled={!blockDraft.trim()}>저장</button>
+          </div>
+        </form>
+      </div>}
+    </section>;
+  }
   const editTask = data.tasks.find((t) => t.id === editing);
   return (
     <div className="app">
@@ -1674,13 +1770,16 @@ export function App({
         >
           <span className="brand-mark">✳</span> Focus Flow
         </button>
-        <button className="header-pill" onClick={onLogout}>
-          로그아웃
-        </button>
+        <div className="header-actions">
+          <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => setTab("pom")} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={20}/></button>
+          <button className="header-pill" onClick={onLogout}>로그아웃</button>
+        </div>
       </header>
       <main>
         {tab === "today"
           ? Kanban()
+          : tab === "timeblocks"
+            ? TimeBlocks()
           : tab === "calendar"
             ? Calendar()
             : tab === "pom"
@@ -1692,9 +1791,9 @@ export function App({
       <nav className="bottom-nav">
         {[
           ["today", Columns3, "오늘"],
+          ["timeblocks", Clock3, "타임블록"],
           ["projects", FolderKanban, "프로젝트"],
           ["calendar", CalendarDays, "일정"],
-          ["pom", Timer, "뽀모도로"],
           ["karma", Heart, "카르마"],
         ].map(([id, Icon, label]) => (
           <button
