@@ -1123,8 +1123,18 @@ export function App({
                 <div className="timer-digits">
                   {pad(Math.floor(seconds / 60))}:{pad(seconds % 60)}
                 </div>
-                <div className="timer-round">완료한 집중 {round}회</div>
+
               </div>
+              <label className="tick-option">
+                <span>집중 종료 알림 <small>집중이 끝나면 땡~</small></span>
+                <input
+                  type="checkbox"
+                  checked={alarmEnabled}
+                  onChange={e => setAlarmEnabled(e.target.checked)}
+                  aria-label="집중 종료 알림 켜기"
+                />
+                <span className="tick-toggle" aria-hidden="true" />
+              </label>
               <label className="tick-option">
                 <span>
                   시계 초침 소리 <small>집중하는 동안 째깍째깍</small>
@@ -1176,16 +1186,7 @@ export function App({
                   </p>
                 )}
               </div>
-              <label className="tick-option" style={{ marginTop: 12 }}>
-                <span>집중 종료 알림음 <small>집중이 끝나면 땡~</small></span>
-                <input
-                  type="checkbox"
-                  checked={alarmEnabled}
-                  onChange={e => setAlarmEnabled(e.target.checked)}
-                  aria-label="집중 종료 알림음 켜기"
-                />
-                <span className="tick-toggle" aria-hidden="true" />
-              </label>
+
 
               <div className="timer-actions">
                 <button
