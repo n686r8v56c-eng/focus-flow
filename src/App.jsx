@@ -594,6 +594,41 @@ export function App({
       <button type="button" className="secondary" onClick={downloadKarma} style={{width:'100%',marginTop:14}}>전체 기록 다운로드하기 (CSV)</button>
     </section>;
   }
+  const moveTodayKanbanFromHandle = (taskId, targetStatus) => {
+    if (!['todo','doing','done'].includes(targetStatus)) return;
+    update(d => ({...d, tasks: d.tasks.map(t => t.id !== taskId ? t : ({
+      ...t, status: targetStatus,
+      completedAt: targetStatus === 'done' ? (t.completedAt || new Date().toISOString()) : null
+    }))}));
+  };
+  const handleKanbanPointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.stopPropagation();
+    clearPinHold();
+    const handle=e.currentTarget;
+    handle.dataset.dragging='true';
+    handle.style.background='#efe7fb';
+    handle.style.color='#795bb4';
+    try { handle.setPointerCapture(e.pointerId); } catch {}
+  };
+  const handleKanbanPointerUp = (e, taskId) => {
+    e.stopPropagation();
+    const handle=e.currentTarget;
+    if (handle.dataset.dragging !== 'true') return;
+    handle.dataset.dragging='false';
+    handle.style.background='';
+    handle.style.color='';
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    const lane=el?.closest('[data-today-kanban-lane]');
+    if (lane) moveTodayKanbanFromHandle(taskId,lane.getAttribute('data-today-kanban-lane'));
+    try { handle.releasePointerCapture(e.pointerId); } catch {}
+  };
+  const handleKanbanPointerCancel = e => {
+    const handle=e.currentTarget;
+    handle.dataset.dragging='false';
+    handle.style.background='';
+    handle.style.color='';
+  };
   function TaskCard({ task, compact = false }) {
     const p = taskProject(task),
       total = (task.subtasks || []).length,
@@ -622,6 +657,7 @@ export function App({
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div className="task-title" style={{ flex: 1, minWidth: 0 }}>
+            {Number.isFinite(task.pinOrder) && <span aria-label="고정됨" style={{marginRight:4}}>⭐</span>}
             {task.title}
           </div>
           {total > 0 && (
@@ -730,28 +766,21 @@ export function App({
             </div>
           ))}
         </div>
-        <div className="section-top">
-          <div>
-            <div className="eyebrow">
-              {new Date(visibleDate+"T12:00:00").toLocaleDateString("ko-KR", {
-                month: "long",
-                day: "numeric",
-                weekday: "long",
-              })}
+        <div className="today-heading-compact" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'nowrap',width:'100%'}}>
+          <div style={{minWidth:0,flex:'1 1 auto'}}>
+            <div className="eyebrow" style={{fontSize:11,whiteSpace:'nowrap'}}>
+              {new Date(visibleDate+'T12:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})}
             </div>
-            <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}><h1>오늘의 할 일</h1><ProgressBadge done={todayTasks.filter(t=>t.status === "done").length} total={todayTasks.length}/></div>
+            <h1 style={{fontSize:'clamp(19px,5vw,27px)',whiteSpace:'nowrap',margin:0}}>오늘의 할 일</h1>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:4}}><button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))}><ChevronLeft size={18}/></button><span style={{fontSize:12}}>{visibleDate===today?"오늘":visibleDate}</span><button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))}><ChevronRight size={18}/></button></div>
-          <button
-            className="primary small"
-            onClick={() => {
-              setModal("task");
-              setEditing(null);
-            }}
-          >
-            <Plus size={16} /> 추가
-          </button>
+          <div style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
+            <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:5,minWidth:28}}><ChevronLeft size={17}/></button>
+            <span style={{fontSize:12,whiteSpace:'nowrap',minWidth:24,textAlign:'center'}}>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
+            <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:5,minWidth:28}}><ChevronRight size={17}/></button>
+            <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center'}}><Plus size={20}/></button>
+          </div>
         </div>
+        <div style={{margin:'2px 0 12px'}}><ProgressBadge done={todayTasks.filter(t=>t.status === 'done').length} total={todayTasks.length}/></div>
         <div className="metrics">
           <span>
             전체 <b>{todayTasks.length}</b>
@@ -773,6 +802,7 @@ export function App({
             <div
               key={key}
               className="lane"
+              data-today-kanban-lane={key}
             >
               <div className={"lane-head " + key}>
                 <span>{label}</span>
@@ -783,7 +813,16 @@ export function App({
               <div className="lane-content">
                 {todayTasks
                   .filter((t) => t.status === key)
-                  .map(t => <TaskCard key={t.id} task={t}/>)}
+                  .map(t => <div key={t.id} className="today-kanban-task-row" style={{display:'flex',alignItems:'stretch',gap:5}}>
+                    <button type="button" aria-label={`${t.title} 칸반 이동 손잡이`}
+                      onClick={e=>e.stopPropagation()}
+                      onPointerDown={handleKanbanPointerDown}
+                      onPointerUp={e=>handleKanbanPointerUp(e,t.id)}
+                      onPointerCancel={handleKanbanPointerCancel}
+                      style={{touchAction:'none',userSelect:'none',WebkitUserSelect:'none',WebkitTouchCallout:'none',flex:'0 0 26px',padding:0,border:0,background:'transparent',color:'#a18bbe',borderRadius:7,fontSize:19,cursor:'grab'}}
+                    >⠿</button>
+                    <div style={{flex:1,minWidth:0}}><TaskCard task={t}/></div>
+                  </div>)}
                 {!todayTasks.some((t) => t.status === key) && (
                   <div className="empty-lane">여기로 카드를 끌어와</div>
                 )}
