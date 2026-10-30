@@ -872,6 +872,11 @@ export function App({
                           }}
                         />
                       ))}
+                      {items.length > 5 && (
+                        <span className="calendar-extra-count" aria-label={`추가 일정 ${items.length - 5}개`}>
+                          +{items.length - 5}
+                        </span>
+                      )}
                     </div>
                   </button>
                 );
