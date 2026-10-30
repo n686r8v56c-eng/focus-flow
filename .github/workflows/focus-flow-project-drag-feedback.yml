@@ -18,46 +18,51 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('src/App.jsx')
           s=p.read_text(encoding='utf-8')
-          handle='''          <button type="button" aria-label="드래그하여 순서 변경" onPointerDown={e=>startProjectDrag(e,t)} onContextMenu={e=>e.preventDefault()} onDragStart={e=>e.preventDefault()} style={{touchAction:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none",cursor:"grab",fontSize:22,color:"#9f8db7",padding:"8px",userSelect:"none",flexShrink:0}}>⠿</button>'''
-          if s.count(handle)!=1: raise SystemExit('Expected exactly one existing drag handle; file version differs')
-          s=s.replace(handle+'\n','',1)
-          first='''        <div className="project-list-item">
-          <button
-            className={"check-btn "'''
-          if s.count(first)!=1: raise SystemExit('Project task row anchor not unique')
-          new_handle=handle.replace('padding:"8px"','padding:"10px 6px"').replace('fontSize:22','fontSize:24')
-          s=s.replace(first,'''        <div className="project-list-item">
-          '''+new_handle+'''
-          <button
-            className={"check-btn "''',1)
-          old='''    const startY = event.clientY;
-              let targetId = null;'''
-          new='''    const startY = event.clientY;
-              let targetId = null;
-              const prior = { transform: row.style.transform, boxShadow: row.style.boxShadow, background: row.style.background, opacity: row.style.opacity, transition: row.style.transition, zIndex: row.style.zIndex, position: row.style.position };
+          marker='const renderItem = (t) => ('
+          start=s.find(marker, s.find('function Projects()'))
+          end=s.find('    return (', start+len(marker))
+          if start<0 or end<0: raise SystemExit('Project render block not found')
+          fragment=s[start:end]
+          pattern=r'(?m)^\s*<button type="button" aria-label="드래그하여 순서 변경"[^\n]*>⠿</button>\s*\n'
+          matches=list(re.finditer(pattern,fragment))
+          if len(matches)!=1: raise SystemExit(f'Expected one project drag handle; found {len(matches)}')
+          handle=matches[0].group().strip()
+          # Remove the old handle and insert before the checkbox, scoped to the Projects renderer.
+          fragment=re.sub(pattern,'',fragment,count=1)
+          row_start='<div className="project-list-item">'
+          if fragment.count(row_start)!=1:raise SystemExit('Project renderer row not unique')
+          handle=handle.replace('padding:"8px"','padding:"10px 6px"').replace('fontSize:22','fontSize:24')
+          fragment=fragment.replace(row_start,row_start+'\n          '+handle,1)
+          s=s[:start]+fragment+s[end:]
+          # Explicit immediate feedback at pointer-down, and restore on release/cancel.
+          start=s.find('const startProjectDrag = (event, task) => {')
+          end=s.find('  const removeTask =',start)
+          if start<0 or end<0:raise SystemExit('Project drag function not found')
+          drag=s[start:end]
+          anchor='    let targetId = null;'
+          if drag.count(anchor)!=1:raise SystemExit('Drag target anchor missing')
+          setup='''    const prior = { transform: row.style.transform, boxShadow: row.style.boxShadow, background: row.style.background, opacity: row.style.opacity, transition: row.style.transition, zIndex: row.style.zIndex, position: row.style.position };
               row.style.transition = 'transform 120ms ease, box-shadow 120ms ease, background 120ms ease';
               row.style.transform = 'scale(1.025)';
               row.style.boxShadow = '0 8px 24px rgba(127,97,181,.24), inset 0 0 0 2px #a58bd8';
               row.style.background = '#f7f2ff';
               row.style.position = 'relative';
               row.style.zIndex = '3';
-              if (navigator.vibrate) try { navigator.vibrate(12); } catch {}'''
-          if s.count(old)!=1:raise SystemExit('Drag setup anchor missing')
-          s=s.replace(old,new,1)
-          s=s.replace("      row.style.opacity = '.7';", "      row.style.opacity = '.88';",1)
-          s=s.replace("      if (targetId) target.style.boxShadow = 'inset 0 3px #a58bd8';", "      if (targetId) target.style.boxShadow = 'inset 0 4px #a58bd8, 0 0 0 2px #a58bd8';",1)
-          old_cleanup='''      row.style.opacity = '';
-                resetHighlights();'''
-          new_cleanup='''      Object.entries(prior).forEach(([key,value]) => {row.style[key] = value;});
-                resetHighlights();'''
-          if s.count(old_cleanup)!=1:raise SystemExit('Drag cleanup anchor missing')
-          s=s.replace(old_cleanup,new_cleanup,1)
-          # Prevent the reset loop from overwriting the active source card's purple shadow.
-          s=s.replace("for (const item of document.querySelectorAll('[data-project-task-id]')) item.style.boxShadow = '';", "for (const item of document.querySelectorAll('[data-project-task-id]')) if (item !== row) item.style.boxShadow = '';",1)
-          # Always normalize newly generated trailing spaces before git whitespace validation.
-          s='\n'.join(line.rstrip(' \\t\\r') for line in s.split('\n'))
+              if (navigator.vibrate) try {navigator.vibrate(12)} catch {}'''
+          if 'const prior = {' not in drag:
+              drag=drag.replace(anchor,anchor+'\n'+setup,1)
+          drag=drag.replace("for (const item of document.querySelectorAll('[data-project-task-id]')) item.style.boxShadow = '';", "for (const item of document.querySelectorAll('[data-project-task-id]')) if (item !== row) item.style.boxShadow = '';",1)
+          drag=drag.replace("row.style.opacity = '.7';","row.style.opacity = '.88';",1)
+          drag=drag.replace("if (targetId) target.style.boxShadow = 'inset 0 3px #a58bd8';","if (targetId) target.style.boxShadow = 'inset 0 4px #a58bd8, 0 0 0 2px #a58bd8';",1)
+          drag=drag.replace("      row.style.opacity = '';", "      Object.entries(prior).forEach(([key,value]) => {row.style[key] = value;});",1)
+          s=s[:start]+drag+s[end:]
+          s='\n'.join(line.rstrip(' \t\r') for line in s.split('\n'))
+          assert s.count('aria-label="드래그하여 순서 변경"')==1
+          assert s.index('aria-label="드래그하여 순서 변경"') < s.index('className={"check-btn "',s.index('const renderItem = (t)'))
+          assert 'Object.entries(prior)' in s
           p.write_text(s,encoding='utf-8')
           PY
       - name: Install and build
@@ -71,5 +76,5 @@ jobs:
           git add src/App.jsx
           git diff --cached --check
           if git diff --cached --quiet; then echo 'Already applied'; exit 0; fi
-          git commit -m 'Move project task drag handle left and add clear iOS drag feedback'
+          git commit -m 'Move project drag handle left and add clear iOS drag feedback'
           git push origin HEAD:main
