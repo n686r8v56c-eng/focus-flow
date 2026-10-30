@@ -1,0 +1,90 @@
+name: Focus Flow - Alert Order and Remove Duplicate Count
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply UI fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/App.jsx')
+          s = p.read_text(encoding='utf-8')
+
+          old_alarm = '''              <label className="tick-option" style={{ marginTop: 12 }}>
+                <span>집중 종료 알림음 <small>집중이 끝나면 땡~</small></span>
+                <input
+                  type="checkbox"
+                  checked={alarmEnabled}
+                  onChange={e => setAlarmEnabled(e.target.checked)}
+                  aria-label="집중 종료 알림음 켜기"
+                />
+                <span className="tick-toggle" aria-hidden="true" />
+              </label>'''
+
+          new_alarm = '''              <label className="tick-option">
+                <span>집중 종료 알림 <small>집중이 끝나면 땡~</small></span>
+                <input
+                  type="checkbox"
+                  checked={alarmEnabled}
+                  onChange={e => setAlarmEnabled(e.target.checked)}
+                  aria-label="집중 종료 알림 켜기"
+                />
+                <span className="tick-toggle" aria-hidden="true" />
+              </label>'''
+
+          tick_anchor = '''              <label className="tick-option">
+                <span>
+                  시계 초침 소리 <small>집중하는 동안 째깍째깍</small>
+                </span>'''
+
+          if old_alarm in s:
+              s = s.replace(old_alarm, '', 1)
+          else:
+              # Already moved once, just normalize the copy.
+              s = s.replace('집중 종료 알림음 <small>집중이 끝나면 땡~</small>', '집중 종료 알림 <small>집중이 끝나면 땡~</small>')
+              s = s.replace('aria-label="집중 종료 알림음 켜기"', 'aria-label="집중 종료 알림 켜기"')
+
+          if new_alarm not in s:
+              if tick_anchor not in s:
+                  raise SystemExit('Tick sound block not found')
+              s = s.replace(tick_anchor, new_alarm + "\n" + tick_anchor, 1)
+
+          old_round = '                <div className="timer-round">완료한 집중 {round}회</div>\n'
+          s = s.replace(old_round, '', 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Install
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git add src/App.jsx package-lock.json || true
+          git commit -m "Adjust pomodoro alert order and remove duplicate timer count"
+          git push
