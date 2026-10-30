@@ -624,6 +624,7 @@ export function App({
           <div className="task-title" style={{ flex: 1, minWidth: 0 }}>
             {task.title}
           </div>
+          <TaskEstimate count={task.estimatedPomodoros} />
         </div>
         {task.tally?.total > 0 && <button type="button" aria-label={`${task.title} 횟수 추가`} onClick={e=>{e.stopPropagation();advanceTally(task)}} style={{width:"100%",border:0,textAlign:"left",marginTop:6,padding:"8px 10px",borderRadius:9,fontWeight:650,background:`linear-gradient(to right,#efb7bc ${Math.min(100,100*(task.tally.count||0)/task.tally.total)}%,#f2eef5 0%)`}}>{task.tally.count||0}/{task.tally.total} · +{task.tally.step||1}</button>}
         {(task.tallies||[]).map((counter,i)=><button key={counter.id||i} type="button" aria-label={`${counter.label||task.title} 횟수 추가`} onClick={e=>{e.stopPropagation();advanceMultiTally(task,i)}} style={{width:"100%",border:0,textAlign:"left",marginTop:6,padding:"8px 10px",borderRadius:9,fontWeight:650,background:`linear-gradient(to right,#efb7bc ${Math.min(100,100*(counter.count||0)/Math.max(1,counter.total))}%,#f2eef5 0%)`}}>{counter.label?counter.label+" · ":""}{counter.count||0}/{counter.total} · +{counter.step||1}</button>)}
@@ -997,15 +998,7 @@ export function App({
         onSelectStart={e => e.preventDefault()}
         onDragStart={e => e.preventDefault()}
         style={{WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none',touchAction:'pan-y'}}>
-        <div className="project-list-item">
-          <button
-            className={"check-btn " + (t.status === "done" ? "checked" : "")}
-            onClick={() =>
-              completeOrStatus(t, t.status === "done" ? "todo" : "done")
-            }
-          >
-            {t.status === "done" && <Check size={15} />}
-          </button>
+        <div className="project-list-item compact-project-row">
           <div className="list-middle" onClick={() => {if(pinMenuId!==t.id)setEditing(t.id)}} style={{WebkitUserSelect:'none',userSelect:'none',WebkitTouchCallout:'none'}}>
             <strong className={t.status === "done" ? "struck" : ""}>
               {Number.isFinite(t.pinOrder) ? '⭐ ' : ''}{t.title}

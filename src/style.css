@@ -1438,3 +1438,28 @@ body,
 .today-compact-card .card-subtasks { margin-top: 4px; }
 .time-label-row {display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .time-label-row button {font-size:16px;min-height:28px;min-width:32px;padding:2px 6px;border:1px solid #e7dcf1;border-radius:8px;color:#8f78bb;background:#f7f2fb;}
+
+
+/* Focus Flow: compact project list and linked Today cards */
+.project-task-list .compact-project-row {
+  padding: 9px 12px;
+  gap: 9px;
+  min-height: 52px;
+}
+.project-task-list .compact-project-row .list-middle { gap: 2px; }
+.project-task-list .compact-project-row .task-pom-estimate { justify-content: center; }
+.linked-today-compact {
+  padding: 7px 9px !important;
+  gap: 5px !important;
+  border-radius: 12px !important;
+  min-height: 54px;
+}
+.linked-today-compact > button[role="checkbox"] {
+  width: 34px !important;
+  height: 36px !important;
+}
+.linked-today-compact > a { padding: 1px 0 !important; gap: 5px !important; }
+.linked-today-compact > a > div > div { line-height: 1.35 !important; }
+.linked-today-compact > a > div > div + div { margin-top: 2px !important; }
+.today-compact-card .task-pom-estimate { max-width: 90px; }
+.today-compact-card .task-pom-estimate svg { flex-shrink: 0; }
