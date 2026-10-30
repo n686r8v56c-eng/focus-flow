@@ -1,0 +1,65 @@
+name: Focus Flow - Pin Long Press No Copy Menu
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Fix pin interaction and sorting choices
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.jsx')
+          s=p.read_text(encoding='utf-8')
+          old='[projectSort, setProjectSort] = useState("manual")'
+          s=s.replace(old,'[projectSort, setProjectSort] = useState("earliest")')
+          s=s.replace('            <option value="manual">↕ 직접 정렬</option>\n','')
+          old_sort='''        return projectSort === "manual"
+          ? (a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||"")
+          : projectSortCompare(a,b);'''
+          if old_sort in s:
+              s=s.replace(old_sort,'        return projectSortCompare(a,b);',1)
+          if 'const beginPinHold = (event, id) =>' not in s: raise SystemExit('Pin function not found')
+          # Do not let native Safari selection/callout activate on the task text.
+          old='''        style={{WebkitTouchCallout:'none'}}>'''
+          new='''        style={{WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none',touchAction:'pan-y'}}>'''
+          if old not in s: raise SystemExit('Project task wrapper not found')
+          s=s.replace(old,new,1)
+          # Safari selection can be initiated from a nested strong/small even if the wrapper is disabled.
+          style=''' style={{WebkitUserSelect:'none',userSelect:'none',WebkitTouchCallout:'none'}}'''
+          marker='<div className="list-middle" onClick={() => {if(pinMenuId!==t.id)setEditing(t.id)}}>'
+          if marker not in s: raise SystemExit('Task title wrapper not found')
+          s=s.replace(marker,marker[:-1]+style+'>',1)
+          # Disable native long-tap text selection on this entire card. The React long-press timer remains active.
+          s=s.replace('onContextMenu={e => { e.preventDefault(); clearPinHold(); setPinMenuId(t.id); }}',
+                      'onContextMenu={e => { e.preventDefault(); clearPinHold(); setPinMenuId(t.id); }}\n        onSelectStart={e => e.preventDefault()}\n        onDragStart={e => e.preventDefault()}',1)
+          # Prevent the synthetic click after a successful long press from opening the detail sheet.
+          s=s.replace('onClick={() => {if(pinMenuId!==t.id)setEditing(t.id)}}',
+                      'onClick={() => {if(pinMenuId!==t.id)setEditing(t.id)}}',1)
+          if '↕ 직접 정렬' in s: raise SystemExit('Manual sort still present')
+          if 'onSelectStart={e => e.preventDefault()}' not in s: raise SystemExit('Selection protection missing')
+          p.write_text('\n'.join(line.rstrip() for line in s.split('\n')),encoding='utf-8')
+          PY
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit verified changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx
+          git diff --cached --check
+          if git diff --cached --quiet; then echo 'Already applied'; exit 0; fi
+          git commit -m 'Remove manual sort and stop Safari copy menu on pinned tasks'
+          git push origin HEAD:main
