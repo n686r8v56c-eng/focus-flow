@@ -1,0 +1,55 @@
+name: Focus Flow - Inline Date Arrows Only
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Fix date arrows on the same text baseline
+        run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          p=Path("src/App.jsx")
+          s=p.read_text(encoding="utf-8")
+          a=s.index('className="today-heading-compact"')
+          b=s.index('<section aria-label="오늘의 할 일 체크리스트"',a)
+          part=s[a:b]
+          old='''              <span aria-label="날짜 이동" style={{display:'inline-flex',alignItems:'center',gap:3,marginLeft:10,fontSize:12,fontWeight:600,color:'#957bb6',whiteSpace:'nowrap'}}>
+                          <button type="button" aria-label="어제" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{padding:2,minWidth:20,background:'transparent',color:'inherit',border:0}}><ChevronLeft size={14}/></button>
+                          <span>{visibleDate===today?'오늘':new Date(visibleDate+'T12:00:00').getDate()+'일'}</span>
+                          <button type="button" aria-label="내일" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{padding:2,minWidth:20,background:'transparent',color:'inherit',border:0}}><ChevronRight size={14}/></button>
+                        </span>'''
+          new='''              <span aria-label="날짜 이동" style={{display:'inline-flex',alignItems:'center',gap:2,marginLeft:8,fontSize:'inherit',fontWeight:'inherit',color:'inherit',whiteSpace:'nowrap',verticalAlign:'baseline'}}>
+                          <button type="button" aria-label="이전 날짜" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{appearance:'none',padding:0,width:16,height:18,minWidth:16,display:'inline-flex',alignItems:'center',justifyContent:'center',background:'transparent',color:'inherit',border:0,font:'inherit',lineHeight:1,cursor:'pointer'}}>{'<'}</button>
+                          <button type="button" aria-label="다음 날짜" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{appearance:'none',padding:0,width:16,height:18,minWidth:16,display:'inline-flex',alignItems:'center',justifyContent:'center',background:'transparent',color:'inherit',border:0,font:'inherit',lineHeight:1,cursor:'pointer'}}>{'>'}</button>
+                        </span>'''
+          if part.count(old)!=1: raise SystemExit('Date navigation anchor changed; nothing modified')
+          part=part.replace(old,new,1)
+          s=s[:a]+part+s[b:]
+          p.write_text(s,encoding='utf-8')
+          print('Date controls aligned inline')
+          PYCODE
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Commit verified change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m "Align date arrows inline with Today date"
+            git push
+          fi
