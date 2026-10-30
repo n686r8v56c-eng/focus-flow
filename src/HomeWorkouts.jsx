@@ -1,3 +1,4 @@
+import { linkedSteps, LinkedSteps } from "./LinkedSteps.jsx";
 import React, { useEffect, useState, useRef } from "react";
 import { Check, ChevronRight } from "lucide-react";
 const HOME = "https://home-fit-11n.pages.dev";
@@ -239,6 +240,7 @@ export function HomeWorkouts({ client, userId, today, checks = {}, onCheck }) {
               </div>
               <ChevronRight size={18} aria-hidden="true" style={{flexShrink:0}}/>
             </a>
+            <LinkedSteps items={linkedSteps(w, "home")} value={checks[checkKey(w)]?.subChecks} onChange={subChecks=>onCheck?.(checkKey(w),isDone(w),undefined,subChecks)}/>
           </li>;
         })}
       </ul>

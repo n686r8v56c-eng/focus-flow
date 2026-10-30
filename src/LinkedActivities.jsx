@@ -1,3 +1,4 @@
+import { linkedSteps, LinkedSteps } from "./LinkedSteps.jsx";
 import React, { useEffect, useState, useRef } from "react";
 import { Check, ChevronRight } from "lucide-react";
 const SOURCES={study:{origin:"https://memory-lab.pages.dev",title:"오늘 할 공부",name:"MEMORY LAB"},mind:{origin:"https://mind-flow-4r3.pages.dev",title:"오늘 할 명상",name:"Mind Flow"}};
@@ -242,6 +243,7 @@ export function LinkedActivities({ client, userId, today, checks = {}, onCheck, 
               </div>
               <ChevronRight size={18} aria-hidden="true" style={{flexShrink:0}}/>
             </a>
+            <LinkedSteps items={linkedSteps(w, source)} value={checks[checkKey(w)]?.subChecks} onChange={subChecks=>onCheck?.(checkKey(w),isDone(w),undefined,subChecks)}/>
           </li>;
         })}
       </ul>

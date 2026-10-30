@@ -833,19 +833,19 @@ export function App({
         <LinkedActivities
           source="study" client={bridgeClient} userId={bridgeUserId} today={today}
           checks={data.activityChecks || {}}
-          onCheck={(key, done, pinOrder) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{})}}}))}
+          onCheck={(key, done, pinOrder, subChecks) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}}))}
         />
         <HomeWorkouts
           client={bridgeClient}
           userId={bridgeUserId}
           today={today}
           checks={data.homeWorkoutChecks || {}}
-          onCheck={(key, done, pinOrder) => setData(d=>({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks||{}),[key]:{...(d.homeWorkoutChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{})}}}))}
+          onCheck={(key, done, pinOrder, subChecks) => setData(d=>({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks||{}),[key]:{...(d.homeWorkoutChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}}))}
         />
         <LinkedActivities
           source="mind" client={bridgeClient} userId={bridgeUserId} today={today}
           checks={data.activityChecks || {}}
-          onCheck={(key, done, pinOrder) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{})}}}))}
+          onCheck={(key, done, pinOrder, subChecks) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}}))}
         />
       </>
     );
