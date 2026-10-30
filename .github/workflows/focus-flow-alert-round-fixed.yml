@@ -1,0 +1,68 @@
+name: Focus Flow - Alert Order and Remove Duplicate Count (Fixed)
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: focus-flow-alert-round
+  cancel-in-progress: false
+jobs:
+  build-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Fix label and order regardless of indentation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path('src/App.jsx')
+          source = path.read_text(encoding='utf-8')
+          pattern = re.compile(r'<label\b[^>]*className="tick-option"[^>]*>.*?</label>', re.S)
+          labels = list(pattern.finditer(source))
+          alarm = [m for m in labels if 'checked={alarmEnabled}' in m.group()]
+          ticking = [m for m in labels if 'checked={tickSound}' in m.group()]
+          if len(alarm) != 1 or len(ticking) != 1:
+              raise SystemExit(f'Expected exactly one alarm and tick switch; found {len(alarm)}, {len(ticking)}')
+          alarm_match, tick_match = alarm[0], ticking[0]
+          alert = alarm_match.group()
+          alert = alert.replace('집중 종료 알림음', '집중 종료 알림')
+          alert = re.sub(r'\s+style=\{\{\s*marginTop:\s*12\s*\}\}', '', alert, count=1)
+          if alarm_match.start() > tick_match.start():
+              # Remove the original alarm block and insert directly above tick label.
+              source = source[:alarm_match.start()] + source[alarm_match.end():]
+              tick_match = next(m for m in pattern.finditer(source) if 'checked={tickSound}' in m.group())
+              source = source[:tick_match.start()] + alert + '\n              ' + source[tick_match.start():]
+          else:
+              source = source[:alarm_match.start()] + alert + source[alarm_match.end():]
+          source = re.sub(r'^[ \t]*<div className="timer-round">완료한 집중 \{round\}회</div>\n?', '', source, count=1, flags=re.M)
+          if source.count('checked={alarmEnabled}') != 1 or source.count('checked={tickSound}') != 1:
+              raise SystemExit('Validation failed: duplicated switch')
+          if source.index('checked={alarmEnabled}') >= source.index('checked={tickSound}'):
+              raise SystemExit('Validation failed: alert still below tick')
+          if '완료한 집중 {round}회' in source or '집중 종료 알림음 <small>' in source:
+              raise SystemExit('Validation failed: old UI remains')
+          path.write_text(source, encoding='utf-8')
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Commit verified UI only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/App.jsx
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'Already applied'
+          else
+            git commit -m 'Move completion alert above ticking and hide duplicate focus count'
+            git push origin HEAD:main
+          fi
