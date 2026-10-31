@@ -60,7 +60,7 @@ export function TimeLog({data,onDataChange}){
     </>}
     {section==='daily'&&<DailyTimeLine selected={dailyDate} onSelect={setDailyDate} entries={computed} colors={colors} now={now}/>}
     {section==='stats'&&<>
-      <div className="timelog-range">{[['7','7일'],['30','30일'],['90','90일']].map(([v,label])=><button type="button" key={v} className={period===v?'chosen':''} onClick={()=>setPeriod(v)}>{label}</button>)}</div>
+      <div className="timelog-range">{[['1','1일'],['7','7일'],['30','30일'],['90','90일']].map(([v,label])=><button type="button" key={v} className={period===v?'chosen':''} onClick={()=>setPeriod(v)}>{label}</button>)}</div>
       <div className="timelog-kpis"><div><small>총 기록 시간</small><strong>{minutesText(periodData.total)}</strong></div><div><small>하루 평균</small><strong>{minutesText(periodData.total/Number(period))}</strong></div></div>
       <h2>활동별 누적 시간</h2>{Object.entries(totals).sort((a,b)=>b[1]-a[1]).map(([name,ms])=><div className="timelog-stat" key={name}><div><span><i style={{background:colors[name]||'#A68CCF'}}/>{name}</span><strong>{minutesText(ms)} · {periodData.total?Math.round(ms/periodData.total*100):0}%</strong></div><div className="timelog-track"><div style={{width:`${periodData.total?ms/periodData.total*100:0}%`,background:colors[name]||'#A68CCF'}}/></div></div>)}{!periodData.total&&<p className="timelog-empty">아직 기록이 없어.</p>}
       <h2>일별 기록</h2><div className="timelog-bars">{statsDays.map(d=><div key={d.date} title={`${d.date} · ${minutesText(d.total)}`}><div className="timelog-bar" style={{height:`${Math.max(d.total?3:0,d.total/maxDay*100)}%`}}/><small>{Number(d.date.slice(-2))}</small></div>)}</div>
@@ -117,7 +117,7 @@ function DailyTimeLine({selected,onSelect,entries,colors,now}){
           const height=(segment.to-segment.from)/3600000*hourHeight;
           const color=colors[segment.activity]||'#A68CCF';
           return <div key={`${segment.id}-${i}`} className="timelog-daily-block" title={`${segment.activity}: ${formatTime(segment.from)}–${formatTime(segment.to)}`} style={{top,height,minHeight:0,borderLeftColor:color,backgroundColor:`color-mix(in srgb, ${color} 22%, white)`}}>
-            {height>=18&&<div className="timelog-daily-block-content"><strong>{segment.activity}</strong>{height>=45&&<small>{formatTime(segment.from)}–{segment.live?'기록 중':formatTime(segment.to)} · {minutesText(segment.to-segment.from)}</small>}</div>}
+            {height>=18&&<div className="timelog-daily-block-content"><div className="timelog-daily-block-heading"><strong>{segment.activity}</strong><span>{formatTime(segment.from)}–{segment.live?'진행 중':formatTime(segment.to)}</span></div>{height>=60&&<small>{minutesText(segment.to-segment.from)}</small>}</div>}
           </div>;
         })}
       </div>
