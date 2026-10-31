@@ -807,11 +807,13 @@ export function App({
           <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center',flexShrink:0}}><Plus size={20}/></button>
         </div>
 
-        {!collapsedToday.tasks && <div role="tablist" aria-label="오늘의 할 일 구분" style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:4,background:'#f0ebf5',borderRadius:14,padding:4,marginBottom:12}}>
-          {[['project','프로젝트'],['personal','개인 일정']].map(([key,label])=><button key={key} type="button" role="tab" aria-selected={todayTaskTab===key} onClick={()=>setTodayTaskTab(key)} style={{border:0,borderRadius:11,padding:'10px 6px',background:todayTaskTab===key?'#a18bd0':'transparent',color:todayTaskTab===key?'white':'#8e819f',fontSize:14,fontWeight:750,cursor:'pointer',minWidth:0}}>{label} <span style={{fontSize:11,opacity:.85}}>{todayTasks.filter(t=>key==='project'?Boolean(taskProject(t)):!taskProject(t)).length}</span></button>)}
-        </div>}
-        <section aria-label="오늘의 할 일 체크리스트" style={{display:collapsedToday.tasks?"none":'grid',gap:7,marginBottom:15}}>
-          {todayVisibleTasks.filter(t=>t.status!=='done').map(t=>{
+        {!collapsedToday.tasks && <div style={{display:'grid',gap:20,marginBottom:15}}>
+          {[['project','프로젝트'],['personal','개인 일정']].map(([groupKey,groupLabel])=>{
+            const groupTasks=todayTasks.filter(t=>groupKey==='project'?Boolean(taskProject(t)):!taskProject(t));
+            const groupCompleted=groupTasks.filter(t=>t.status==='done');
+            return <section key={groupKey} aria-label={groupLabel} style={{display:'grid',gap:7}}>
+              <div style={{display:'flex',alignItems:'baseline',gap:9,marginTop:6,marginBottom:3}}><h2 style={{fontSize:18,margin:0}}>{groupLabel}</h2><ProgressBadge done={groupCompleted.length} total={groupTasks.length}/></div>
+          {groupTasks.filter(t=>t.status!=='done').map(t=>{
             const subtasks=t.subtasks||[];
             const count=subtasks.filter(x=>x.done).length;
             const proj=taskProject(t);
@@ -840,9 +842,9 @@ export function App({
               {pinMenuId===t.id&&<div onClick={e=>e.stopPropagation()} style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:8}}><button type="button" onClick={()=>togglePin(t)}>{Number.isFinite(t.pinOrder)?'☆ 고정 해제':'⭐ 맨 위에 고정'}</button><button type="button" onClick={()=>setPinMenuId(null)}>닫기</button></div>}
             </div>;
           })}
-          {!todayVisibleTasks.some(t=>t.status!=='done')&&<div style={{padding:18,textAlign:'center',color:'#a397ae'}}>남은 할 일이 없어 🎉</div>}
-          <button type="button" aria-expanded={!!todayCompletedOpen[todayTaskTab]} onClick={()=>setTodayCompletedOpen(v=>({...v,[todayTaskTab]:!v[todayTaskTab]}))} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',border:0,borderRadius:12,padding:'12px 14px',marginTop:8,background:'#f0ebf5',color:'#8874ad',fontWeight:750,fontSize:13,cursor:'pointer'}}><span>완료한 할 일 ({todayCompletedVisible.length})</span><ChevronDown size={17} style={{transform:todayCompletedOpen[todayTaskTab]?'rotate(180deg)':'none'}}/></button>
-          {todayCompletedOpen[todayTaskTab]&&todayCompletedVisible.map(t=>{
+          {!groupTasks.some(t=>t.status!=='done')&&<div style={{padding:18,textAlign:'center',color:'#a397ae'}}>남은 할 일이 없어 🎉</div>}
+          <button type="button" aria-expanded={!!todayCompletedOpen[groupKey]} onClick={()=>setTodayCompletedOpen(v=>({...v,[groupKey]:!v[groupKey]}))} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',border:0,borderRadius:12,padding:'12px 14px',marginTop:8,background:'#f0ebf5',color:'#8874ad',fontWeight:750,fontSize:13,cursor:'pointer'}}><span>완료한 할 일 ({groupCompleted.length})</span><ChevronDown size={17} style={{transform:todayCompletedOpen[groupKey]?'rotate(180deg)':'none'}}/></button>
+          {todayCompletedOpen[groupKey]&&groupCompleted.map(t=>{
             const proj=taskProject(t);
             const subtasks=t.subtasks||[];
             const count=subtasks.filter(x=>x.done).length;
@@ -852,7 +854,9 @@ export function App({
               {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`}><circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/><circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/></svg>}
             </div>;
           })}
-        </section>
+            </section>;
+          })}
+        </div>}
         {!collapsedToday.tasks && <p className="hint">
           미완료 투두는 다음 날에도 표시돼. 완료한 일은 아래에 모아 보여줘. 원래 날짜와 시간은 보존해.
         </p>}
