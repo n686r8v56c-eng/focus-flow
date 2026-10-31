@@ -52,3 +52,11 @@
 .timelog-daily-block-content{padding:2px 7px;display:flex;flex-direction:column;gap:2px;font-size:12px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .timelog-daily-block-content small{color:#6c6078;font-size:10px;white-space:nowrap}
 @media(max-width:380px){.timelog-daily-hour span{width:52px;flex-basis:52px}.timelog-daily-track{left:52px}.timelog-daily-block-content{padding-left:4px}}
+
+/* Daily log: morning, afternoon, evening, with enlarged hourly rows. */
+.timelog-daily-periods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:5px;border-radius:16px;background:#f1ecf6;margin:15px 0 4px}
+.timelog-daily-periods button{min-width:0;border:0;border-radius:12px;background:transparent;color:#837596;padding:11px 4px;font-size:15px;font-weight:700}
+.timelog-daily-periods button.selected{background:#a38bd2;color:white}
+.timelog-daily-block-content{padding:3px 8px;font-size:12px;line-height:1.2;gap:3px}
+.timelog-daily-block-content strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timelog-daily-block-content small{font-size:10px}

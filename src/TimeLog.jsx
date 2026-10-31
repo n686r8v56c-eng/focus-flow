@@ -78,13 +78,19 @@ export function TimeLog({data,onDataChange}){
 // Visual day runs from 06:00 until 06:00 the following morning.
 // A session's exact start/end timestamps determine its position and height.
 function DailyTimeLine({selected,onSelect,entries,colors,now}){
+  const [period,setPeriod]=useState('morning');
+  const periods=[{id:'morning',label:'오전',start:6,hours:6},{id:'afternoon',label:'오후',start:12,hours:6},{id:'evening',label:'저녁',start:18,hours:12}];
+  const currentPeriod=periods.find(p=>p.id===period)||periods[0];
   const selectedDate=new Date(`${selected}T12:00:00`);
   const weekStart=startOfWeek(selectedDate);
   const weekDays=Array.from({length:7},(_,i)=>{const d=new Date(weekStart);d.setDate(d.getDate()+i);return d;});
   const dayStart=new Date(`${selected}T06:00:00`).getTime();
   const dayEnd=new Date(dayStart);dayEnd.setDate(dayEnd.getDate()+1);
   const end=dayEnd.getTime();
-  const hourHeight=66;
+  const hourHeight=140;
+  const periodStart=new Date(`${selected}T06:00:00`);periodStart.setHours(currentPeriod.start,0,0,0);
+  const periodStartMs=periodStart.getTime();
+  const periodEndMs=periodStartMs+currentPeriod.hours*3600000;
   const segments=entries.flatMap(entry=>{
     const start=Date.parse(entry.start);
     const finish=entry.id==='currently-running'?now:Date.parse(entry.end);
@@ -93,27 +99,29 @@ function DailyTimeLine({selected,onSelect,entries,colors,now}){
     if(to<=from)return [];
     return [{...entry,from,to,live:entry.id==='currently-running'}];
   }).sort((a,b)=>a.from-b.from);
-  const total=segments.reduce((n,s)=>n+(s.to-s.from),0);
+  const visibleSegments=segments.map(s=>({...s,from:Math.max(s.from,periodStartMs),to:Math.min(s.to,periodEndMs)})).filter(s=>s.to>s.from);
+  const total=visibleSegments.reduce((n,s)=>n+(s.to-s.from),0);
   const formatTime=t=>new Date(t).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
   const shiftWeek=delta=>{const d=new Date(`${selected}T12:00:00`);d.setDate(d.getDate()+delta*7);onSelect(dateKey(d));};
   return <div className="timelog-daily">
     <div className="timelog-daily-week-nav"><button type="button" onClick={()=>shiftWeek(-1)} aria-label="이전 주"><ChevronLeft size={19}/></button><strong>{weekStart.getFullYear()}년 {weekStart.getMonth()+1}월</strong><button type="button" onClick={()=>shiftWeek(1)} aria-label="다음 주"><ChevronRight size={19}/></button></div>
     <div className="timelog-daily-week">{weekDays.map((day,i)=><button type="button" key={dateKey(day)} onClick={()=>onSelect(dateKey(day))} className={selected===dateKey(day)?'selected':''}><small>{['월','화','수','목','금','토','일'][i]}</small><span>{day.getDate()}</span></button>)}</div>
     <div className="timelog-daily-selected">{selectedDate.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'})}</div>
-    <div className="timelog-daily-total">총 기록 {minutesText(total)} <span>06:00–다음 날 06:00</span></div>
-    <div className="timelog-daily-grid" style={{height:24*hourHeight}}>
-      {Array.from({length:24},(_,i)=>{const hour=(6+i)%24;return <div className="timelog-daily-hour" key={i} style={{top:i*hourHeight,height:hourHeight}}><span>{pad(hour)}:00</span></div>})}
+    <div className="timelog-daily-periods" role="tablist" aria-label="데일리 시간대">{periods.map(p=><button type="button" key={p.id} role="tab" aria-selected={period===p.id} className={period===p.id?'selected':''} onClick={()=>setPeriod(p.id)}>{p.label}</button>)}</div>
+    <div className="timelog-daily-total">총 기록 {minutesText(total)} <span>{currentPeriod.id==='morning'?'06:00–12:00':currentPeriod.id==='afternoon'?'12:00–18:00':'18:00–다음 날 06:00'}</span></div>
+    <div className="timelog-daily-grid" style={{height:currentPeriod.hours*hourHeight}}>
+      {Array.from({length:currentPeriod.hours},(_,i)=>{const hour=(currentPeriod.start+i)%24;return <div className="timelog-daily-hour" key={i} style={{top:i*hourHeight,height:hourHeight}}><span>{pad(hour)}:00</span></div>})}
       <div className="timelog-daily-track">
-        {segments.map((segment,i)=>{
-          const top=(segment.from-dayStart)/3600000*hourHeight;
+        {visibleSegments.map((segment,i)=>{
+          const top=(segment.from-periodStartMs)/3600000*hourHeight;
           const height=(segment.to-segment.from)/3600000*hourHeight;
           const color=colors[segment.activity]||'#A68CCF';
           return <div key={`${segment.id}-${i}`} className="timelog-daily-block" title={`${segment.activity}: ${formatTime(segment.from)}–${formatTime(segment.to)}`} style={{top,height,minHeight:0,borderLeftColor:color,backgroundColor:`color-mix(in srgb, ${color} 22%, white)`}}>
-            {height>=20&&<div className="timelog-daily-block-content"><strong>{segment.activity}</strong>{height>=36&&<small>{formatTime(segment.from)}–{segment.live?'기록 중':formatTime(segment.to)} · {minutesText(segment.to-segment.from)}</small>}</div>}
-          </div>
+            {height>=18&&<div className="timelog-daily-block-content"><strong>{segment.activity}</strong>{height>=45&&<small>{formatTime(segment.from)}–{segment.live?'기록 중':formatTime(segment.to)} · {minutesText(segment.to-segment.from)}</small>}</div>}
+          </div>;
         })}
       </div>
     </div>
-    {segments.length===0&&<p className="timelog-empty">선택한 시간대에 기록된 활동이 없어.</p>}
+    {visibleSegments.length===0&&<p className="timelog-empty">선택한 시간대에 기록된 활동이 없어.</p>}
   </div>;
 }
