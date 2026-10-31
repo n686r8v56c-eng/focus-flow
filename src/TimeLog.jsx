@@ -29,7 +29,7 @@ const colorForActivity = name => {
   for (const char of name) hash=(Math.imul(hash,31)+char.codePointAt(0))|0;
   return extraColors[(hash>>>0)%extraColors.length];
 };
-export function TimeLog({data,onDataChange}){
+export function TimeLog({data,onDataChange,client,userId}){
   const [section,setSection]=useState('record');
   const [dailyDate,setDailyDate]=useState(dateKey(new Date()));
   const [now,setNow]=useState(Date.now());
@@ -38,38 +38,52 @@ export function TimeLog({data,onDataChange}){
   const [selected,setSelected]=useState(dateKey(new Date()));
   const [period,setPeriod]=useState('7');
   const record=data.timeLog||{};
-  const active=record.active||null;
-  const logs=Array.isArray(record.entries)?record.entries:[];
+  const [server,setServer]=useState({active:null,entries:[],ready:false});
+  const [syncError,setSyncError]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [pollNonce,setPollNonce]=useState(0);
+  const bootstrapped=React.useRef(false);
+  const commandVersion=React.useRef(0);
+  const active=server.active;
+  const logs=server.entries;
+  useEffect(()=>{
+    if(!client||!userId)return;
+    let live=true;
+    const refresh=async()=>{
+      const rev=commandVersion.current;
+      try{
+        const isBoot=!bootstrapped.current;
+        const {data:result,error}=await client.rpc('focus_timelog_action',isBoot?{p_action:'bootstrap',p_legacy:record.entries||[],p_legacy_active:record.active||null}:{p_action:'read'});
+        if(!error)bootstrapped.current=true;
+        if(error)throw error;
+        if(live&&rev===commandVersion.current){setServer({...result,ready:true});setSyncError('');}
+      }catch(error){if(live)setSyncError('서버 동기화 확인이 필요해. SQL 설치와 연결 상태를 확인해 줘.');}
+    };
+    refresh();
+    const interval=setInterval(refresh,5000);
+    const handleVisibility=()=>{if(document.visibilityState==='visible')refresh();};
+    document.addEventListener('visibilitychange',handleVisibility);
+    const channel=client.channel(`timelog-${userId}`)
+      .on('postgres_changes',{event:'*',schema:'public',table:'focus_timelog_active',filter:`user_id=eq.${userId}`},refresh)
+      .on('postgres_changes',{event:'*',schema:'public',table:'focus_timelog_entries',filter:`user_id=eq.${userId}`},refresh)
+      .subscribe();
+    return ()=>{live=false;clearInterval(interval);document.removeEventListener('visibilitychange',handleVisibility);client.removeChannel(channel);};
+  },[client,userId,pollNonce]);
+  const command=async(action,activity)=>{
+    if(busy)return;
+    commandVersion.current+=1;setBusy(true);setSyncError('');
+    try{
+      const {data:result,error}=await client.rpc('focus_timelog_action',{p_action:action,p_activity:activity||null});
+      if(error)throw error;
+      setServer({...result,ready:true});
+    }catch(e){setSyncError('명령이 저장되지 않았어. 다시 시도해 줘.');}
+    finally{setBusy(false);}
+  };
   const activities=[...new Set([...initialActivities,...(record.activities||[])])];
   useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return ()=>clearInterval(id)},[]);
   const save=fn=>onDataChange(d=>({...d,timeLog:fn(d.timeLog||{})}));
-  const completedEntry = (current, end) => current ? {
-    // Stable ID prevents duplicate entries when two devices end the same run.
-    id: `log-${current.id || `${current.activity}-${current.start}`}`,
-    activity:current.activity,start:current.start,end
-  } : null;
-  const begin=name=>{
-    const time=new Date().toISOString();
-    const actionId=crypto.randomUUID();
-    save(prev=>{
-      const finished=completedEntry(prev.active,time);
-      return {...prev,
-        entries:[...(prev.entries||[]),...(finished?[finished]:[])],
-        active:{id:actionId,activity:name,start:time,updatedAt:time},
-        lastAction:{id:actionId,at:time,type:'start',activity:name}
-      };
-    });
-  };
-  const stop=()=>{
-    const time=new Date().toISOString();
-    const actionId=crypto.randomUUID();
-    save(prev=>{
-      if (!prev.active) return prev;
-      const finished=completedEntry(prev.active,time);
-      return {...prev,entries:[...(prev.entries||[]),finished],active:null,
-        lastAction:{id:actionId,at:time,type:'stop'}};
-    });
-  };
+  const begin=name=>command('start',name);
+  const stop=()=>command('stop');
   const activeMs=active?Math.max(0,now-Date.parse(active.start)):0;
   const computed=active?[...logs,{id:'currently-running',activity:active.activity,start:active.start,end:new Date(now).toISOString()}]:logs;
   const colors=Object.fromEntries(activities.map(a=>[a,colorForActivity(a)]));
@@ -88,12 +102,15 @@ export function TimeLog({data,onDataChange}){
   const maxDay=Math.max(1,...statsDays.map(x=>x.total));
   const moveMonth=delta=>{const d=new Date(month+'-01T00:00:00');d.setMonth(d.getMonth()+delta);setMonth(dateKey(d).slice(0,7));setSelected(dateKey(d));};
   return <section className="timelog-page">
+    {syncError&&<div role="alert" className="auth-error">{syncError} <button type="button" onClick={()=>setPollNonce(n=>n+1)}>재시도</button></div>}
+    
+    {!server.ready&&<p className="timelog-empty">타임로그 서버 기록 불러오는 중…</p>}
     <h1>타임로그</h1>
     <div className="timelog-tabs" role="tablist" aria-label="타임로그 메뉴">{[['record','기록'],['daily','데일리'],['stats','통계'],['calendar','캘린더']].map(([id,label])=><button key={id} type="button" role="tab" aria-selected={section===id} className={section===id?'chosen':''} onClick={()=>setSection(id)}>{label}</button>)}</div>
     {section==='record'&&<>
-      <div className="timelog-counter"><div className="timelog-counter-label">{active?`${active.activity} · 기록 중`:'기록 대기'}</div><div className="timelog-clock">{elapsed(activeMs)}</div>{active?<button type="button" className="timelog-primary" onClick={stop}>종료 및 저장</button>:<p>활동을 선택하면 측정이 시작돼.</p>}</div>
+      <div className="timelog-counter"><div className="timelog-counter-label">{active?`${active.activity} · 기록 중`:'기록 대기'}</div><div className="timelog-clock">{elapsed(activeMs)}</div>{active?<button type="button" className="timelog-primary" disabled={busy||!server.ready} onClick={stop}>종료 및 저장</button>:<p>활동을 선택하면 측정이 시작돼.</p>}</div>
       <div className="timelog-kpis"><div><small>오늘</small><strong>{minutesText(todayTotal)}</strong></div><div><small>이번 주 (월–일)</small><strong>{minutesText(weekTotal)}</strong></div></div>
-      <h2>활동 목록</h2><div className="timelog-activities">{activities.map(name=><div className="timelog-activity" key={name}><span><i style={{background:colors[name]}}/>{name}</span><button type="button" className={active?.activity===name?'recording':''} disabled={active?.activity===name} onClick={()=>begin(name)}>{active?.activity===name?'기록 중':active?'전환':'시작'}</button></div>)}</div>
+      <h2>활동 목록</h2><div className="timelog-activities">{activities.map(name=><div className="timelog-activity" key={name}><span><i style={{background:colors[name]}}/>{name}</span><button type="button" className={active?.activity===name?'recording':''} disabled={busy||!server.ready||active?.activity===name} onClick={()=>begin(name)}>{active?.activity===name?'기록 중':active?'전환':'시작'}</button></div>)}</div>
       <form className="timelog-add" onSubmit={e=>{e.preventDefault();const name=newActivity.trim().slice(0,40);if(!name||activities.includes(name))return;save(prev=>({...prev,activities:[...(prev.activities||[]),name]}));setNewActivity('')}}><input aria-label="새 활동 이름" placeholder="새 활동 추가" value={newActivity} onChange={e=>setNewActivity(e.target.value)}/><button type="submit" disabled={!newActivity.trim()}><Plus size={17}/> 추가</button></form>
     </>}
     {section==='daily'&&<DailyTimeLine selected={dailyDate} onSelect={setDailyDate} entries={computed} colors={colors} now={now}/>}

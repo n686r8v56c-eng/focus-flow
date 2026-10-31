@@ -1831,7 +1831,7 @@ export function App({
         {tab === "today"
           ? Kanban()
           : tab === "timelog"
-            ? <TimeLog data={data} onDataChange={setData}/>
+            ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
           : tab === "timeblocks"
             ? TimeBlocks()
           : tab === "calendar"
