@@ -460,57 +460,66 @@ export function App({
       voice.start(0);
     } catch (error) { console.warn('종소리 재생 실패', error); }
   }
-  function finishPom() {
-    if (endAt.current === null) return;
-    const finishedAt = endAt.current;
-    if(alarmEnabled) ringBell();
-    const { pomTask, mode, round } = latest.current;
-    setRunning(false);
-    endAt.current = null;
-    if (mode === "focus") {
-      if (customFocusMinutes >= 1) update((d) => ({
-        ...d,
-        sessions: [
-          ...(d.sessions || []),
-          {
-            id: uid(),
-            taskId: pomTask || null,
-            minutes: customFocusMinutes,
-            endedAt: new Date(finishedAt).toISOString(),
-          },
-        ],
-      }));
-      setToast(customFocusMinutes >= 1 ? `집중 ${customFocusMinutes}분 완료! 기록에 저장했어.` : "1분 미만은 기록하지 않아.");
-      setRound(round + 1);
-      setMode("break");
-      setSeconds((round + 1) % 4 === 0 ? 900 : 300);
-    } else {
-      setMode("focus");
-      setSeconds(customFocusMinutes * 60);
-      setToast("휴식 끝! 다음 집중을 시작해봐.");
-    }
-  }
-  useEffect(() => {
-    if (!running) return;
-    endAt.current = Date.now() + seconds * 1000;
-    const tick = () => {
-      if (endAt.current === null) return;
-      let left = Math.max(0, Math.ceil((endAt.current - Date.now()) / 1000));
-      setSeconds(left);
-      if (left === 0) finishPom();
-    };
-    const i = setInterval(tick, 250);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      clearInterval(i);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [running]);
+  // Server timer is authoritative. Local ticks only render its deadline.
+  const [pomReady,setPomReady] = useState(false);
+  const [pomBusy,setPomBusy] = useState(false);
+  const [pomError,setPomError] = useState('');
+  const [remotePomSessions,setRemotePomSessions] = useState([]);
+  const pomRemote = useRef(null);
+  const pomBusyRef = useRef(false);
+  const lastPomRevision = useRef(-1);
+  const applyPomResponse = (result) => {
+    if (!result?.state) return;
+    const p=result.state;
+    if (Number(p.revision)<lastPomRevision.current) return;
+    lastPomRevision.current=Number(p.revision);
+    pomRemote.current=p;
+    setMode(p.mode);
+    setRound(Number(p.round)||0);
+    setCustomFocusMinutes(Number(p.focusMinutes)||0);
+    setPomTask(p.taskId||'');
+    const until=p.runningUntil?Date.parse(p.runningUntil):null;
+    endAt.current=until;
+    setRunning(Boolean(until));
+    setSeconds(until?Math.max(0,Math.ceil((until-Date.now())/1000)):Number(p.remainingSeconds)||0);
+    setRemotePomSessions(Array.isArray(result.sessions)?result.sessions:[]);
+    setPomReady(true);
+    setPomError('');
+  };
+  const pomAction = async (action,args={},quiet=false) => {
+    if (!bridgeClient || pomBusyRef.current) return;
+    pomBusyRef.current=true;
+    if (!quiet) setPomBusy(true);
+    try {
+      const {data:result,error}=await bridgeClient.rpc('focus_pomodoro_action',{
+        p_action:action,p_focus_minutes:args.minutes??null,p_task_id:args.taskId??null,p_mode:args.mode??null
+      });
+      if(error) throw error;
+      applyPomResponse(result);
+    }catch(e){if(!quiet)setPomError('서버 타이머 동기화 실패. 연결과 SQL 설치를 확인해 줘.');}
+    finally{pomBusyRef.current=false;if(!quiet)setPomBusy(false);}
+  };
+  useEffect(()=>{
+    if (!bridgeClient || !bridgeUserId) {setPomError('로그인이 필요해.');return;}
+    void pomAction('read');
+    const timer=setInterval(()=>void pomAction('read',{},true),3000);
+    const onVisible=()=>{if(document.visibilityState==='visible')void pomAction('read',{},true)};
+    document.addEventListener('visibilitychange',onVisible);
+    return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',onVisible)};
+  },[bridgeClient,bridgeUserId]);
+  useEffect(()=>{
+    if (!running || !endAt.current) return;
+    const tick=()=>setSeconds(Math.max(0,Math.ceil((endAt.current-Date.now())/1000)));
+    const timer=setInterval(tick,250);
+    return()=>clearInterval(timer);
+  },[running]);
+  const pomSessions=[...(data.sessions||[]),...remotePomSessions].filter((s,i,a)=>a.findIndex(x=>String(x.id)===String(s.id))===i);
   const changeFocusMinutes = (minutes) => {
     const next = Math.max(0, Math.min(60, Math.round(minutes)));
     dialValue.current = next;
     setCustomFocusMinutes(next);
     setSeconds(next * 60);
+    void pomAction("configure",{minutes:next});
   };
   const dialAngle = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -536,10 +545,7 @@ export function App({
   };
   const dialEnd = () => { dialDrag.current = null; };
   const resetTimer = (m = mode) => {
-    setRunning(false);
-    endAt.current = null;
-    setMode(m);
-    setSeconds(m === "focus" ? customFocusMinutes*60 : 300);
+    void pomAction('configure',{mode:m,minutes:customFocusMinutes});
   };
   function dateItems(date) {
     return data.tasks.filter(
@@ -1229,11 +1235,12 @@ export function App({
     );
   }
   function Pomodoro() {
-    const sessionsToday = data.sessions.filter(
+    const sessionsToday = pomSessions.filter(
       (s) => localDate(new Date(s.endedAt)) === today,
     );
     return (
       <>
+        {pomError && <p role="alert" style={{color:"#b34b62"}}>{pomError}</p>}
         <div className="section-top">
           <div>
             <div className="eyebrow">투두와 연결되는 집중 기록</div>
@@ -1264,7 +1271,7 @@ export function App({
                 className="select-full"
                 disabled={running}
                 value={pomTask}
-                onChange={(e) => setPomTask(e.target.value)}
+                onChange={(e) => {setPomTask(e.target.value);void pomAction("configure",{taskId:e.target.value});}}
               >
                 <option value="">할 일 선택 (선택 사항)</option>
                 {todayNotDone.map((t) => (
@@ -1369,20 +1376,11 @@ export function App({
                 </button>
                 <button
                   className="primary start"
+                  disabled={!pomReady || pomBusy}
                   onClick={() => {
-                    if (!running && mode === "focus" && seconds === 0) { setToast("집중 시간을 1분 이상 설정해 줘."); return; }
-                    if (!running) {
-                      activateAudio().catch(reportAudioError);
-                    } else if (endAt.current !== null) {
-                      setSeconds(
-                        Math.max(
-                          0,
-                          Math.ceil((endAt.current - Date.now()) / 1000),
-                        ),
-                      );
-                      endAt.current = null;
-                    }
-                    setRunning((v) => !v);
+                    if (!running && mode==='focus' && seconds===0) {setToast('집중 시간을 1분 이상 설정해 줘.');return;}
+                    if (!running) activateAudio().catch(reportAudioError);
+                    void pomAction(running?'pause':'start');
                   }}
                 >
                   {running ? (
@@ -1394,7 +1392,8 @@ export function App({
                 </button>
                 <button
                   className="stop-btn"
-                  onClick={() => {const left=running&&endAt.current?Math.max(0,Math.ceil((endAt.current-Date.now())/1000)):seconds;const elapsed=Math.max(0,customFocusMinutes*60-left);if(mode==="focus"&&elapsed>=60){update(d=>({...d,sessions:[...(d.sessions||[]),{id:uid(),taskId:pomTask||null,minutes:Number((elapsed/60).toFixed(2)),endedAt:new Date().toISOString(),partial:true}]}));setToast("진행한 집중 시간을 기록했어.");}resetTimer(mode)}}
+                  disabled={!pomReady || pomBusy}
+                  onClick={() => void pomAction('stop')}
                   aria-label="정지"
                 >
                   <Square size={18} /> 정지
@@ -1434,7 +1433,7 @@ export function App({
     );
   }
   function PomStats() {
-    const sessions = data.sessions || [],
+    const sessions = pomSessions,
       total = sessions.reduce((n, s) => n + (Number(s.minutes) || 0), 0),
       weekStart = dayAdd(today, -6),
       week = sessions.filter(
