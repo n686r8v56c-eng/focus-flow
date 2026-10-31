@@ -40,6 +40,17 @@ const dayAdd = (s, n) => {
   const [y, m, d] = s.split("-").map(Number);
   return localDate(new Date(y, m - 1, d + n));
 };
+const koreanWeekLabel = (due) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due || "")) return "일정 없음";
+  const [year, month, day] = due.split("-").map(Number);
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  const mondayOffset = (firstDay + 6) % 7;
+  return `${year}년 ${month}월 ${Math.ceil((day + mondayOffset) / 7)}주차`;
+};
+const byDueThenTitle = (a, b) =>
+  (a.due || "9999-12-31").localeCompare(b.due || "9999-12-31") ||
+  (a.time || "").localeCompare(b.time || "") ||
+  (a.title || "").localeCompare(b.title || "", "ko");
 export function App({
   initialData,
   onDataChange,
@@ -63,7 +74,6 @@ export function App({
     [sleepEditing, setSleepEditing] = useState(false),
     [sleepDraftStart, setSleepDraftStart] = useState("22:00"),
     [sleepDraftEnd, setSleepDraftEnd] = useState("06:00"),
-    [projectSort, setProjectSort] = useState("earliest"),
     [karmaCategory, setKarmaCategory] = useState("me"),
     [karmaDraft, setKarmaDraft] = useState(""),
     [calendarView, setCalendarView] = useState("month"),
@@ -209,14 +219,6 @@ export function App({
       tasks: d.tasks.map(t => t.projectId === item.id ? {...t, projectId: null} : t),
     }));
     setSelectedProject(data.projects.find(p => p.id !== item.id)?.id || "");
-  };
-  const projectSortCompare = (a,b) => {
-    const dateA = a.due || "9999-12-31";
-    const dateB = b.due || "9999-12-31";
-    if (dateA !== dateB) return projectSort === "latest" ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
-    if (Boolean(a.time) !== Boolean(b.time)) return a.time ? -1 : 1;
-    if (a.time && b.time && a.time !== b.time) return a.time.localeCompare(b.time);
-    return (a.title || "").localeCompare(b.title || "", "ko");
   };
   const [pinMenuId, setPinMenuId] = useState(null);
   const pinHold = useRef(null);
@@ -819,7 +821,7 @@ export function App({
             const proj=taskProject(t);
             return <div key={t.id} className="today-list-row" onPointerDown={e=>{if(!e.target.closest('button,input,a,select,label'))beginPinHold(e,t.id)}} onPointerMove={trackPinHold} onPointerUp={clearPinHold} onPointerCancel={clearPinHold} onContextMenu={e=>{e.preventDefault();clearPinHold();setPinMenuId(t.id)}} style={{background:'white',border:'1px solid #e9e1f0',borderRadius:16,padding:'9px 12px',WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none'}}>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <button type="button" onClick={()=>completeOrStatus(t,'done')} aria-label={`${t.title} 완료`} style={{width:28,height:28,flexShrink:0,border:'2px solid #ac98c7',borderRadius:'50%',background:'white'}}/>
+                <button type="button" onClick={()=>completeOrStatus(t,t.status==='doing'?'done':'doing')} aria-label={`${t.title} ${t.status==='doing'?'완료':'진행 시작'}`} style={{width:28,height:28,flexShrink:0,border:'2px solid #ac98c7',borderRadius:'50%',background:t.status==='doing'?'#a58fcf':'white'}}/>
                 <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>{if(pinMenuId!==t.id)setEditing(t.id)}}>
                   <div style={{display:'flex',alignItems:'center',gap:5,fontWeight:700,fontSize:14,overflowWrap:'anywhere'}}>
                     {Number.isFinite(t.pinOrder)&&<span>⭐</span>}
@@ -1088,17 +1090,26 @@ export function App({
     );
   }
   function Projects() {
-    const selected = project(selectedProject),
-      items = data.tasks.filter((t) => t.projectId === selectedProject).sort((a,b)=>{
-        const ap=Number.isFinite(a.pinOrder),bp=Number.isFinite(b.pinOrder);
-        if(ap!==bp)return ap?-1:1;
-        if(ap && bp)return a.pinOrder-b.pinOrder;
-        return projectSort === "manual"
-          ? (a.order??0)-(b.order??0)||(a.due||"9999").localeCompare(b.due||"9999")||(a.time||"").localeCompare(b.time||"")
-          : projectSortCompare(a,b);
-      }),
-      pending = items.filter((t) => t.status !== "done"),
-      done = items.filter((t) => t.status === "done");
+    const selected = project(selectedProject);
+    const items = data.tasks.filter(t => t.projectId === selectedProject);
+    const todo = items.filter(t => t.status !== "done" && t.status !== "doing");
+    const doing = items.filter(t => t.status === "doing");
+    const done = items.filter(t => t.status === "done");
+    const renderGroups = (tasks) => {
+      const sorted = [...tasks].sort(byDueThenTitle);
+      const groups = [];
+      for (const task of sorted) {
+        const label = koreanWeekLabel(task.due);
+        if (!groups.length || groups[groups.length - 1].label !== label) groups.push({label, tasks: []});
+        groups[groups.length - 1].tasks.push(task);
+      }
+      return groups.map(group => (
+        <section key={group.label} className="project-week-group">
+          <h3 className="project-week-heading">{group.label}</h3>
+          <div className="project-task-list">{group.tasks.map(renderItem)}</div>
+        </section>
+      ));
+    };
     const renderItem = (t) => (
       <div key={t.id} className="project-item-wrap" data-project-task-id={t.id}
         onPointerDown={e => { if(!e.target.closest('button,input,a,select')) beginPinHold(e,t.id); }}
@@ -1110,6 +1121,11 @@ export function App({
         onDragStart={e => e.preventDefault()}
         style={{WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none',touchAction:'pan-y'}}>
         <div className="project-list-item compact-project-row">
+          <button type="button" className={`project-status-button status-${t.status}`}
+            aria-label={`${t.title}: ${t.status === "done" ? "완료" : t.status === "doing" ? "진행 중" : "할 일"}. 다음 상태로 변경`}
+            onClick={() => completeOrStatus(t, t.status === "todo" ? "doing" : t.status === "doing" ? "done" : "todo")}>
+            {t.status === "done" ? <Check size={15} strokeWidth={3} /> : null}
+          </button>
           <div className="list-middle" onClick={() => {if(pinMenuId!==t.id)setEditing(t.id)}} style={{WebkitUserSelect:'none',userSelect:'none',WebkitTouchCallout:'none'}}>
             <strong className={t.status === "done" ? "struck" : ""}>
               {Number.isFinite(t.pinOrder) ? '⭐ ' : ''}{t.title}
@@ -1137,16 +1153,16 @@ export function App({
             <button type="button" onClick={e=>{e.stopPropagation();setPinMenuId(null)}} style={{padding:'10px',color:'#8a8195'}}>닫기</button>
           </div>
         )}
-        {t.subtasks.length > 0 && (
+        {(t.subtasks || []).length > 0 && (
           <div className="inline-subtasks">
-            {t.subtasks.map((sub) => (
+            {(t.subtasks || []).map((sub) => (
               <label key={sub.id} className="inline-subtask">
                 <input
                   type="checkbox"
                   checked={sub.done}
                   onChange={(e) =>
                     changeTask(t.id, {
-                      subtasks: t.subtasks.map((x) =>
+                      subtasks: (t.subtasks || []).map((x) =>
                         x.id === sub.id ? { ...x, done: e.target.checked } : x,
                       ),
                     })
@@ -1211,37 +1227,21 @@ export function App({
             </button>
           </div>
         )}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,margin:"12px 0 8px"}}>
-          <label htmlFor="project-task-sort" style={{fontSize:12,color:"#8b7b9d"}}>정렬하기</label>
-          <select id="project-task-sort" aria-label="프로젝트 할 일 정렬" value={projectSort} onChange={e=>setProjectSort(e.target.value)} style={{maxWidth:"72%",padding:"9px 12px",border:"1px solid #e4daee",borderRadius:10,background:"white",color:"#6f568e"}}>
-            <option value="earliest">↑ 가까운 일정부터</option>
-            <option value="latest">↓ 먼 일정부터</option>
-          </select>
-        </div>
-        <div className="project-task-list">
-          {pending.map(renderItem)}
-          {pending.length === 0 && (
-            <div className="empty-panel">남은 할 일이 없어.</div>
-          )}
-        </div>
-        <button
-          className="completed-toggle"
-          onClick={() => setShowDone((v) => !v)}
-        >
-          <ChevronDown
-            size={17}
-            style={{ transform: showDone ? "rotate(180deg)" : "none" }}
-          />
+        <section className="project-status-section">
+          <h2>할 일 <span>({todo.length})</span></h2>
+          {todo.length ? renderGroups(todo) : <div className="empty-panel">할 일이 없어.</div>}
+        </section>
+        <section className="project-status-section">
+          <h2>진행 중인 할 일 <span>({doing.length})</span></h2>
+          {doing.length ? renderGroups(doing) : <div className="empty-panel">진행 중인 할 일이 없어.</div>}
+        </section>
+        <button className="completed-toggle" aria-expanded={showDone} onClick={() => setShowDone(v => !v)}>
+          <ChevronDown size={17} style={{transform:showDone ? "rotate(180deg)" : "none"}} />
           완료된 할 일 ({done.length})
         </button>
-        {showDone && (
-          <div className="project-task-list completed-list">
-            {done.map(renderItem)}
-            {done.length === 0 && (
-              <div className="empty-panel">완료한 일이 없어.</div>
-            )}
-          </div>
-        )}
+        {showDone && <section className="project-status-section">
+          {done.length ? renderGroups(done) : <div className="empty-panel">완료한 일이 없어.</div>}
+        </section>}
       </>
     );
   }

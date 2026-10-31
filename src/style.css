@@ -1463,3 +1463,14 @@ body,
 .linked-today-compact > a > div > div + div { margin-top: 2px !important; }
 .today-compact-card .task-pom-estimate { max-width: 90px; }
 .today-compact-card .task-pom-estimate svg { flex-shrink: 0; }
+
+/* Project tasks: scheduled weeks first, unscheduled tasks last. */
+.project-status-section { margin: 18px 0 22px; }
+.project-status-section > h2 { font-size: 18px; margin: 0 0 12px; color: #393341; }
+.project-status-section > h2 span { font-size: 13px; color: #9584af; }
+.project-week-group { margin: 0 0 14px; }
+.project-week-heading { font-size: 13px; color: #8d7ba7; font-weight: 700; margin: 0 0 8px 3px; }
+.project-status-button { width: 28px; height: 28px; min-width: 28px; padding: 0; border: 2px solid #a58fc6; border-radius: 50%; background: #fff; display: grid; place-items: center; cursor: pointer; }
+.project-status-button.status-doing { background: #a58fc6; }
+.project-status-button.status-done { background: #a58fc6; color: white; }
+.project-status-section .project-task-list { margin: 0; }
