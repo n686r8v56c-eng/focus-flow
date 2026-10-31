@@ -54,6 +54,8 @@ export function App({
     [blockDate, setBlockDate] = useState(localDate()),
     [blockMode, setBlockMode] = useState("plan"),
     [collapsedToday, setCollapsedToday] = useState({}),
+    [todayTaskTab, setTodayTaskTab] = useState("project"),
+    [todayCompletedOpen, setTodayCompletedOpen] = useState({project:false, personal:false}),
     [blockFirst, setBlockFirst] = useState(null),
     [blockDraft, setBlockDraft] = useState(""),
     [blockEditing, setBlockEditing] = useState(null),
@@ -277,6 +279,8 @@ export function App({
     )
     .sort((a,b) => {const ap=Number.isFinite(a.pinOrder),bp=Number.isFinite(b.pinOrder); if(ap!==bp)return ap?-1:1; if(ap&&bp)return a.pinOrder-b.pinOrder;return (a.order??0)-(b.order??0)||(a.time||"99:99").localeCompare(b.time||"99:99");});
   const plannedTasks = data.tasks.filter((t) => t.due && t.status !== "done");
+  const todayVisibleTasks = todayTasks.filter(t => todayTaskTab === "project" ? Boolean(taskProject(t)) : !taskProject(t));
+  const todayCompletedVisible = todayVisibleTasks.filter(t => t.status === "done");
   const todayNotDone = todayTasks.filter((t) => t.status !== "done");
   const selectedPomTask = data.tasks.find((t) => t.id === pomTask);
   function reportAudioError(error) {
@@ -803,8 +807,11 @@ export function App({
           <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center',flexShrink:0}}><Plus size={20}/></button>
         </div>
 
+        {!collapsedToday.tasks && <div role="tablist" aria-label="오늘의 할 일 구분" style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:4,background:'#f0ebf5',borderRadius:14,padding:4,marginBottom:12}}>
+          {[['project','프로젝트'],['personal','개인 일정']].map(([key,label])=><button key={key} type="button" role="tab" aria-selected={todayTaskTab===key} onClick={()=>setTodayTaskTab(key)} style={{border:0,borderRadius:11,padding:'10px 6px',background:todayTaskTab===key?'#a18bd0':'transparent',color:todayTaskTab===key?'white':'#8e819f',fontSize:14,fontWeight:750,cursor:'pointer',minWidth:0}}>{label} <span style={{fontSize:11,opacity:.85}}>{todayTasks.filter(t=>key==='project'?Boolean(taskProject(t)):!taskProject(t)).length}</span></button>)}
+        </div>}
         <section aria-label="오늘의 할 일 체크리스트" style={{display:collapsedToday.tasks?"none":'grid',gap:7,marginBottom:15}}>
-          {todayTasks.filter(t=>t.status!=='done').map(t=>{
+          {todayVisibleTasks.filter(t=>t.status!=='done').map(t=>{
             const subtasks=t.subtasks||[];
             const count=subtasks.filter(x=>x.done).length;
             const proj=taskProject(t);
@@ -833,9 +840,9 @@ export function App({
               {pinMenuId===t.id&&<div onClick={e=>e.stopPropagation()} style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:8}}><button type="button" onClick={()=>togglePin(t)}>{Number.isFinite(t.pinOrder)?'☆ 고정 해제':'⭐ 맨 위에 고정'}</button><button type="button" onClick={()=>setPinMenuId(null)}>닫기</button></div>}
             </div>;
           })}
-          {!todayTasks.some(t=>t.status!=='done')&&<div style={{padding:18,textAlign:'center',color:'#a397ae'}}>남은 할 일이 없어 🎉</div>}
-          {todayTasks.some(t=>t.status==='done')&&<div style={{fontSize:12,fontWeight:700,color:'#9889aa',marginTop:8}}>완료한 할 일 ({todayTasks.filter(t=>t.status==='done').length})</div>}
-          {todayTasks.filter(t=>t.status==='done').map(t=>{
+          {!todayVisibleTasks.some(t=>t.status!=='done')&&<div style={{padding:18,textAlign:'center',color:'#a397ae'}}>남은 할 일이 없어 🎉</div>}
+          <button type="button" aria-expanded={!!todayCompletedOpen[todayTaskTab]} onClick={()=>setTodayCompletedOpen(v=>({...v,[todayTaskTab]:!v[todayTaskTab]}))} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',border:0,borderRadius:12,padding:'12px 14px',marginTop:8,background:'#f0ebf5',color:'#8874ad',fontWeight:750,fontSize:13,cursor:'pointer'}}><span>완료한 할 일 ({todayCompletedVisible.length})</span><ChevronDown size={17} style={{transform:todayCompletedOpen[todayTaskTab]?'rotate(180deg)':'none'}}/></button>
+          {todayCompletedOpen[todayTaskTab]&&todayCompletedVisible.map(t=>{
             const proj=taskProject(t);
             const subtasks=t.subtasks||[];
             const count=subtasks.filter(x=>x.done).length;
