@@ -2,7 +2,49 @@ import { useEffect, useRef, useState, useCallback } from "react";
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const object = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 // Three-way merge: preserve independent edits; never silently pick a winner.
+// Resolve concurrent running-timer edits by event time, while preserving both
+// devices' completed entries. The active value is never merged field by field.
+const actionTime = (state) => {
+  const action = state?.lastAction;
+  const value = action?.at || state?.active?.updatedAt || state?.active?.start;
+  const parsed = Date.parse(value || "");
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+function mergeTimeLog(base, local, remote, path) {
+  const result = {};
+  for (const key of new Set([...Object.keys(base || {}), ...Object.keys(local || {}), ...Object.keys(remote || {})])) {
+    if (key === "active" || key === "lastAction") continue;
+    if (key === "activities" && Array.isArray(local?.activities) && Array.isArray(remote?.activities)) {
+      result.activities = [...new Set([...remote.activities, ...local.activities])];
+      continue;
+    }
+    const merged = mergeState(base?.[key], local?.[key], remote?.[key], `${path}.${key}`);
+    if (merged !== undefined) result[key] = merged;
+  }
+  const lChanged = !equal(local?.active, base?.active) || !equal(local?.lastAction, base?.lastAction);
+  const rChanged = !equal(remote?.active, base?.active) || !equal(remote?.lastAction, base?.lastAction);
+  // When one side only edited history or the activity list, keep the
+  // other side's active session unchanged.
+  let winner;
+  if (!lChanged) winner = remote;
+  else if (!rChanged) winner = local;
+  else {
+    const lt = actionTime(local), rt = actionTime(remote);
+    winner = lt > rt ? local : rt > lt ? remote
+      : String(local?.lastAction?.id || local?.active?.id || "") >= String(remote?.lastAction?.id || remote?.active?.id || "") ? local : remote;
+  }
+  if (winner?.active) result.active = winner.active;
+  else result.active = null;
+  if (winner?.lastAction) result.lastAction = winner.lastAction;
+  return result;
+}
 export function mergeState(base, local, remote, path = "data") {
+  if (path === "data.timeLog" && object(local) && object(remote)) return mergeTimeLog(base, local, remote, path);
+  if (path.startsWith("data.timeLog.entries.") && object(local) && object(remote)) {
+    // Same running session ended on both devices: retain one completed record.
+    const l = Date.parse(local.end || ""), r = Date.parse(remote.end || "");
+    return (Number.isFinite(l) ? l : 0) >= (Number.isFinite(r) ? r : 0) ? local : remote;
+  }
   if (equal(local, base)) return remote;
   if (equal(remote, base) || equal(local, remote)) return local;
   if (

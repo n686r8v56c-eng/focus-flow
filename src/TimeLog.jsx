@@ -15,7 +15,20 @@ function dailySegments(start,end){
 }
 const startOfWeek = d => {const x=new Date(d);const weekday=(x.getDay()+6)%7;x.setDate(x.getDate()-weekday);x.setHours(0,0,0,0);return x;};
 function aggregate(logs,from,to){const by={};let total=0;for(const item of logs){const s=Date.parse(item.start),e=Date.parse(item.end);if(!Number.isFinite(s)||!Number.isFinite(e)||e<=s)continue;for(const part of dailySegments(s,e)){if(part.date<from||part.date>to)continue;by[part.date]??={};by[part.date][item.activity]=(by[part.date][item.activity]||0)+part.ms;total+=part.ms;}}return {by,total};}
-const palette=['#A68CCF','#75B69F','#E7A78E','#98A9CE','#C99FAE','#9FB2A5'];
+// Stable named colors never depend on activity order across devices.
+const namedColors = {
+  '앱개발':'#9D83CD', '공부':'#5FAE91', '운동':'#E69B72',
+  '명상':'#6D9AD9', '개인위생':'#D77FA7', '고미쩌미':'#B7A04C',
+  '청소':'#53AEB6'
+};
+const extraColors=['#B778D2','#D17B67','#678EBD','#8B9C51','#B57583','#6EACA5','#BD944D'];
+const colorForActivity = name => {
+  if (namedColors[name]) return namedColors[name];
+  // Deterministic hashing keeps a custom activity the same color on all devices.
+  let hash=0;
+  for (const char of name) hash=(Math.imul(hash,31)+char.codePointAt(0))|0;
+  return extraColors[(hash>>>0)%extraColors.length];
+};
 export function TimeLog({data,onDataChange}){
   const [section,setSection]=useState('record');
   const [dailyDate,setDailyDate]=useState(dateKey(new Date()));
@@ -30,11 +43,36 @@ export function TimeLog({data,onDataChange}){
   const activities=[...new Set([...initialActivities,...(record.activities||[])])];
   useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return ()=>clearInterval(id)},[]);
   const save=fn=>onDataChange(d=>({...d,timeLog:fn(d.timeLog||{})}));
-  const begin=name=>{const time=new Date().toISOString();save(prev=>({ ...prev,entries:[...(prev.entries||[]),...(prev.active?[{id:`log-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,activity:prev.active.activity,start:prev.active.start,end:time}]:[])],active:{activity:name,start:time}}));};
-  const stop=()=>{const time=new Date().toISOString();save(prev=>({...prev,entries:[...(prev.entries||[]),...(prev.active?[{id:`log-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,activity:prev.active.activity,start:prev.active.start,end:time}]:[])],active:null}));};
+  const completedEntry = (current, end) => current ? {
+    // Stable ID prevents duplicate entries when two devices end the same run.
+    id: `log-${current.id || `${current.activity}-${current.start}`}`,
+    activity:current.activity,start:current.start,end
+  } : null;
+  const begin=name=>{
+    const time=new Date().toISOString();
+    const actionId=crypto.randomUUID();
+    save(prev=>{
+      const finished=completedEntry(prev.active,time);
+      return {...prev,
+        entries:[...(prev.entries||[]),...(finished?[finished]:[])],
+        active:{id:actionId,activity:name,start:time,updatedAt:time},
+        lastAction:{id:actionId,at:time,type:'start',activity:name}
+      };
+    });
+  };
+  const stop=()=>{
+    const time=new Date().toISOString();
+    const actionId=crypto.randomUUID();
+    save(prev=>{
+      if (!prev.active) return prev;
+      const finished=completedEntry(prev.active,time);
+      return {...prev,entries:[...(prev.entries||[]),finished],active:null,
+        lastAction:{id:actionId,at:time,type:'stop'}};
+    });
+  };
   const activeMs=active?Math.max(0,now-Date.parse(active.start)):0;
   const computed=active?[...logs,{id:'currently-running',activity:active.activity,start:active.start,end:new Date(now).toISOString()}]:logs;
-  const colors=Object.fromEntries(activities.map((a,i)=>[a,palette[i%palette.length]]));
+  const colors=Object.fromEntries(activities.map(a=>[a,colorForActivity(a)]));
   const today=dateKey(new Date());
   const todayTotal=aggregate(computed,today,today).total;
   const weekDate=startOfWeek(new Date());const weekStart=dateKey(weekDate);const sunday=new Date(weekDate);sunday.setDate(sunday.getDate()+6);const weekTotal=aggregate(computed,weekStart,dateKey(sunday)).total;
