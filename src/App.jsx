@@ -25,6 +25,7 @@ import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
 import { CalendarExternal } from "./CalendarExternal.jsx";
+import { TimeLog } from "./TimeLog.jsx";
 import {
   CLOCK_SOUNDS,
   clockType,
@@ -1736,29 +1737,42 @@ export function App({
     const available = Array.from({length:16},(_,i)=>i+6).filter(h=>!isSleep(h)).length;
     const allocated = occupiedHours.size;
     return <section className={`timeblock-page mode-${blockMode}`}>
-      <div className="timeblock-head">
-        <button aria-label="이전 날짜" onClick={()=>changeBlockDate(-1)}><ChevronLeft size={23}/></button>
-        <div className="timeblock-date">{day.getMonth()+1}월 {day.getDate()}일 {"일월화수목금토"[day.getDay()]}요일</div>
-        <button aria-label="다음 날짜" onClick={()=>changeBlockDate(1)}><ChevronRight size={23}/></button>
-        <button className="timeblock-today" onClick={()=>{setBlockDate(localDate());setBlockFirst(null);setBlockRange(null)}}>오늘</button>
-      </div>
       <h1>타임블록</h1>
+      <div className="timeblock-week-navigation" aria-label="주간 날짜 탐색">
+        <button type="button" aria-label="이전 주" onClick={()=>changeBlockDate(-7)}><ChevronLeft size={20}/></button>
+        <span>{day.getFullYear()}년 {day.getMonth()+1}월</span>
+        <button type="button" aria-label="다음 주" onClick={()=>changeBlockDate(7)}><ChevronRight size={20}/></button>
+      </div>
+      <div className="timeblock-week" role="group" aria-label="일주일 날짜 선택">
+        {Array.from({length:7},(_,i)=>{
+          const weekDay = dayAdd(blockDate, i - day.getDay());
+          const date = new Date(weekDay+"T12:00:00");
+          return <button type="button" key={weekDay} className={weekDay===blockDate?"active":""}
+            aria-pressed={weekDay===blockDate} aria-label={`${date.getMonth()+1}월 ${date.getDate()}일 ${"일월화수목금토"[i]}요일`}
+            onClick={()=>{setBlockDate(weekDay);setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>
+            <span className="timeblock-weekday">{"일월화수목금토"[i]}</span>
+            <span className="timeblock-weekday-number">{date.getDate()}</span>
+          </button>;
+        })}
+      </div>
+      <div className="timeblock-selected-date" aria-live="polite">{day.getFullYear()}년 {day.getMonth()+1}월 {day.getDate()}일 {"일월화수목금토"[day.getDay()]}요일</div>
       <div className="timeblock-switch" role="tablist" aria-label="계획과 실제">
         <button type="button" role="tab" aria-selected={blockMode==="plan"} className={blockMode==="plan"?"active":""} onClick={()=>{setBlockMode("plan");setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>계획</button>
         <button type="button" role="tab" aria-selected={blockMode==="actual"} className={blockMode==="actual"?"active":""} onClick={()=>{setBlockMode("actual");setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>실제</button>
       </div>
       <p className="timeblock-allocation" aria-live="polite">기배정 {allocated}시간 <span aria-hidden="true">·</span> 미배정 {Math.max(0,available - allocated)}시간</p>
       <div className="timeblock-grid">
-        {Array.from({length:24},(_,hour)=>{
+        {Array.from({length:24},(_,index)=>{
+          const hour = (index + 6) % 24;
           const sleeping = isSleep(hour);
           const block = sleeping ? null : blocks.find(b=>hour>=b.start&&hour<b.end);
           const isStart = block?.start===hour;
           const selected = !sleeping && blockRange && !blockEditing && hour>=blockRange.start&&hour<blockRange.end;
-          const sleepLabel = hour === sleep.start || hour === 0;
+          const sleepLabel = hour === sleep.start || (index === 0 && sleeping);
           return <button type="button" key={hour} className={`timeblock-hour ${sleeping?'sleeping':''} ${block?'occupied':''} ${selected?'selected':''}`}
             aria-label={`${pad(hour)}시 ${sleeping?'수면':block?.title||'시간 선택'}`} onClick={()=>selectBlockHour(hour)}>
             <span className="timeblock-hourlabel">{pad(hour)}:00</span>
-            <span className="timeblock-content">{sleeping && sleepLabel && <strong>☾ 수면 {pad(sleep.start)}:00–다음 날 {pad(sleep.end)}:00{blockMode==='actual'?' · 수정 가능':''}</strong>}{isStart && <strong>{block.title}</strong>}{selected && !block && <span>선택 중</span>}</span>
+            <span className="timeblock-content">{sleeping && sleepLabel && <strong>☾ 수면 {pad(sleep.start)}:00–다음 날 {pad(sleep.end)}:00</strong>}{isStart && <strong>{block.title}</strong>}{selected && !block && <span>선택 중</span>}</span>
           </button>;
         })}
       </div>
@@ -1808,6 +1822,7 @@ export function App({
           <span className="brand-mark">✳</span> Focus Flow
         </button>
         <div className="header-actions">
+          <button type="button" className={`header-timer ${tab === "timelog" ? "is-active" : ""}`} onClick={() => setTab("timelog")} aria-label="타임로그 열기" title="타임로그"><Clock3 size={20}/></button>
           <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => setTab("pom")} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={20}/></button>
           <button className="header-pill" onClick={onLogout}>로그아웃</button>
         </div>
@@ -1815,6 +1830,8 @@ export function App({
       <main>
         {tab === "today"
           ? Kanban()
+          : tab === "timelog"
+            ? <TimeLog data={data} onDataChange={setData}/>
           : tab === "timeblocks"
             ? TimeBlocks()
           : tab === "calendar"
@@ -1828,8 +1845,8 @@ export function App({
       <nav className="bottom-nav">
         {[
           ["today", Columns3, "오늘"],
-          ["timeblocks", Clock3, "타임블록"],
           ["projects", FolderKanban, "프로젝트"],
+          ["timeblocks", Clock3, "타임블록"],
           ["calendar", CalendarDays, "일정"],
           ["karma", Heart, "카르마"],
         ].map(([id, Icon, label]) => (

@@ -53,3 +53,21 @@
 .timeblock-sleep-inputs{display:flex;gap:12px;margin:16px 0}
 .timeblock-sleep-inputs label{display:flex;flex:1;flex-direction:column;gap:8px;color:#706879;font-size:13px}
 .timeblock-sleep-inputs input{width:100%;min-width:0}
+
+/* Weekly selector above the selected, center-aligned date. */
+.timeblock-page>h1{margin:0 0 14px;font-size:26px;line-height:1.25}
+.timeblock-week-navigation{display:flex;align-items:center;justify-content:center;gap:18px;color:#8872aa;font-weight:600;font-size:14px;margin:2px 0 10px}
+.timeblock-week-navigation button{display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:inherit;min-width:34px;min-height:34px;cursor:pointer}
+.timeblock-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:0 0 13px}
+.timeblock-week button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-width:0;padding:7px 0 9px;border:0;background:transparent;border-radius:13px;color:#6a6073;cursor:pointer}
+.timeblock-weekday{font-size:12px;color:#95899e}
+.timeblock-weekday-number{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;font-size:17px;font-weight:600}
+.timeblock-week button.active .timeblock-weekday-number{background:#a38ad4;color:white}
+.timeblock-page.mode-actual .timeblock-week button.active .timeblock-weekday-number{background:#65b6a0}
+.timeblock-selected-date{text-align:center;font-size:17px;font-weight:700;color:#50455e;padding:13px 0;margin-bottom:14px;border-top:1px solid #ebe5f0;border-bottom:1px solid #ebe5f0}
+@media(max-width:370px){.timeblock-weekday-number{width:32px;height:32px;font-size:16px}.timeblock-week{gap:1px}}
+
+/* Compact 24-hour plan and actual rows; 06:00 through next 05:00. */
+.timeblock-page .timeblock-hour{min-height:43px}
+.timeblock-page .timeblock-content{padding:5px 12px;margin:2px 6px 2px 0;line-height:1.3;min-height:35px;box-sizing:border-box}
+.timeblock-page .timeblock-hourlabel{font-size:13px}
