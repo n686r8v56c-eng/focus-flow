@@ -21,10 +21,12 @@ import {
   Blocks,
   ClipboardCheck,
   LogOut,
+  CalendarRange,
 } from "lucide-react";
 import "./style.css";
 import "./timeblocks.css";
 import { TimeTable } from "./TimeTable.jsx";
+import { WeeklyPlan } from "./WeeklyPlan.jsx";
 import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
@@ -1936,8 +1938,8 @@ export function App({
           Focus Flow
         </button>
         <div className="header-actions">
-          <button type="button" className={`header-timer ${tab === "timelog" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}} aria-label="타임로그 열기" title="타임로그"><Clock3 size={18}/></button>
-          <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("pom");}} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={18}/></button>
+          <button type="button" className={`header-timer ${tab === "timelog" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}} aria-label="타임로그 열기" title="타임로그"><span style={{fontSize:19,fontWeight:850,lineHeight:1,fontFamily:"Arial, sans-serif"}}>T</span></button>
+          <button type="button" className={`header-timer ${tab === "timeblocks" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("timeblocks");}} aria-label="타임블록 열기" title="타임블록"><Clock3 size={18}/></button>
           <button type="button" className={`header-timer ${registryOpen ? "is-active" : ""}`} onClick={() => {setChecklistOpen(false);setRegistryOpen(true);}} aria-label="앱 관리 열기" title="앱 관리"><Blocks size={18}/></button>
           <button type="button" className={`header-timer ${checklistOpen ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(true);}} aria-label="체크리스트 열기" title="체크리스트"><ClipboardCheck size={18}/></button>
           <button type="button" className="header-timer" onClick={onLogout} aria-label="로그아웃" title="로그아웃"><LogOut size={18}/></button>
@@ -1950,6 +1952,8 @@ export function App({
             ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
           : tab === "timeblocks"
             ? <TimeTable data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId} initialDate={blockDate} />
+          : tab === "weekly"
+            ? <WeeklyPlan data={data} onDataChange={setData} />
           : tab === "calendar"
             ? Calendar()
             : tab === "pom"
@@ -1958,12 +1962,13 @@ export function App({
                 ? <MemoPanel data={data} onDataChange={setData} />
                 : Projects()}
       </main>
-      {!registryOpen && !checklistOpen && <nav className="bottom-nav">
+      {!registryOpen && !checklistOpen && <nav className="bottom-nav bottom-nav-six">
         {[
           ["today", Columns3, "오늘"],
           ["projects", FolderKanban, "프로젝트"],
-          ["timeblocks", Clock3, "타임블록"],
+          ["pom", Timer, "뽀모도로"],
           ["calendar", CalendarDays, "일정"],
+          ["weekly", CalendarRange, "위클리"],
           ["memos", Heart, "메모"],
         ].map(([id, Icon, label]) => (
           <button
