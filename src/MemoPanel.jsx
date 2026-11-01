@@ -21,9 +21,10 @@ export function MemoPanel({ data, onDataChange }) {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState('');
   const pressTimer = useRef(null);
+  const autoSaveTimer = useRef(null);
   const longPressed = useRef(false);
   useEffect(() => { if (projectId !== 'all' && projectId !== UNASSIGNED && !projects.some(p => p.id === projectId)) setProjectId(UNASSIGNED); }, [projects, projectId]);
-  useEffect(() => () => clearTimeout(pressTimer.current), []);
+  useEffect(() => () => { clearTimeout(pressTimer.current); clearTimeout(autoSaveTimer.current); }, []);
 
   const all = Array.isArray(data.projectMemos) ? data.projectMemos : [];
   const visible = all.filter(m => favoritesOnly ? Boolean(m.favorite) : (m.category === category && (projectId === 'all' || m.projectId === projectId)))
@@ -45,8 +46,10 @@ export function MemoPanel({ data, onDataChange }) {
     pressTimer.current = setTimeout(() => { longPressed.current = true; setMenuId(id); }, 550);
   };
   const endPress = () => clearTimeout(pressTimer.current);
+  const persistText = (id, value) => { if (!value.trim()) return; change(list => list.map(item => item.id === id ? {...item,text:value,updatedAt:new Date().toISOString()} : item)); };
   const beginEdit = m => { setEditDraft(m.text || ''); setEditingId(m.id); setMenuId(null); setExpandedId(m.id); };
-  const commitEdit = id => { const value = editDraft.trim(); if (!value) return; change(list => list.map(m => m.id === id ? { ...m, text:value, updatedAt:new Date().toISOString() } : m)); setEditingId(null); };
+  const commitEdit = id => { clearTimeout(autoSaveTimer.current); persistText(id, editDraft); setEditingId(null); };
+  const onEditChange = (id, value) => { setEditDraft(value); clearTimeout(autoSaveTimer.current); autoSaveTimer.current = setTimeout(() => persistText(id,value), 500); };
   const toggleFavorite = m => { change(list => list.map(item => item.id === m.id ? {...item, favorite:!item.favorite} : item)); setMenuId(null); };
   const deleteMemo = id => { if (!window.confirm('이 메모를 삭제할까?')) return; change(list => list.filter(m => m.id !== id)); setMenuId(null); setEditingId(null); };
   const copyMemo = async text => {
@@ -97,12 +100,12 @@ export function MemoPanel({ data, onDataChange }) {
           <button type="button" onClick={()=>setMenuId(null)} aria-label="메뉴 닫기" style={{marginLeft:'auto',padding:7}}><X size={16}/></button>
         </div>}
         {editingId===m.id ? <div style={{marginTop:10}}>
-          <textarea rows={4} value={editDraft} onChange={e=>setEditDraft(e.target.value)} style={{...ui.field,resize:'vertical'}} />
+          <textarea autoFocus rows={5} value={editDraft} onChange={e=>onEditChange(m.id,e.target.value)} onBlur={()=>commitEdit(m.id)} style={{...ui.field,resize:'vertical',fontSize:16}} />
           <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:8}}>
-            <button type="button" onClick={()=>setEditingId(null)} style={{padding:9}}>취소</button>
+            <button type="button" onClick={()=>commitEdit(m.id)} style={{padding:9}}>닫기</button>
             <button type="button" onClick={()=>commitEdit(m.id)} disabled={!editDraft.trim()} style={{padding:'9px 14px',borderRadius:9,background:'#a18ad1',color:'white',display:'flex',gap:4,alignItems:'center'}}><Check size={15}/> 저장</button>
           </div>
-        </div> : expandedId===m.id && <div style={{borderTop:'1px solid #f0eaf5',paddingTop:10,marginTop:9,whiteSpace:'pre-wrap',overflowWrap:'anywhere',fontSize:14,lineHeight:1.6}}>
+        </div> : expandedId===m.id && <div onClick={()=>beginEdit(m)} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')beginEdit(m)}} title="탭해서 수정" style={{borderTop:'1px solid #f0eaf5',paddingTop:10,marginTop:9,whiteSpace:'pre-wrap',overflowWrap:'anywhere',fontSize:14,lineHeight:1.6,cursor:'text'}}>
           {m.text}
           {(projectId==='all' || favoritesOnly) && <div style={{...ui.muted,marginTop:8}}>{m.projectId===UNASSIGNED ? '미지정' : (projects.find(p=>p.id===m.projectId)?.name || '프로젝트 없음')}</div>}
         </div>}

@@ -52,7 +52,7 @@ const koreanWeekLabel = (due) => {
   return `${year}년 ${month}월 ${Math.ceil((day + mondayOffset) / 7)}주차`;
 };
 const isAppDevelopment = p => Boolean(p && (p.type === "app-development" || (!p.type && p.name.replace(/\s/g, "") === "앱개발")));
-const registryStatuses = ["전체", "배포", "개발 중", "기획 중", "보류"];
+const registryStatuses = ["전체", "배포 후 수정", "배포", "개발 중", "기획 중", "보류"];
 const byDueThenTitle = (a, b) =>
   (a.due || "9999-12-31").localeCompare(b.due || "9999-12-31") ||
   (a.time || "").localeCompare(b.time || "") ||
@@ -1217,7 +1217,7 @@ export function App({
               {Number.isFinite(t.pinOrder) ? '⭐ ' : ''}{t.title}
             </strong>
             <small>
-              {appMode ? `${registryApps.find(a=>a.id===t.appRegistryId)?.name || "미지정"} · ` : ""}{t.due
+              {appMode && <><span style={{color:"#9273c5",fontWeight:750}}>{registryApps.find(a=>a.id===t.appRegistryId)?.name || "미지정"}</span> · </>}{t.due
                 ? `${t.due}${t.time ? " · " + t.time : ""}`
                 : "날짜 미설정"}
             </small>
@@ -1311,9 +1311,10 @@ export function App({
           </div>
         )}
         {appMode && <div className="project-registry-filters" style={{display:"grid",gap:10,margin:"16px 0"}}>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}} aria-label="개발 상태 필터">
+          <div style={{display:"grid",gridTemplateColumns:"0.7fr 1.6fr 0.7fr 1fr 1fr 0.7fr",gap:3,width:"100%"}} aria-label="개발 상태 필터">
             {registryStatuses.map(st=><button type="button" key={st}
               className={appStatusFilter===st ? "primary small" : "secondary small"}
+              style={{padding:"8px 0",fontSize:"clamp(9px,2.55vw,12px)",minWidth:0,whiteSpace:"nowrap",borderRadius:10}}
               onClick={()=>{setAppStatusFilter(st);setAppIdFilter("전체");}}>{st}</button>)}
           </div>
           <label>앱 선택

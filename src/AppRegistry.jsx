@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Plus, Pencil, Trash2, Copy, ExternalLink, Upload, Download, ChevronRight, X, Check, RefreshCw } from 'lucide-react';
 import './app-registry.css';
 
-const STATUSES = ['배포','개발 중','기획 중','보류'];
+const STATUSES = ['배포 후 수정','배포','개발 중','기획 중','보류'];
 const emptyApp = (status='배포') => ({ name:'',status,email_account_id:'',deployment_url:'',memo:'' });
 const emptyAccount = () => ({email:'',memo:''});
 const id = () => crypto.randomUUID();
