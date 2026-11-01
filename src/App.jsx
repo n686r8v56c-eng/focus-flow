@@ -1151,7 +1151,7 @@ export function App({
         if (groupType === "todo" && task.due === today) continue;
         let label;
         if (groupType === "todo") {
-          if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(task.due || "")) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(task.due || "")) {
             label = "일정 없음";
           } else if (task.due < today) {
             label = "지난 할 일";
