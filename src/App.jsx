@@ -1130,8 +1130,7 @@ export function App({
       appStatusFilter === "전체" || (t.appRegistryId && visibleApps.some(a => a.id === t.appRegistryId))
     );
     const items = data.tasks.filter(t => t.projectId === selectedProject && appMatches(t));
-    const todo = items.filter(t => t.status !== "done" && t.status !== "doing");
-    const doing = items.filter(t => t.status === "doing");
+    const todo = items.filter(t => t.status !== "done");
     const done = items.filter(t => t.status === "done");
     const renderGroups = (tasks, groupType) => {
       const sorted = [...tasks].sort(byDueThenTitle);
@@ -1328,10 +1327,6 @@ export function App({
             <button type="button" className="secondary add-only project-add-compact" aria-label="할 일 추가" onClick={()=>{setEditing(null);setModal("task");}} style={{marginLeft:"auto",flexShrink:0}}><Plus size={17}/></button>
           </div>
           {showProjectTodo && renderGroups(todo,"todo")}
-        </section>
-        <section className="project-status-section">
-          <h2>진행 중인 할 일 <span>({doing.length})</span></h2>
-          {doing.length ? renderGroups(doing,"doing") : <div className="empty-panel">진행 중인 할 일이 없어.</div>}
         </section>
         <button className="completed-toggle" aria-expanded={showDone} onClick={() => setShowDone(v => !v)}>
           <ChevronDown size={17} style={{transform:showDone ? "rotate(180deg)" : "none"}} />
