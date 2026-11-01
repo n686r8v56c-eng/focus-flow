@@ -1215,20 +1215,13 @@ export function App({
             </div>
             <button type="button" className="secondary" onClick={renameSelectedProject} aria-label="선택 프로젝트 이름 수정" style={{marginLeft:"auto",padding:"6px",minWidth:34,minHeight:34,color:"#8d6dce"}}><Pencil size={16}/></button>
             <button type="button" className="secondary" onClick={deleteSelectedProject} aria-label="선택 프로젝트 삭제" style={{padding:"6px",minWidth:34,minHeight:34,color:"#bf667c"}}><Trash2 size={16}/></button>
-            <button
-              className="secondary add-only project-add-compact"
-              aria-label="투두 추가"
-              onClick={() => {
-                setEditing(null);
-                setModal("task");
-              }}
-            >
-              <Plus size={17} />
-            </button>
           </div>
         )}
         <section className="project-status-section">
-          <h2>할 일 <span>({todo.length})</span></h2>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+            <h2>할 일 <span>({todo.length})</span></h2>
+            <button type="button" className="secondary add-only project-add-compact" aria-label="할 일 추가" onClick={()=>{setEditing(null);setModal("task");}} style={{marginLeft:"auto",flexShrink:0}}><Plus size={17}/></button>
+          </div>
           {todo.length ? renderGroups(todo) : <div className="empty-panel">할 일이 없어.</div>}
         </section>
         <section className="project-status-section">
