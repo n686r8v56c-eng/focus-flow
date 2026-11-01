@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, Check, X } from 'lucide-react';
 
-const categories = ['아이디어', '조사', '실행', '반성'];
+const categories = ['아이디어', '조사', '실행', '반성', 'Misc'];
+const UNASSIGNED = '__unassigned__';
 const ui = {
   field: { width:'100%', maxWidth:'100%', minWidth:0, boxSizing:'border-box', border:'1px solid #e5dcea', borderRadius:12, padding:'12px 13px', background:'#fff', color:'#393343', fontSize:16 },
   card: { border:'1px solid #e8dfee', borderRadius:15, background:'#fff', padding:13 },
@@ -10,8 +11,8 @@ const ui = {
 
 export function MemoPanel({ data, onDataChange }) {
   const projects = Array.isArray(data.projects) ? data.projects : [];
-  const [projectId, setProjectId] = useState(() => projects[0]?.id || '');
-  const [category, setCategory] = useState('아이디어');
+  const [projectId, setProjectId] = useState(UNASSIGNED);
+  const [category, setCategory] = useState('Misc');
   const [draft, setDraft] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [menuId, setMenuId] = useState(null);
@@ -19,7 +20,7 @@ export function MemoPanel({ data, onDataChange }) {
   const [editDraft, setEditDraft] = useState('');
   const pressTimer = useRef(null);
   const longPressed = useRef(false);
-  useEffect(() => { if (projectId !== 'all' && !projects.some(p => p.id === projectId)) setProjectId(projects[0]?.id || ''); }, [projects, projectId]);
+  useEffect(() => { if (projectId !== 'all' && projectId !== UNASSIGNED && !projects.some(p => p.id === projectId)) setProjectId(UNASSIGNED); }, [projects, projectId]);
   useEffect(() => () => clearTimeout(pressTimer.current), []);
 
   const all = Array.isArray(data.projectMemos) ? data.projectMemos : [];
@@ -29,7 +30,7 @@ export function MemoPanel({ data, onDataChange }) {
   const save = e => {
     e.preventDefault();
     const content = draft.trim();
-    if (!content || !projectId || projectId === 'all') return;
+    if (!content || projectId === 'all') return;
     const id = globalThis.crypto?.randomUUID?.() || `memo_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     change(list => [...list, { id, projectId, category, text:content, createdAt:new Date().toISOString() }]);
     setDraft('');
@@ -53,16 +54,17 @@ export function MemoPanel({ data, onDataChange }) {
     <div className="section-top"><h1>메모</h1></div>
     <label htmlFor="memo-project" style={{display:'block',fontWeight:700,color:'#826c98',marginBottom:8}}>프로젝트</label>
     <select id="memo-project" value={projectId} onChange={e=>{setProjectId(e.target.value);setMenuId(null);setExpandedId(null);}} style={{...ui.field,marginBottom:15}}>
+      <option value={UNASSIGNED}>미지정</option>
       {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
       <option value="all">전체 프로젝트 (조회)</option>
     </select>
-    <div className="pom-subnav" role="tablist" aria-label="메모 분류" style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:2,marginBottom:15}}>
+    <div className="pom-subnav" role="tablist" aria-label="메모 분류" style={{display:'grid',gridTemplateColumns:'repeat(5,minmax(0,1fr))',gap:2,marginBottom:15}}>
       {categories.map(c=><button type="button" key={c} role="tab" aria-selected={category===c} className={category===c?'active':''} onClick={()=>{setCategory(c);setExpandedId(null);setMenuId(null);}} style={{padding:'12px 2px',minWidth:0,fontSize:14}}>{c}</button>)}
     </div>
     <form onSubmit={save} className="stat-card" style={{padding:15,marginBottom:20,maxWidth:'100%',overflow:'hidden'}}>
       <label htmlFor="memo-draft" style={{display:'block',fontWeight:700,color:'#775991',marginBottom:10}}>{category} 메모</label>
-      <textarea id="memo-draft" value={draft} onChange={e=>setDraft(e.target.value)} rows={4} placeholder={projectId==='all'?'기록할 프로젝트를 선택해 줘':'메모를 입력해 줘'} disabled={!projectId || projectId==='all'} style={{...ui.field,resize:'vertical',lineHeight:1.6}} />
-      <button type="submit" className="primary" disabled={!draft.trim() || !projectId || projectId==='all'} style={{width:'100%',minHeight:46,marginTop:12,borderRadius:12,fontSize:16,fontWeight:750}}>기록하기</button>
+      <textarea id="memo-draft" value={draft} onChange={e=>setDraft(e.target.value)} rows={4} placeholder={projectId==='all'?'기록할 프로젝트를 선택해 줘':'메모를 입력해 줘'} disabled={projectId==='all'} style={{...ui.field,resize:'vertical',lineHeight:1.6}} />
+      <button type="submit" className="primary" disabled={!draft.trim() || projectId==='all'} style={{width:'100%',minHeight:46,marginTop:12,borderRadius:12,fontSize:16,fontWeight:750}}>기록하기</button>
     </form>
     <div style={{fontSize:15,fontWeight:750,marginBottom:11}}>메모 목록 <span style={ui.muted}>({visible.length})</span></div>
     <div style={{display:'grid',gap:8}}>
@@ -87,7 +89,7 @@ export function MemoPanel({ data, onDataChange }) {
           </div>
         </div> : expandedId===m.id && <div style={{borderTop:'1px solid #f0eaf5',paddingTop:10,marginTop:9,whiteSpace:'pre-wrap',overflowWrap:'anywhere',fontSize:14,lineHeight:1.6}}>
           {m.text}
-          {projectId==='all' && <div style={{...ui.muted,marginTop:8}}>{projects.find(p=>p.id===m.projectId)?.name || '프로젝트 없음'}</div>}
+          {projectId==='all' && <div style={{...ui.muted,marginTop:8}}>{m.projectId===UNASSIGNED ? '미지정' : (projects.find(p=>p.id===m.projectId)?.name || '프로젝트 없음')}</div>}
         </div>}
       </article>)}
       {!visible.length && <p className="hint">아직 메모가 없어. 첫 메모를 기록해 봐.</p>}
