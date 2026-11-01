@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Clock3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock3, Pencil, Trash2, Check, X } from 'lucide-react';
 import './timelog.css';
 
 const initialActivities = ['앱개발', '공부', '운동', '명상'];
@@ -34,6 +34,8 @@ export function TimeLog({data,onDataChange,client,userId}){
   const [dailyDate,setDailyDate]=useState(dateKey(new Date()));
   const [now,setNow]=useState(Date.now());
   const [newActivity,setNewActivity]=useState('');
+  const [editingActivity,setEditingActivity]=useState(null);
+  const [activityDraft,setActivityDraft]=useState('');
   const [month,setMonth]=useState(dateKey(new Date()).slice(0,7));
   const [selected,setSelected]=useState(dateKey(new Date()));
   const [period,setPeriod]=useState('7');
@@ -79,7 +81,25 @@ export function TimeLog({data,onDataChange,client,userId}){
     }catch(e){setSyncError('명령이 저장되지 않았어. 다시 시도해 줘.');}
     finally{setBusy(false);}
   };
-  const activities=[...new Set([...initialActivities,...(record.activities||[])])];
+  // New editable catalog; fall back to older installations' built-in/custom activities.
+  // Historical time entries remain intact even if an activity is renamed or removed.
+  const activities=Array.isArray(record.activityList)
+    ? record.activityList
+    : [...new Set([...initialActivities,...(record.activities||[])])];
+  const startEditActivity=name=>{setEditingActivity(name);setActivityDraft(name);};
+  const applyActivityEdit=()=>{
+    const next=activityDraft.trim().slice(0,40);
+    if(!next || (next!==editingActivity && activities.includes(next)))return;
+    if(active?.activity===editingActivity){window.alert('기록 중인 활동은 먼저 종료한 뒤 수정해 줘.');return;}
+    save(prev=>({...prev,activityList:activities.map(a=>a===editingActivity?next:a)}));
+    setEditingActivity(null);setActivityDraft('');
+  };
+  const deleteActivity=name=>{
+    if(active?.activity===name){window.alert('기록 중인 활동은 먼저 종료한 뒤 삭제해 줘.');return;}
+    if(!window.confirm(`"${name}" 활동을 목록에서 삭제할까?\\n기존 타임로그 기록과 통계는 삭제되지 않아.`))return;
+    save(prev=>({...prev,activityList:activities.filter(a=>a!==name)}));
+    if(editingActivity===name){setEditingActivity(null);setActivityDraft('');}
+  };
   useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return ()=>clearInterval(id)},[]);
   const save=fn=>onDataChange(d=>({...d,timeLog:fn(d.timeLog||{})}));
   const begin=name=>command('start',name);
@@ -110,8 +130,22 @@ export function TimeLog({data,onDataChange,client,userId}){
     {section==='record'&&<>
       <div className="timelog-counter"><div className="timelog-counter-label">{active?`${active.activity} · 기록 중`:'기록 대기'}</div><div className="timelog-clock">{elapsed(activeMs)}</div>{active?<button type="button" className="timelog-primary" disabled={busy||!server.ready} onClick={stop}>종료 및 저장</button>:<p>활동을 선택하면 측정이 시작돼.</p>}</div>
       <div className="timelog-kpis"><div><small>오늘</small><strong>{minutesText(todayTotal)}</strong></div><div><small>이번 주 (월–일)</small><strong>{minutesText(weekTotal)}</strong></div></div>
-      <h2>활동 목록</h2><div className="timelog-activities">{activities.map(name=><div className="timelog-activity" key={name}><span><i style={{background:colors[name]}}/>{name}</span><button type="button" className={active?.activity===name?'recording':''} disabled={busy||!server.ready||active?.activity===name} onClick={()=>begin(name)}>{active?.activity===name?'기록 중':active?'전환':'시작'}</button></div>)}</div>
-      <form className="timelog-add" onSubmit={e=>{e.preventDefault();const name=newActivity.trim().slice(0,40);if(!name||activities.includes(name))return;save(prev=>({...prev,activities:[...(prev.activities||[]),name]}));setNewActivity('')}}><input aria-label="새 활동 이름" placeholder="새 활동 추가" value={newActivity} onChange={e=>setNewActivity(e.target.value)}/><button type="submit" disabled={!newActivity.trim()}><Plus size={17}/> 추가</button></form>
+      <h2>활동 목록</h2><div className="timelog-activities">{activities.map(name=><div className="timelog-activity" key={name} style={{gap:7,minWidth:0}}>
+        {editingActivity===name
+          ? <form onSubmit={e=>{e.preventDefault();applyActivityEdit();}} style={{display:'flex',alignItems:'center',gap:5,flex:1,minWidth:0}}>
+              <input aria-label="활동 이름 수정" autoFocus maxLength={40} value={activityDraft} onChange={e=>setActivityDraft(e.target.value)}
+                style={{flex:1,minWidth:0,width:'100%',padding:'8px',borderRadius:9,border:'1px solid #d6c7e7',fontSize:14}}/>
+              <button type="submit" aria-label="활동 이름 저장" disabled={!activityDraft.trim() || (activityDraft.trim()!==name&&activities.includes(activityDraft.trim()))} style={{padding:'6px',flexShrink:0}}><Check size={16}/></button>
+              <button type="button" aria-label="수정 취소" onClick={()=>{setEditingActivity(null);setActivityDraft('');}} style={{padding:'6px',flexShrink:0}}><X size={16}/></button>
+            </form>
+          : <>
+              <span style={{flex:1,minWidth:0,overflowWrap:'anywhere'}}><i style={{background:colors[name]}}/>{name}</span>
+              <button type="button" aria-label={`${name} 수정`} title="수정" onClick={()=>startEditActivity(name)} style={{padding:'6px',flexShrink:0,color:'#8b71b6'}}><Pencil size={15}/></button>
+              <button type="button" aria-label={`${name} 삭제`} title="삭제" onClick={()=>deleteActivity(name)} style={{padding:'6px',flexShrink:0,color:'#bd748b'}}><Trash2 size={15}/></button>
+              <button type="button" className={active?.activity===name?'recording':''} disabled={busy||!server.ready||active?.activity===name} onClick={()=>begin(name)}>{active?.activity===name?'기록 중':active?'전환':'시작'}</button>
+            </>}
+      </div>)}</div>
+      <form className="timelog-add" onSubmit={e=>{e.preventDefault();const name=newActivity.trim().slice(0,40);if(!name||activities.includes(name))return;save(prev=>({...prev,activityList:[...activities,name]}));setNewActivity('')}}><input aria-label="새 활동 이름" placeholder="새 활동 추가" value={newActivity} onChange={e=>setNewActivity(e.target.value)}/><button type="submit" disabled={!newActivity.trim()}><Plus size={17}/> 추가</button></form>
     </>}
     {section==='daily'&&<DailyTimeLine selected={dailyDate} onSelect={setDailyDate} entries={computed} colors={colors} now={now}/>}
     {section==='stats'&&<>
