@@ -13,7 +13,8 @@ const colorFor = name => { let hash=0;for(const c of name)hash=(Math.imul(hash,3
 const freshId = () => globalThis.crypto?.randomUUID?.() || `block-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const POLAR = (m,r) => {const t = (m/1440)*Math.PI*2-Math.PI/2;return [160+r*Math.cos(t),160+r*Math.sin(t)];};
 const pie = (start,end,r=117) => { const [sx,sy]=POLAR(start,r),[ex,ey]=POLAR(end,r);return `M160,160 L${sx},${sy} A${r},${r} 0 ${end-start>720?1:0} 1 ${ex},${ey} Z`;};
-const timeOptions = Array.from({length:288},(_,i)=>labelTime(i*5));
+const hourOptions = Array.from({length:24},(_,i)=>pad(i));
+const minuteOptions = Array.from({length:12},(_,i)=>pad(i*5));
 function ClockChart({segments,date,mode}){
   return <svg className="tt-chart" viewBox="0 0 320 320" role="img" aria-label={`${date} ${mode==='plan'?'계획':'실제'} 24시간 원형 시간표`}>
     <circle cx="160" cy="160" r="117" fill="#f3eff9" stroke="#e5ddef" strokeWidth="1"/>
@@ -69,14 +70,28 @@ export function TimeTable({data, onDataChange, client, userId, initialDate}){
   };
   const edit = b=>{setEditing(b.id);setStart(labelTime(Math.round(b.start/5)*5));setEnd(labelTime(Math.round(b.end/5)*5));setTitle(b.title);setError('');};
   const remove = id=>{if(!window.confirm('이 계획 블록을 삭제할까?'))return;onDataChange(d=>({...d,timeBlocks:(d.timeBlocks||[]).filter(b=>b.id!==id)}));if(editing===id){setEditing(null);setTitle('');}};
-  const options=timeOptions.map(x=><option key={x} value={x}>{x}</option>);
+  const changeTimePart = (which,part,value) => {
+    const current = which==='start' ? start : end;
+    const [hour,minute] = current.split(':');
+    const next = part==='hour' ? `${value}:${minute}` : `${hour}:${value}`;
+    (which==='start' ? setStart : setEnd)(next);
+    setError('');
+  };
+  const timeField = (which,label,value) => {
+    const [hour,minute] = value.split(':');
+    return <div className="tt-time-field"><span className="tt-time-label">{label}</span><div className="tt-time-parts">
+      <label className="tt-time-part"><span>시</span><select aria-label={`${label} 시`} value={hour} onChange={e=>changeTimePart(which,'hour',e.target.value)}>{hourOptions.map(h=><option key={h} value={h}>{h}</option>)}</select></label>
+      <span className="tt-time-colon" aria-hidden="true">:</span>
+      <label className="tt-time-part"><span>분</span><select aria-label={`${label} 분`} value={minute} onChange={e=>changeTimePart(which,'minute',e.target.value)}>{minuteOptions.map(m=><option key={m} value={m}>{m}</option>)}</select></label>
+    </div></div>;
+  };
   return <section className="tt-page">
     <header className="tt-heading"><h1>시간표</h1><div><button type="button" onClick={()=>setDate(addDays(date,-7))} aria-label="이전 주"><ChevronLeft size={18}/></button><span>{asDate(date).getFullYear()}년 {asDate(date).getMonth()+1}월</span><button type="button" onClick={()=>setDate(addDays(date,7))} aria-label="다음 주"><ChevronRight size={18}/></button></div></header>
     <div className="tt-week" role="group" aria-label="주간 날짜 선택">{Array.from({length:7},(_,i)=>{const day=addDays(weekStart,i),d=asDate(day);return <button key={day} type="button" onClick={()=>{setDate(day);setEditing(null);setTitle('');}} className={day===date?'active':''}><small>{'일월화수목금토'[i]}</small><strong>{d.getDate()}</strong></button>;})}</div>
     <div className="tt-selected">{Number(date.slice(5,7))}월 {Number(date.slice(8,10))}일 {'일월화수목금토'[asDate(date).getDay()]}요일</div>
     <div className="tt-subtabs" role="tablist" aria-label="시간표 종류"><button type="button" role="tab" aria-selected={mode==='plan'} className={mode==='plan'?'active':''} onClick={()=>setMode('plan')}>계획</button><button type="button" role="tab" aria-selected={mode==='actual'} className={mode==='actual'?'active':''} onClick={()=>setMode('actual')}>실제</button></div>
     {mode==='plan'?<form className="tt-editor" onSubmit={save}>
-      <div className="tt-selects"><label>시작<select aria-label="시작 시간" value={start} onChange={e=>setStart(e.target.value)}>{options}</select></label><label>종료<select aria-label="종료 시간" value={end} onChange={e=>setEnd(e.target.value)}>{options}</select></label></div>
+      <div className="tt-selects">{timeField('start','시작',start)}{timeField('end','종료',end)}</div>
       <div className="tt-addrow"><input aria-label="활동 이름" maxLength={120} placeholder="예: 식사, 공부, 앱 개발" value={title} onChange={e=>setTitle(e.target.value)}/><button type="submit"><Plus size={17}/>{editing?'저장':'추가'}</button></div>
       {editing&&<button type="button" className="tt-cancel" onClick={()=>{setEditing(null);setTitle('');}}>수정 취소</button>}
       {error&&<p role="alert" className="tt-error">{error}</p>}
