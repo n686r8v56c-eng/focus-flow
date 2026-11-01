@@ -691,6 +691,14 @@ export function App({
     handle.style.background='';
     handle.style.color='';
   };
+  const todayAppLabel = task => {
+    const p = taskProject(task);
+    if (!isAppDevelopment(p)) return '';
+    return registryApps.find(app => app.id === task.appRegistryId)?.name || '미지정';
+  };
+  const todayTaskMeta = (task, proj) => (
+    <>{proj?.name || '개인 일정'}{isAppDevelopment(proj) && <span style={{color:'#8063b0',fontWeight:650}}> · {todayAppLabel(task)}</span>}{task.due ? ' · '+task.due : ''}{task.time ? ' · '+task.time : ''}</>
+  );
   function TaskCard({ task, compact = false }) {
     const p = taskProject(task),
       total = (task.subtasks || []).length,
@@ -859,7 +867,7 @@ export function App({
                     <span>{t.title}</span>
                     {!!t.estimatedPomodoros && <span style={{display:'inline-flex',flexShrink:0,alignItems:'center',gap:2}}><TaskEstimate count={t.estimatedPomodoros}/></span>}
                   </div>
-                  <div style={{fontSize:11,color:'#978aa5',marginTop:2,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
+                  <div style={{fontSize:11,color:'#978aa5',marginTop:2,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{todayTaskMeta(t,proj)}</div>
                 </div>
                 {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`} style={{flexShrink:0}}>
                   <circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/>
@@ -883,7 +891,7 @@ export function App({
             const count=subtasks.filter(x=>x.done).length;
             return <div key={t.id} style={{background:'#f4f1f6',border:'1px solid #e9e3ee',borderRadius:16,padding:'9px 12px',display:'flex',alignItems:'center',gap:10,color:'#9a93a2'}}>
               <button type="button" aria-label={`${t.title} 완료 취소`} onClick={()=>completeOrStatus(t,'todo')} style={{width:28,height:28,flexShrink:0,borderRadius:'50%',background:'#e4ddee',border:'2px solid #a58fc6',color:'#876bb5',fontWeight:700}}>✓</button>
-              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{display:'flex',alignItems:'center',gap:5,fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}<span>{t.title}</span>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div><div style={{fontSize:11,marginTop:3,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div></div>
+              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{display:'flex',alignItems:'center',gap:5,fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}<span>{t.title}</span>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div><div style={{fontSize:11,marginTop:3,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{todayTaskMeta(t,proj)}</div></div>
               {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`}><circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/><circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/></svg>}
             </div>;
           })}

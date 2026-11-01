@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, Check, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, Check, X, Star, Search } from 'lucide-react';
 
 const categories = ['아이디어', '조사', '실행', '반성', 'Misc'];
 const UNASSIGNED = '__unassigned__';
@@ -14,6 +14,8 @@ export function MemoPanel({ data, onDataChange }) {
   const [projectId, setProjectId] = useState(UNASSIGNED);
   const [category, setCategory] = useState('Misc');
   const [draft, setDraft] = useState('');
+  const [search, setSearch] = useState('');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [menuId, setMenuId] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -24,7 +26,8 @@ export function MemoPanel({ data, onDataChange }) {
   useEffect(() => () => clearTimeout(pressTimer.current), []);
 
   const all = Array.isArray(data.projectMemos) ? data.projectMemos : [];
-  const visible = all.filter(m => m.category === category && (projectId === 'all' || m.projectId === projectId))
+  const visible = all.filter(m => favoritesOnly ? Boolean(m.favorite) : (m.category === category && (projectId === 'all' || m.projectId === projectId)))
+    .filter(m => !search.trim() || [m.text, projects.find(p=>p.id===m.projectId)?.name, m.category].some(v=>String(v||'').toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())))
     .slice().sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   const change = fn => onDataChange(d => ({ ...d, projectMemos: fn(Array.isArray(d.projectMemos) ? d.projectMemos : []) }));
   const save = e => {
@@ -44,6 +47,7 @@ export function MemoPanel({ data, onDataChange }) {
   const endPress = () => clearTimeout(pressTimer.current);
   const beginEdit = m => { setEditDraft(m.text || ''); setEditingId(m.id); setMenuId(null); setExpandedId(m.id); };
   const commitEdit = id => { const value = editDraft.trim(); if (!value) return; change(list => list.map(m => m.id === id ? { ...m, text:value, updatedAt:new Date().toISOString() } : m)); setEditingId(null); };
+  const toggleFavorite = m => { change(list => list.map(item => item.id === m.id ? {...item, favorite:!item.favorite} : item)); setMenuId(null); };
   const deleteMemo = id => { if (!window.confirm('이 메모를 삭제할까?')) return; change(list => list.filter(m => m.id !== id)); setMenuId(null); setEditingId(null); };
   const copyMemo = async text => {
     try { await navigator.clipboard.writeText(text || ''); }
@@ -61,6 +65,15 @@ export function MemoPanel({ data, onDataChange }) {
     <div className="pom-subnav" role="tablist" aria-label="메모 분류" style={{display:'grid',gridTemplateColumns:'repeat(5,minmax(0,1fr))',gap:2,marginBottom:15}}>
       {categories.map(c=><button type="button" key={c} role="tab" aria-selected={category===c} className={category===c?'active':''} onClick={()=>{setCategory(c);setExpandedId(null);setMenuId(null);}} style={{padding:'12px 2px',minWidth:0,fontSize:14}}>{c}</button>)}
     </div>
+    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:15,minWidth:0}}>
+      <label style={{display:'flex',alignItems:'center',gap:7,flex:1,minWidth:0,...ui.field,padding:'8px 10px'}}>
+        <Search size={17} color="#927db1" style={{flexShrink:0}} />
+        <input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="메모 검색" aria-label="메모 검색" style={{border:0,outline:0,background:'transparent',width:'100%',minWidth:0,fontSize:14,color:'#393343'}} />
+      </label>
+      <button type="button" aria-pressed={favoritesOnly} onClick={()=>{setFavoritesOnly(v=>!v);setMenuId(null);setExpandedId(null);}} style={{display:'flex',alignItems:'center',gap:5,flexShrink:0,padding:'10px 11px',border:'1px solid #e5dcea',borderRadius:12,background:favoritesOnly?'#eee7fa':'#fff',color:'#8668b5',fontWeight:700,fontSize:13}}>
+        <Star size={17} fill={favoritesOnly?'#9d85ce':'none'}/> 즐겨찾기
+      </button>
+    </div>
     <form onSubmit={save} className="stat-card" style={{padding:15,marginBottom:20,maxWidth:'100%',overflow:'hidden'}}>
       <label htmlFor="memo-draft" style={{display:'block',fontWeight:700,color:'#775991',marginBottom:10}}>{category} 메모</label>
       <textarea id="memo-draft" value={draft} onChange={e=>setDraft(e.target.value)} rows={4} placeholder={projectId==='all'?'기록할 프로젝트를 선택해 줘':'메모를 입력해 줘'} disabled={projectId==='all'} style={{...ui.field,resize:'vertical',lineHeight:1.6}} />
@@ -68,16 +81,18 @@ export function MemoPanel({ data, onDataChange }) {
     </form>
     <div style={{fontSize:15,fontWeight:750,marginBottom:11}}>메모 목록 <span style={ui.muted}>({visible.length})</span></div>
     <div style={{display:'grid',gap:8}}>
-      {visible.map(m => <article key={m.id} style={ui.card}>
+      {visible.map(m => <article key={m.id} style={{...ui.card,WebkitUserSelect:'none',userSelect:'none',WebkitTouchCallout:'none'}}>
         <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
-          <button type="button" onPointerDown={e=>startPress(m.id,e)} onPointerUp={endPress} onPointerCancel={endPress} onPointerLeave={endPress} onContextMenu={e=>{e.preventDefault();setMenuId(m.id);}} onClick={()=>{if(longPressed.current){longPressed.current=false;return;}setMenuId(null);setExpandedId(x=>x===m.id?null:m.id);}} style={{display:'flex',alignItems:'center',gap:7,flex:1,minWidth:0,textAlign:'left',padding:'5px 0',touchAction:'pan-y'}} title="터치해 펼치기 · 길게 눌러 수정 또는 삭제">
+          <button type="button" onPointerDown={e=>startPress(m.id,e)} onPointerUp={endPress} onPointerCancel={endPress} onPointerLeave={endPress} onContextMenu={e=>{e.preventDefault();endPress();setMenuId(m.id);}} onSelectStart={e=>e.preventDefault()} onDragStart={e=>e.preventDefault()} onClick={()=>{if(longPressed.current){longPressed.current=false;return;}setMenuId(null);setExpandedId(x=>x===m.id?null:m.id);}} style={{display:'flex',alignItems:'center',gap:7,flex:1,minWidth:0,textAlign:'left',padding:'5px 0',touchAction:'pan-y'}} title="터치해 펼치기 · 길게 눌러 수정·삭제·즐겨찾기">
             {expandedId===m.id?<ChevronDown size={16} color="#9c84c5"/>:<ChevronRight size={16} color="#9c84c5"/>}
+            {m.favorite && <Star size={13} fill="#a18ad1" color="#a18ad1" style={{flexShrink:0}}/>}
             <span style={{fontSize:14,fontWeight:650,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{(m.text||'').split('\n')[0]}</span>
           </button>
           <button type="button" onClick={()=>copyMemo(m.text)} aria-label="메모 복사" title="메모 복사" style={{color:'#9476c5',padding:7,flexShrink:0}}><Copy size={18}/></button>
         </div>
         {menuId===m.id && <div style={{display:'flex',gap:8,marginTop:9,borderTop:'1px solid #f0eaf5',paddingTop:9}}>
           <button type="button" onClick={()=>beginEdit(m)} style={{display:'flex',alignItems:'center',gap:5,color:'#8061b5',padding:7}}><Pencil size={16}/> 수정</button>
+          <button type="button" onClick={()=>toggleFavorite(m)} style={{display:'flex',alignItems:'center',gap:5,color:'#8061b5',padding:7}}><Star size={16} fill={m.favorite?'#a18ad1':'none'}/> {m.favorite?'즐겨찾기 해제':'즐겨찾기'}</button>
           <button type="button" onClick={()=>deleteMemo(m.id)} style={{display:'flex',alignItems:'center',gap:5,color:'#b9677d',padding:7}}><Trash2 size={16}/> 삭제</button>
           <button type="button" onClick={()=>setMenuId(null)} aria-label="메뉴 닫기" style={{marginLeft:'auto',padding:7}}><X size={16}/></button>
         </div>}
@@ -89,10 +104,10 @@ export function MemoPanel({ data, onDataChange }) {
           </div>
         </div> : expandedId===m.id && <div style={{borderTop:'1px solid #f0eaf5',paddingTop:10,marginTop:9,whiteSpace:'pre-wrap',overflowWrap:'anywhere',fontSize:14,lineHeight:1.6}}>
           {m.text}
-          {projectId==='all' && <div style={{...ui.muted,marginTop:8}}>{m.projectId===UNASSIGNED ? '미지정' : (projects.find(p=>p.id===m.projectId)?.name || '프로젝트 없음')}</div>}
+          {(projectId==='all' || favoritesOnly) && <div style={{...ui.muted,marginTop:8}}>{m.projectId===UNASSIGNED ? '미지정' : (projects.find(p=>p.id===m.projectId)?.name || '프로젝트 없음')}</div>}
         </div>}
       </article>)}
-      {!visible.length && <p className="hint">아직 메모가 없어. 첫 메모를 기록해 봐.</p>}
+      {!visible.length && <p className="hint">{favoritesOnly?'즐겨찾기한 메모가 없어.':search.trim()?'검색 결과가 없어.':'아직 메모가 없어. 첫 메모를 기록해 봐.'}</p>}
     </div>
   </section>;
 }
