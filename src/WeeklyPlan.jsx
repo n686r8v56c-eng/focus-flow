@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Pencil, Trash2, Check, X } from 'lucide-react';
+import React, { useMemo, useState, useRef } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import './weekly-plan.css';
 
 const DAYS=['월','화','수','목','금','토','일'];
@@ -18,6 +18,9 @@ export function WeeklyPlan({data,onDataChange}) {
   const [draft,setDraft]=useState('');
   const [editing,setEditing]=useState(null);
   const [error,setError]=useState('');
+  const [menuEntry,setMenuEntry]=useState(null);
+  const longPressTimer=useRef(null);
+  const longPressed=useRef(false);
   const dates=useMemo(()=>weekDates(week),[week]);
   const entries=Array.isArray(data?.weeklyPlans)?data.weeklyPlans:[];
   const visible=entries.filter(e=>dates.includes(e.date));
@@ -29,6 +32,8 @@ export function WeeklyPlan({data,onDataChange}) {
     else persist(items=>[...items,{id:uid(),date:selected,slot,title,createdAt:new Date().toISOString()}]);
     setEditing(null);setDraft('');setError('');
   };
+  const openLongPress=e=>{longPressed.current=true;setMenuEntry(e);};
+  const clearLongPress=()=>{clearTimeout(longPressTimer.current);};
   const beginEdit=e=>{setEditing(e.id);setSelected(e.date);setSlot(e.slot);setDraft(e.title);setError('');};
   const remove=e=>{if(!window.confirm('이 계획을 삭제할까?'))return;persist(items=>items.filter(x=>x.id!==e.id));if(editing===e.id){setEditing(null);setDraft('');}};
   return <section className="wp-page">
@@ -41,7 +46,13 @@ export function WeeklyPlan({data,onDataChange}) {
       <button className="wp-save" type="submit" disabled={!draft.trim()}>{editing?'수정 저장':'계획 추가'}</button>
     </form>
     <div className="wp-table-title"><strong>주간 계획표</strong><span>{visible.length}개 계획</span></div>
-    <div className="wp-scroll"><table className="wp-table"><thead><tr><th scope="col">시간대</th>{dates.map((d,i)=><th key={d} scope="col">{DAYS[i]}<span>{formatShort(d)}</span></th>)}</tr></thead><tbody>{SLOTS.map(s=><tr key={s}><th scope="row">{s}</th>{dates.map(d=>{const cell=visible.filter(e=>e.date===d&&e.slot===s);return <td key={d}>{cell.map(e=><div className="wp-entry" key={e.id}><button className="wp-entry-text" type="button" onClick={()=>beginEdit(e)} title="수정하기">{e.title}</button><div className="wp-entry-actions"><button type="button" onClick={()=>beginEdit(e)} aria-label={`${e.title} 수정`}><Pencil size={12}/></button><button type="button" onClick={()=>remove(e)} aria-label={`${e.title} 삭제`}><Trash2 size={12}/></button></div></div>)}</td>})}</tr>)}</tbody></table></div>
+    <div className="wp-scroll" aria-label="좌우로 스크롤하여 주말 보기"><table className="wp-table"><thead><tr><th scope="col">시간대</th>{dates.map((d,i)=><th key={d} scope="col">{DAYS[i]}<span>{formatShort(d)}</span></th>)}</tr></thead><tbody>{SLOTS.map(s=><tr key={s}><th scope="row">{s}</th>{dates.map(d=>{const cell=visible.filter(e=>e.date===d&&e.slot===s);return <td key={d}>{cell.map(e=><div className="wp-entry" key={e.id}><button className="wp-entry-text" type="button"
+        onPointerDown={event=>{if(event.pointerType==='mouse'&&event.button!==0)return;clearLongPress();longPressed.current=false;longPressTimer.current=setTimeout(()=>openLongPress(e),550);}}
+        onPointerUp={clearLongPress} onPointerCancel={clearLongPress} onPointerLeave={clearLongPress}
+        onContextMenu={ev=>{ev.preventDefault();clearLongPress();openLongPress(e);}}
+        onClick={()=>{if(longPressed.current){longPressed.current=false;return;}setSelected(e.date);setSlot(e.slot);}}
+        title="길게 누르면 수정·삭제" aria-label={`${e.title}, 길게 누르면 수정 또는 삭제`}>{e.title}</button></div>)}</td>})}</tr>)}</tbody></table></div>
+    {menuEntry && <div className="wp-modal-backdrop" onClick={()=>setMenuEntry(null)}><div className="wp-action-modal" role="dialog" aria-modal="true" aria-label="위클리 계획 편집" onClick={e=>e.stopPropagation()}><strong>{menuEntry.title}</strong><div className="wp-modal-actions"><button type="button" onClick={()=>{beginEdit(menuEntry);setMenuEntry(null);}}>수정</button><button type="button" onClick={()=>{remove(menuEntry);setMenuEntry(null);}}>삭제</button><button type="button" onClick={()=>setMenuEntry(null)}>취소</button></div></div></div>}
     <p className="wp-hint">시간을 입력하지 않고 오전 3칸·오후 3칸·저녁 2칸, 총 8개 구간으로 계획해. 저장하면 주간 계획표에 즉시 반영돼.</p>
   </section>;
 }

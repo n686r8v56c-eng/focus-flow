@@ -1273,6 +1273,7 @@ export function App({
           <div>
             <h1>프로젝트</h1>
           </div>
+          <button type="button" className="secondary small" onClick={()=>{setChecklistOpen(false);setRegistryOpen(true);}} aria-label="앱 관리 열기" title="앱 관리"><Blocks size={16}/> 앱 관리</button>
           <button className="primary small" onClick={() => setModal("project")}>
             <Plus size={16} /> 목록
           </button>
@@ -1939,8 +1940,9 @@ export function App({
         </button>
         <div className="header-actions">
           <button type="button" className={`header-timer ${tab === "timelog" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}} aria-label="타임로그 열기" title="타임로그"><span style={{fontSize:19,fontWeight:850,lineHeight:1,fontFamily:"Arial, sans-serif"}}>T</span></button>
-          <button type="button" className={`header-timer ${tab === "timeblocks" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("timeblocks");}} aria-label="타임블록 열기" title="타임블록"><Clock3 size={18}/></button>
-          <button type="button" className={`header-timer ${registryOpen ? "is-active" : ""}`} onClick={() => {setChecklistOpen(false);setRegistryOpen(true);}} aria-label="앱 관리 열기" title="앱 관리"><Blocks size={18}/></button>
+          <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("pom");}} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={18}/></button>
+          <button type="button" className={`header-timer ${tab === "calendar" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("calendar");}} aria-label="일정 열기" title="일정"><CalendarDays size={18}/></button>
+
           <button type="button" className={`header-timer ${checklistOpen ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(true);}} aria-label="체크리스트 열기" title="체크리스트"><ClipboardCheck size={18}/></button>
           <button type="button" className="header-timer" onClick={onLogout} aria-label="로그아웃" title="로그아웃"><LogOut size={18}/></button>
         </div>
@@ -1962,12 +1964,11 @@ export function App({
                 ? <MemoPanel data={data} onDataChange={setData} />
                 : Projects()}
       </main>
-      {!registryOpen && !checklistOpen && <nav className="bottom-nav bottom-nav-six">
+      {!registryOpen && !checklistOpen && <nav className="bottom-nav">
         {[
           ["today", Columns3, "오늘"],
           ["projects", FolderKanban, "프로젝트"],
-          ["pom", Timer, "뽀모도로"],
-          ["calendar", CalendarDays, "일정"],
+          ["timeblocks", Clock3, "타임블록"],
           ["weekly", CalendarRange, "위클리"],
           ["memos", Heart, "메모"],
         ].map(([id, Icon, label]) => (
