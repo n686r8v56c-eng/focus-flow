@@ -274,7 +274,7 @@ export function App({
   const todayTasks = data.tasks
     .filter(
       (t) =>
-        (t.status !== "done" && (!t.due || t.due <= visibleDate)) ||
+        (t.status !== "done" && !!t.due && t.due <= visibleDate) ||
         (t.status === "done" &&
           t.completedAt &&
           localDate(new Date(t.completedAt)) === visibleDate),
