@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import "./style.css";
 import "./timeblocks.css";
+import { TimeTable } from "./TimeTable.jsx";
 import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
@@ -1948,7 +1949,7 @@ export function App({
           : tab === "timelog"
             ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
           : tab === "timeblocks"
-            ? TimeBlocks()
+            ? <TimeTable data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId} initialDate={blockDate} />
           : tab === "calendar"
             ? Calendar()
             : tab === "pom"
