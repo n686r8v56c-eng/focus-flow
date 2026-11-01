@@ -55,8 +55,28 @@ export function AppRegistry({client,userId,onClose}){
  useEffect(()=>{if(!client||!userId)return;const ch=client.channel(`app-registry-${userId}`).on('postgres_changes',{event:'*',schema:'public',table:'app_registry_apps',filter:`user_id=eq.${userId}`},()=>load()).on('postgres_changes',{event:'*',schema:'public',table:'app_registry_accounts',filter:`user_id=eq.${userId}`},()=>load()).subscribe();return()=>{client.removeChannel(ch);};},[client,userId,load]);
  const fail=e=>{setError(e.message||String(e));setNotice('');};
  const success=msg=>{setError('');setNotice(msg);};
- const saveApp=async()=>{const name=norm(draft?.name),url=norm(draft?.deployment_url);if(!name){setError('앱 이름을 입력해 줘.');return;}if(!validUrl(url)){setError('배포 URL은 http:// 또는 https:// 주소로 입력해 줘.');return;}if(apps.some(a=>low(a.name)===low(name)&&a.id!==draft.id)&&!window.confirm('같은 이름의 앱이 이미 있어. 그래도 저장할까?'))return;if(draft.status==='배포'&&!url&&!window.confirm('배포 URL이 등록되지 않았어. 배포 상태로 저장할까?'))return;
- setBusy(true);setError('');try{const payload={user_id:userId,name,status:draft.status,email_account_id:draft.email_account_id||null,deployment_url:url||null,memo:norm(draft.memo)};const q=draft.id?client.from('app_registry_apps').update(payload).eq('id',draft.id).eq('user_id',userId):client.from('app_registry_apps').insert({...payload,id:id()});const {error:e}=await q;if(e)throw e;setStatus(draft.status);setEditing(false);setDraft(null);setView(null);await load();success('앱 정보를 저장했어.');}catch(e){fail(e);}finally{setBusy(false);}};
+ const saveApp=async()=>{const name=norm(draft?.name),url=norm(draft?.deployment_url),email=low(draft?.email_text ?? accounts.find(a=>a.id===draft?.email_account_id)?.email);if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){setError('올바른 이메일 주소를 입력해 줘.');return;}if(!name){setError('앱 이름을 입력해 줘.');return;}if(!validUrl(url)){setError('배포 URL은 http:// 또는 https:// 주소로 입력해 줘.');return;}if(apps.some(a=>low(a.name)===low(name)&&a.id!==draft.id)&&!window.confirm('같은 이름의 앱이 이미 있어. 그래도 저장할까?'))return;if(draft.status==='배포'&&!url&&!window.confirm('배포 URL이 등록되지 않았어. 배포 상태로 저장할까?'))return;
+ setBusy(true);setError('');try{
+ let linkedAccountId=null;
+ if(email){
+   const existing=accounts.find(a=>low(a.email)===email);
+   if(existing) linkedAccountId=existing.id;
+   else {
+     const accountId=id();
+     const {data:created,error:accountError}=await client.from('app_registry_accounts')
+       .insert({id:accountId,user_id:userId,email,memo:''})
+       .select('id').single();
+     if(accountError){
+       // A concurrent device may have registered the same email already.
+       if(accountError.code!=='23505')throw accountError;
+       const {data:found,error:findError}=await client.from('app_registry_accounts')
+         .select('id').eq('user_id',userId).eq('email',email).single();
+       if(findError)throw findError;
+       linkedAccountId=found.id;
+     }else linkedAccountId=created.id;
+   }
+ }
+ const payload={user_id:userId,name,status:draft.status,email_account_id:linkedAccountId,deployment_url:url||null,memo:norm(draft.memo)};const q=draft.id?client.from('app_registry_apps').update(payload).eq('id',draft.id).eq('user_id',userId):client.from('app_registry_apps').insert({...payload,id:id()});const {error:e}=await q;if(e)throw e;setStatus(draft.status);setEditing(false);setDraft(null);setView(null);await load();success('앱 정보를 저장했어.');}catch(e){fail(e);}finally{setBusy(false);}};
  const saveAccount=async()=>{const email=low(draft?.email);if(!/^\S+@\S+\.\S+$/.test(email)){setError('올바른 이메일 주소를 입력해 줘.');return;}if(accounts.some(a=>low(a.email)===email&&a.id!==draft.id)){setError('이미 등록된 이메일이야.');return;}setBusy(true);setError('');try{const payload={user_id:userId,email,memo:norm(draft.memo)};const {error:e}=await(draft.id?client.from('app_registry_accounts').update(payload).eq('id',draft.id).eq('user_id',userId):client.from('app_registry_accounts').insert({...payload,id:id()}));if(e)throw e;setEditing(false);setDraft(null);setView(null);await load();success('계정을 저장했어.');}catch(e){fail(e);}finally{setBusy(false);}};
  const remove=async(kind,item)=>{const connected=kind==='accounts'?apps.filter(a=>a.email_account_id===item.id):[];const msg=kind==='apps'?'이 앱을 관리 목록에서 삭제하시겠습니까? 실제 배포된 앱이나 외부 서비스는 삭제되지 않습니다.':`이 계정을 관리 목록에서 삭제할까? 연결된 앱 ${connected.length}개는 유지되고 이메일 연결만 해제돼. 실제 Gmail이나 Supabase 계정은 삭제되지 않아.`;if(!window.confirm(msg))return;setBusy(true);setError('');try{const {error:e}=await client.from(kind==='apps'?'app_registry_apps':'app_registry_accounts').delete().eq('id',item.id).eq('user_id',userId);if(e)throw e;setView(null);await load();success('관리대장 기록만 삭제했어.');}catch(e){fail(e);}finally{setBusy(false);}};
  const openNew=()=>{setError('');setView(null);setDraft(tab==='apps'?emptyApp(status):emptyAccount());setEditing(true);};
@@ -85,7 +105,7 @@ export function AppRegistry({client,userId,onClose}){
   {!loading&&editing&&draft&&<div className="ar-editor"><div className="ar-row"><h2>{draft.id?'정보 수정':tab==='apps'?'앱 추가':'계정 추가'}</h2><button className="ar-icon" onClick={()=>{setEditing(false);setDraft(null);}} aria-label="닫기"><X size={20}/></button></div>{tab==='apps'?<>
   {fieldLabel('앱 이름 *',<input value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})} maxLength={150}/>)}
   {fieldLabel('개발 상태 *',<select value={draft.status} onChange={e=>setDraft({...draft,status:e.target.value})}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select>)}
-  {fieldLabel('가입 이메일',<select value={draft.email_account_id||''} onChange={e=>setDraft({...draft,email_account_id:e.target.value})}><option value="">미등록</option>{accounts.map(a=><option value={a.id} key={a.id}>{a.email}</option>)}</select>)}
+  {fieldLabel('가입 이메일',<input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" placeholder="이메일 주소 직접 입력 (선택)" value={draft.email_text ?? accounts.find(a=>a.id===draft.email_account_id)?.email ?? ''} onChange={e=>setDraft({...draft,email_text:e.target.value})}/>)}
   {fieldLabel('배포 URL',<input value={draft.deployment_url||''} onChange={e=>setDraft({...draft,deployment_url:e.target.value})} placeholder="https://..." inputMode="url"/>)}
   </>:fieldLabel('이메일 주소 *',<input type="email" value={draft.email||''} onChange={e=>setDraft({...draft,email:e.target.value})} autoCapitalize="none"/>)}
   {fieldLabel('메모',<textarea rows={5} value={draft.memo||''} onChange={e=>setDraft({...draft,memo:e.target.value})}/>)}
