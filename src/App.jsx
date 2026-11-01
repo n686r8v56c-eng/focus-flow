@@ -1311,19 +1311,17 @@ export function App({
           </div>
         )}
         {appMode && <div className="project-registry-filters" style={{display:"grid",gap:10,margin:"16px 0"}}>
-          <div style={{display:"grid",gridTemplateColumns:"0.7fr 1.6fr 0.7fr 1fr 1fr 0.7fr",gap:3,width:"100%"}} aria-label="개발 상태 필터">
+          <div style={{display:"grid",gridTemplateColumns:"0.8fr 1.65fr 0.8fr 1fr 1fr 0.78fr",gap:3,width:"100%"}} aria-label="개발 상태 필터">
             {registryStatuses.map(st=><button type="button" key={st}
               className={appStatusFilter===st ? "primary small" : "secondary small"}
-              style={{padding:"8px 0",fontSize:"clamp(9px,2.55vw,12px)",minWidth:0,whiteSpace:"nowrap",borderRadius:10}}
-              onClick={()=>{setAppStatusFilter(st);setAppIdFilter("전체");}}>{st}</button>)}
+              style={{padding:"7px 1px",fontSize:"clamp(8px,2.35vw,11px)",minWidth:0,whiteSpace:"nowrap",borderRadius:9,letterSpacing:"-.35px",lineHeight:1.2}}
+              onClick={()=>{setAppStatusFilter(st);setAppIdFilter("전체");}}>{st} {st==="전체" ? registryApps.length : registryApps.filter(a=>a.status===st).length}</button>)}
           </div>
-          <label>앱 선택
-            <select className="select-full" value={appIdFilter} onChange={e=>setAppIdFilter(e.target.value)}>
-              <option value="전체">전체 앱</option>
-              {appStatusFilter==="전체" && <option value="미지정">미지정</option>}
-              {visibleApps.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </label>
+          <select aria-label="앱 선택" className="select-full" value={appIdFilter} onChange={e=>setAppIdFilter(e.target.value)}>
+            <option value="전체">전체 앱</option>
+            {appStatusFilter==="전체" && <option value="미지정">미지정</option>}
+            {visibleApps.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
           {registryError && <p role="alert" style={{color:"#bd5267",fontSize:12}}>{registryError}</p>}
         </div>}
         <section className="project-status-section">
