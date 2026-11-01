@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {ArrowLeft, Plus, ClipboardCheck, Copy, Trash2, Pencil, ChevronDown, ChevronRight, Check, X} from 'lucide-react';
+import {ArrowLeft, Plus, ClipboardCheck, Copy, Trash2, Pencil, ChevronDown, ChevronRight, Check, X, RotateCcw} from 'lucide-react';
 import './checklist.css';
 
 const uuid = () => crypto.randomUUID();
@@ -143,6 +143,15 @@ export function ChecklistPanel({client,userId,onClose}) {
       setLists(old=>[data,...old]);setSelectedId(data.id);saved('체크하지 않은 새 복사본을 만들었어.');
     }catch(e){fail(e);}finally{setBusy(false);}
   }
+  async function resetChecks(){
+    if (!selected || busy || countDone(selected) === 0) return;
+    if (!window.confirm(`'${selected.title}' 체크리스트의 완료 표시 ${countDone(selected)}개를 모두 해제할까?\n그룹과 항목은 삭제되지 않아.`)) return;
+    const groups = (selected.groups || []).map(g => ({
+      ...g,
+      items: (g.items || []).map(item => ({...item, done:false}))
+    }));
+    await updateRow(selected, {groups}, '모든 체크를 해제했어.');
+  }
   async function removeList(){
     if(!selected||!window.confirm(`'${selected.title}' 체크리스트를 삭제할까?`))return;
     setBusy(true);try{
@@ -175,6 +184,7 @@ export function ChecklistPanel({client,userId,onClose}) {
     {mode==='detail'&&selected&&<>
       <div className="cl-detail-head"><div><h2>{selected.title}</h2><p className="cl-muted">{progress} 완료</p></div>
         <div className="cl-actions">
+          <button type="button" aria-label="체크 상태 전체 초기화" title="전체 체크 초기화" disabled={busy || countDone(selected)===0} onClick={resetChecks}><RotateCcw size={17}/></button>
           <button aria-label="제목 수정" title="제목 수정" onClick={()=>{setEditing({kind:'title'});setDraft(selected.title);}}><Pencil size={17}/></button>
           <button aria-label="체크리스트 복제" title="복제" onClick={clone}><Copy size={17}/></button>
           <button aria-label="체크리스트 삭제" title="삭제" onClick={removeList}><Trash2 size={17}/></button>
