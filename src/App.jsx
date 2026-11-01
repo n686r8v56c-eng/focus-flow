@@ -118,6 +118,8 @@ export function App({
     [statView, setStatView] = useState("daily"),
     [statMonth, setStatMonth] = useState(localDate().slice(0, 7)),
     [showDone, setShowDone] = useState(false),
+    [showProjectTodo, setShowProjectTodo] = useState(true),
+    [collapsedProjectWeeks, setCollapsedProjectWeeks] = useState({}),
     [viewDate,setViewDate]=useState(localDate()),
     [analysisPeriod,setAnalysisPeriod]=useState("daily"),
     [customFocusMinutes,setCustomFocusMinutes]=useState(25),
@@ -858,7 +860,6 @@ export function App({
                     {!!t.estimatedPomodoros && <span style={{display:'inline-flex',flexShrink:0,alignItems:'center',gap:2}}><TaskEstimate count={t.estimatedPomodoros}/></span>}
                   </div>
                   <div style={{fontSize:11,color:'#978aa5',marginTop:2,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
-                  {isAppDevelopment(proj) && <div style={{fontSize:11,color:'#8874ad',marginTop:3,marginLeft:12,overflowWrap:'anywhere'}}>↳ {registryApps.find(a=>a.id===t.appRegistryId)?.name || '미지정'}</div>}
                 </div>
                 {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`} style={{flexShrink:0}}>
                   <circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/>
@@ -882,8 +883,7 @@ export function App({
             const count=subtasks.filter(x=>x.done).length;
             return <div key={t.id} style={{background:'#f4f1f6',border:'1px solid #e9e3ee',borderRadius:16,padding:'9px 12px',display:'flex',alignItems:'center',gap:10,color:'#9a93a2'}}>
               <button type="button" aria-label={`${t.title} 완료 취소`} onClick={()=>completeOrStatus(t,'todo')} style={{width:28,height:28,flexShrink:0,borderRadius:'50%',background:'#e4ddee',border:'2px solid #a58fc6',color:'#876bb5',fontWeight:700}}>✓</button>
-              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{display:'flex',alignItems:'center',gap:5,fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}<span>{t.title}</span>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div><div style={{fontSize:11,marginTop:3,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
-                  {isAppDevelopment(proj) && <div style={{fontSize:11,color:'#8874ad',marginTop:3,marginLeft:12,overflowWrap:'anywhere'}}>↳ {registryApps.find(a=>a.id===t.appRegistryId)?.name || '미지정'}</div>}</div>
+              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{display:'flex',alignItems:'center',gap:5,fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}<span>{t.title}</span>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div><div style={{fontSize:11,marginTop:3,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div></div>
               {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`}><circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/><circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/></svg>}
             </div>;
           })}
@@ -1133,7 +1133,7 @@ export function App({
     const todo = items.filter(t => t.status !== "done" && t.status !== "doing");
     const doing = items.filter(t => t.status === "doing");
     const done = items.filter(t => t.status === "done");
-    const renderGroups = (tasks) => {
+    const renderGroups = (tasks, groupType) => {
       const sorted = [...tasks].sort(byDueThenTitle);
       const groups = [];
       for (const task of sorted) {
@@ -1141,12 +1141,19 @@ export function App({
         if (!groups.length || groups[groups.length - 1].label !== label) groups.push({label, tasks: []});
         groups[groups.length - 1].tasks.push(task);
       }
-      return groups.map(group => (
-        <section key={group.label} className="project-week-group">
-          <h3 className="project-week-heading">{group.label}</h3>
-          <div className="project-task-list">{group.tasks.map(renderItem)}</div>
-        </section>
-      ));
+      return groups.map(group => {
+        const groupKey = `${selectedProject}:${groupType}:${group.label}`;
+        const isOpen = !collapsedProjectWeeks[groupKey];
+        return <section key={groupKey} className="project-week-group">
+          <button type="button" className="project-week-heading" aria-expanded={isOpen}
+            onClick={() => setCollapsedProjectWeeks(prev => ({...prev,[groupKey]:isOpen}))}
+            style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"transparent",border:0,textAlign:"left",cursor:"pointer",padding:"6px 2px",fontFamily:"inherit"}}>
+            <span>{group.label}</span>
+            <ChevronDown size={17} style={{transform:isOpen ? "rotate(180deg)" : "none",transition:"transform .15s"}} />
+          </button>
+          {isOpen && <div className="project-task-list">{group.tasks.map(renderItem)}</div>}
+        </section>;
+      });
     };
     const renderItem = (t) => (
       <div key={t.id} className="project-item-wrap" data-project-task-id={t.id}
@@ -1279,21 +1286,25 @@ export function App({
         </div>}
         <section className="project-status-section">
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
-            <h2>할 일 <span>({todo.length})</span></h2>
+            <button type="button" aria-expanded={showProjectTodo} onClick={()=>setShowProjectTodo(v=>!v)}
+              style={{display:"flex",alignItems:"center",gap:8,border:0,background:"transparent",padding:0,cursor:"pointer",color:"inherit",fontFamily:"inherit",textAlign:"left"}}>
+              <h2 style={{margin:0}}>할 일 <span>({todo.length})</span></h2>
+              <ChevronDown size={18} style={{transform:showProjectTodo ? "rotate(180deg)" : "none"}} />
+            </button>
             <button type="button" className="secondary add-only project-add-compact" aria-label="할 일 추가" onClick={()=>{setEditing(null);setModal("task");}} style={{marginLeft:"auto",flexShrink:0}}><Plus size={17}/></button>
           </div>
-          {todo.length ? renderGroups(todo) : <div className="empty-panel">할 일이 없어.</div>}
+          {showProjectTodo && (todo.length ? renderGroups(todo,"todo") : <div className="empty-panel">할 일이 없어.</div>)}
         </section>
         <section className="project-status-section">
           <h2>진행 중인 할 일 <span>({doing.length})</span></h2>
-          {doing.length ? renderGroups(doing) : <div className="empty-panel">진행 중인 할 일이 없어.</div>}
+          {doing.length ? renderGroups(doing,"doing") : <div className="empty-panel">진행 중인 할 일이 없어.</div>}
         </section>
         <button className="completed-toggle" aria-expanded={showDone} onClick={() => setShowDone(v => !v)}>
           <ChevronDown size={17} style={{transform:showDone ? "rotate(180deg)" : "none"}} />
           완료된 할 일 ({done.length})
         </button>
         {showDone && <section className="project-status-section">
-          {done.length ? renderGroups(done) : <div className="empty-panel">완료한 일이 없어.</div>}
+          {done.length ? renderGroups(done,"done") : <div className="empty-panel">완료한 일이 없어.</div>}
         </section>}
       </>
     );
