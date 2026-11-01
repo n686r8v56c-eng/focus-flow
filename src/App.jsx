@@ -26,6 +26,7 @@ import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
 import { CalendarExternal } from "./CalendarExternal.jsx";
 import { TimeLog } from "./TimeLog.jsx";
+import { MemoPanel } from "./MemoPanel.jsx";
 import {
   CLOCK_SOUNDS,
   clockType,
@@ -1841,8 +1842,8 @@ export function App({
             ? Calendar()
             : tab === "pom"
               ? Pomodoro()
-              : tab === "karma"
-                ? KarmaPanel()
+              : tab === "memos"
+                ? <MemoPanel data={data} onDataChange={setData} />
                 : Projects()}
       </main>
       <nav className="bottom-nav">
@@ -1851,7 +1852,7 @@ export function App({
           ["projects", FolderKanban, "프로젝트"],
           ["timeblocks", Clock3, "타임블록"],
           ["calendar", CalendarDays, "일정"],
-          ["karma", Heart, "카르마"],
+          ["memos", Heart, "메모"],
         ].map(([id, Icon, label]) => (
           <button
             key={id}
