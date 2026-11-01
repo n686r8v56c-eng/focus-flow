@@ -51,6 +51,8 @@ const koreanWeekLabel = (due) => {
   const mondayOffset = (firstDay + 6) % 7;
   return `${year}년 ${month}월 ${Math.ceil((day + mondayOffset) / 7)}주차`;
 };
+const isAppDevelopment = p => Boolean(p && (p.type === "app-development" || (!p.type && p.name.replace(/\s/g, "") === "앱개발")));
+const registryStatuses = ["전체", "배포", "개발 중", "기획 중", "보류"];
 const byDueThenTitle = (a, b) =>
   (a.due || "9999-12-31").localeCompare(b.due || "9999-12-31") ||
   (a.time || "").localeCompare(b.time || "") ||
@@ -65,6 +67,27 @@ export function App({
   const data = initialData,
     setData = onDataChange;
   const [registryOpen, setRegistryOpen] = useState(false);
+  const [registryApps, setRegistryApps] = useState([]);
+  const [registryError, setRegistryError] = useState("");
+  const [appStatusFilter, setAppStatusFilter] = useState("전체");
+  const [appIdFilter, setAppIdFilter] = useState("전체");
+  useEffect(() => {
+    if (!bridgeClient || !bridgeUserId) return;
+    let active = true;
+    const loadApps = async () => {
+      const {data: rows, error} = await bridgeClient.from("app_registry_apps")
+        .select("id,name,status").eq("user_id", bridgeUserId).order("name");
+      if (!active) return;
+      if (error) setRegistryError("앱 목록을 불러오지 못했어. 잠시 후 다시 확인해 줘.");
+      else { setRegistryApps(rows || []); setRegistryError(""); }
+    };
+    loadApps();
+    const onFocus = () => { if (document.visibilityState === "visible") loadApps(); };
+    window.addEventListener("focus", onFocus);
+    const channel = bridgeClient.channel(`project-registry-${bridgeUserId}`)
+      .on("postgres_changes", {event:"*",schema:"public",table:"app_registry_apps",filter:`user_id=eq.${bridgeUserId}`}, loadApps).subscribe();
+    return () => {active=false;window.removeEventListener("focus",onFocus);bridgeClient.removeChannel(channel);};
+  }, [bridgeClient,bridgeUserId]);
   const [tab, setTab] = useState("today"),
     [selectedProject, setSelectedProject] = useState("p1"),
     [blockDate, setBlockDate] = useState(localDate()),
@@ -159,6 +182,7 @@ export function App({
           id,
           title: t.title.trim(),
           projectId: t.projectId || "",
+          appRegistryId: t.appRegistryId || "",
           due: t.due || "",
           time: t.time || "",
           status: t.status || "todo",
@@ -1096,7 +1120,14 @@ export function App({
   }
   function Projects() {
     const selected = project(selectedProject);
-    const items = data.tasks.filter(t => t.projectId === selectedProject);
+    const appMode = isAppDevelopment(selected);
+    const visibleApps = registryApps.filter(a => appStatusFilter === "전체" || a.status === appStatusFilter);
+    const appMatches = t => !appMode || (
+      appIdFilter === "미지정" ? !t.appRegistryId :
+      appIdFilter !== "전체" ? t.appRegistryId === appIdFilter :
+      appStatusFilter === "전체" || (t.appRegistryId && visibleApps.some(a => a.id === t.appRegistryId))
+    );
+    const items = data.tasks.filter(t => t.projectId === selectedProject && appMatches(t));
     const todo = items.filter(t => t.status !== "done" && t.status !== "doing");
     const doing = items.filter(t => t.status === "doing");
     const done = items.filter(t => t.status === "done");
@@ -1136,7 +1167,7 @@ export function App({
               {Number.isFinite(t.pinOrder) ? '⭐ ' : ''}{t.title}
             </strong>
             <small>
-              {t.due
+              {appMode ? `${registryApps.find(a=>a.id===t.appRegistryId)?.name || "미지정"} · ` : ""}{t.due
                 ? `${t.due}${t.time ? " · " + t.time : ""}`
                 : "날짜 미설정"}
             </small>
@@ -1195,7 +1226,7 @@ export function App({
           <select
             className="select-full"
             value={selected?.id || ""}
-            onChange={(e) => setSelectedProject(e.target.value)}
+            onChange={(e) => {setSelectedProject(e.target.value);setAppStatusFilter("전체");setAppIdFilter("전체");}}
           >
             {data.projects.map((p) => (
               <option key={p.id} value={p.id}>
@@ -1218,10 +1249,32 @@ export function App({
                 {done.length}/{items.length}개 완료
               </p>
             </div>
+            <button type="button" className="secondary" onClick={() => {
+              const next = isAppDevelopment(selected) ? "general" : "app-development";
+              if (window.confirm(`프로젝트 유형을 ${next === "general" ? "일반 프로젝트" : "앱 개발"}로 바꿀까? 기존 할 일은 유지돼.`)) {
+                update(d => ({...d, projects:d.projects.map(p=>p.id===selected.id?{...p,type:next}:p)}));
+                setAppStatusFilter("전체");setAppIdFilter("전체");
+              }
+            }} aria-label="프로젝트 유형 변경" title="프로젝트 유형 변경" style={{padding:"6px 9px",fontSize:12,whiteSpace:"nowrap"}}>{isAppDevelopment(selected) ? "앱 개발" : "일반"}</button>
             <button type="button" className="secondary" onClick={renameSelectedProject} aria-label="선택 프로젝트 이름 수정" style={{marginLeft:"auto",padding:"6px",minWidth:34,minHeight:34,color:"#8d6dce"}}><Pencil size={16}/></button>
             <button type="button" className="secondary" onClick={deleteSelectedProject} aria-label="선택 프로젝트 삭제" style={{padding:"6px",minWidth:34,minHeight:34,color:"#bf667c"}}><Trash2 size={16}/></button>
           </div>
         )}
+        {appMode && <div className="project-registry-filters" style={{display:"grid",gap:10,margin:"16px 0"}}>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}} aria-label="개발 상태 필터">
+            {registryStatuses.map(st=><button type="button" key={st}
+              className={appStatusFilter===st ? "primary small" : "secondary small"}
+              onClick={()=>{setAppStatusFilter(st);setAppIdFilter("전체");}}>{st}</button>)}
+          </div>
+          <label>앱 선택
+            <select className="select-full" value={appIdFilter} onChange={e=>setAppIdFilter(e.target.value)}>
+              <option value="전체">전체 앱</option>
+              {appStatusFilter==="전체" && <option value="미지정">미지정</option>}
+              {visibleApps.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </label>
+          {registryError && <p role="alert" style={{color:"#bd5267",fontSize:12}}>{registryError}</p>}
+        </div>}
         <section className="project-status-section">
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
             <h2>할 일 <span>({todo.length})</span></h2>
@@ -1824,7 +1877,7 @@ export function App({
           type="button"
           className="brand"
           aria-label="Focus Flow · 오늘로 이동"
-          onClick={() => setTab("today")}
+          onClick={() => {setRegistryOpen(false);setTab("today");}}
           style={{ padding: 0, textAlign: "left" }}
         >
           Focus Flow
@@ -1872,6 +1925,7 @@ export function App({
       {modal === "task" && (
         <TaskModal
           projects={data.projects}
+          registryApps={registryApps}
           preProject={tab === "projects" ? selectedProject : ""}
           onClose={() => setModal(null)}
           onSave={addTask}
@@ -1893,6 +1947,7 @@ export function App({
           key={editTask.id}
           task={editTask}
           projects={data.projects}
+          registryApps={registryApps}
           onClose={() => setEditing(null)}
           onChange={(fields) => changeTask(editTask.id, fields)}
           onStatus={(s) => completeOrStatus(editTask, s)}
@@ -2016,9 +2071,10 @@ function PomEstimatePicker({ value, onChange }) {
     </fieldset>
   );
 }
-function TaskModal({ projects, preProject, onClose, onSave }) {
+function TaskModal({ projects, registryApps = [], preProject, onClose, onSave }) {
   const [title, setTitle] = useState(""),
     [projectId, setProjectId] = useState(preProject || projects[0]?.id || ""),
+    [appRegistryId, setAppRegistryId] = useState(""),
     [due, setDue] = useState(""),
     [hasSchedule, setHasSchedule] = useState(false),
     [time, setTime] = useState(""),
@@ -2033,7 +2089,7 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
         onSubmit={(e) => {
           e.preventDefault();
           if (title.trim())
-            onSave({ title, projectId, due, time, estimatedPomodoros, tally:null,tallies:[] });
+            onSave({ title, projectId, appRegistryId: isAppDevelopment(projects.find(p=>p.id===projectId)) ? appRegistryId : "", due, time, estimatedPomodoros, tally:null,tallies:[] });
         }}
       >
         <div className="sheet-top">
@@ -2056,7 +2112,7 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
           프로젝트
           <select
             value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
+            onChange={(e) => {setProjectId(e.target.value);setAppRegistryId("");}}
           >
             <option value="">개인 일정 (프로젝트 없음)</option>
             {projects.map((p) => (
@@ -2066,6 +2122,13 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
             ))}
           </select>
         </label>
+        {isAppDevelopment(projects.find(p=>p.id===projectId)) && <label>
+          앱 선택 (선택사항)
+          <select value={appRegistryId} onChange={e=>setAppRegistryId(e.target.value)}>
+            <option value="">미지정</option>
+            {registryApps.map(a=><option key={a.id} value={a.id}>{a.name} · {a.status}</option>)}
+          </select>
+        </label>}
         <label>
           일정
           <select value={hasSchedule ? "yes" : "no"} onChange={e => {
@@ -2094,6 +2157,7 @@ function TaskModal({ projects, preProject, onClose, onSave }) {
 }
 function ProjectModal({ onClose, onSave }) {
   const [name, setName] = useState(""),
+    [type, setType] = useState("general"),
     [color, setColor] = useState("#a897dd");
   return (
     <div
@@ -2104,7 +2168,7 @@ function ProjectModal({ onClose, onSave }) {
         className="sheet"
         onSubmit={(e) => {
           e.preventDefault();
-          if (name.trim()) onSave({ name: name.trim(), color });
+          if (name.trim()) onSave({ name: name.trim(), color, type });
         }}
       >
         <div className="sheet-top">
@@ -2122,6 +2186,13 @@ function ProjectModal({ onClose, onSave }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+        </label>
+        <label>
+          프로젝트 유형
+          <select value={type} onChange={e=>setType(e.target.value)}>
+            <option value="general">일반 프로젝트</option>
+            <option value="app-development">앱 개발 (App Registry 연동)</option>
+          </select>
         </label>
         <label>
           구분 색상
@@ -2166,6 +2237,7 @@ function ProjectModal({ onClose, onSave }) {
 function EditTask({
   task,
   projects,
+  registryApps = [],
   onClose,
   onChange,
   onStatus,
@@ -2208,7 +2280,7 @@ function EditTask({
           프로젝트
           <select
             value={task.projectId}
-            onChange={(e) => onChange({ projectId: e.target.value })}
+            onChange={(e) => onChange({ projectId: e.target.value, appRegistryId: isAppDevelopment(projects.find(p=>p.id===e.target.value)) ? (task.appRegistryId || "") : "" })}
           >
             <option value="">개인 일정</option>
             {projects.map((p) => (
@@ -2218,6 +2290,13 @@ function EditTask({
             ))}
           </select>
         </label>
+        {isAppDevelopment(projects.find(p=>p.id===task.projectId)) && <label>
+          앱 선택 (선택사항)
+          <select value={task.appRegistryId || ""} onChange={e=>onChange({appRegistryId:e.target.value})}>
+            <option value="">미지정</option>
+            {registryApps.map(a=><option key={a.id} value={a.id}>{a.name} · {a.status}</option>)}
+          </select>
+        </label>}
         <label>
           일정
           <select value={task.due ? "yes" : "no"} onChange={e => {
