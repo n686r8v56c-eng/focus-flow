@@ -1,184 +1,2309 @@
-import React,{useEffect,useMemo,useState,useRef} from 'react';
-import {CalendarDays,Check,ChevronLeft,ChevronRight,Clock3,Copy,Droplets,Heart,Home,LogOut,Plus,Settings2,Trash2,X,ClipboardPaste,ChartColumnIncreasing, Sparkles, CalendarClock, Pencil, CheckCircle2, Moon, Sun} from 'lucide-react';
-import {supabase,configured,fetchAll} from './db';
-import {GROUPS,LABELS,metricFields,localDate,localTime,since,lastDays} from './data';
-const MY_APPS=[{group:'일정 · 소비',apps:[['Focus Flow','📅','https://focus-flow-3f0.pages.dev'],['Spend Flow','💳','']]},{group:'운동 · 명상',apps:[['Home Fit','💪','https://home-fit-11n.pages.dev'],['Mind Flow','🧘','https://mind-flow-4r3.pages.dev']]},{group:'글쓰기',apps:[['Lumi Note','📓',''],['Write Flow','✍️','']]},{group:'공부',apps:[['Memory Lab','🧠','https://memory-lab.pages.dev']]},{group:'패션 · 기타',apps:[['Style Flow','👗',''],['Little Library','📚','']]}];
-const DEFAULT_GOALS={water_cups:20,cup_ml:250,calories:1400,protein_g:100,carbs_g:150,fat_g:50};
-const num=n=>Number(n||0);const fmt=n=>Number.isInteger(num(n))?String(num(n)):num(n).toFixed(1);
-const koDate=d=>new Date(`${d}T12:00:00`).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
-const stamp=d=>new Date(d).toLocaleString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
-const sleepDateTime=d=>{if(!d)return '미기록';const t=new Date(d);return `${t.getMonth()+1}/${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`};
-const sleepHoursOf=x=>x.woke_at?Math.max(0,(new Date(x.woke_at)-new Date(x.slept_at))/3600000):0;
-const sleepDayOf=x=>x.woke_at?localDate(new Date(x.woke_at)):localDate(new Date(x.slept_at));
-const sleepTotalForDay=(logs,day)=>logs.filter(x=>x.woke_at&&sleepDayOf(x)===day).reduce((sum,x)=>sum+sleepHoursOf(x),0);
-const SleepDetail=({entry})=><span className="sleep-lines"><span>취침 {sleepDateTime(entry.slept_at)}</span><span>기상 {sleepDateTime(entry.woke_at)}{entry.woke_at?` (${sleepHoursOf(entry).toFixed(1)}시간)`:''}</span></span>;
-
-// Calculate adherence from planned occurrences, not raw tap counts.
-// No scheduled occurrences = "미설정", not an artificially low score.
-const dayOrdinal=(day)=>Math.round(Date.parse(`${day}T12:00:00Z`)/86400000);
-const dayFromOrdinal=(n)=>new Date(n*86400000).toISOString().slice(0,10);
-const occurrenceDates=(plan,startDay,endDay)=>{
- const start=Math.max(dayOrdinal(startDay),dayOrdinal(localDate(new Date(plan.created_at))));
- const end=dayOrdinal(endDay),due=dayOrdinal(plan.due_date);
- if(start>end)return [];
- const rule=plan.repeat_rule||'none';
- if(rule==='none')return due>=start&&due<=end?[plan.due_date]:[];
- if(rule==='monthly'){
-   const anchor=new Date(`${plan.due_date}T12:00:00Z`);
-   const result=[];
-   for(let monthOffset=-12;monthOffset<=12;monthOffset++){
-     const first=new Date(Date.UTC(anchor.getUTCFullYear(),anchor.getUTCMonth()+monthOffset,1,12));
-     const day=Math.min(anchor.getUTCDate(),new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate());
-     const candidate=dayOrdinal(`${first.getUTCFullYear()}-${String(first.getUTCMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`);
-     if(candidate>=start&&candidate<=end)result.push(dayFromOrdinal(candidate));
-   }
-   return result;
- }
- const interval=rule==='daily'?1:rule==='weekly'?7:Math.max(1,Number(plan.repeat_days)||7);
- const first=start+((due-start)%interval+interval)%interval;
- const result=[];for(let d=first;d<=end;d+=interval)result.push(dayFromOrdinal(d));
- return result;
+import React, { useState, useEffect, useRef } from "react";
+import {
+  CalendarDays,
+  Columns3,
+  Timer,
+  FolderKanban,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Trash2,
+  Pencil,
+  X,
+  Check,
+  Play,
+  Pause,
+  Square,
+  RotateCcw,
+  Clock3,
+  Heart,
+} from "lucide-react";
+import "./style.css";
+import "./timeblocks.css";
+import focusBellSound from "./assets/focus-bell.mp3";
+import { HomeWorkouts } from "./HomeWorkouts.jsx";
+import { LinkedActivities } from "./LinkedActivities.jsx";
+import { CalendarExternal } from "./CalendarExternal.jsx";
+import { TimeLog } from "./TimeLog.jsx";
+import {
+  CLOCK_SOUNDS,
+  clockType,
+  loadClockBuffer,
+  createClockVoice,
+} from "./clock-audio.js";
+const uid = () => Math.random().toString(36).slice(2, 10);
+const pad = (n) => String(n).padStart(2, "0");
+const localDate = (d = new Date()) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dayAdd = (s, n) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return localDate(new Date(y, m - 1, d + n));
 };
+const koreanWeekLabel = (due) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due || "")) return "일정 없음";
+  const [year, month, day] = due.split("-").map(Number);
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  const mondayOffset = (firstDay + 6) % 7;
+  return `${year}년 ${month}월 ${Math.ceil((day + mondayOffset) / 7)}주차`;
+};
+const byDueThenTitle = (a, b) =>
+  (a.due || "9999-12-31").localeCompare(b.due || "9999-12-31") ||
+  (a.time || "").localeCompare(b.time || "") ||
+  (a.title || "").localeCompare(b.title || "", "ko");
+export function App({
+  initialData,
+  onDataChange,
+  onLogout,
+  bridgeClient,
+  bridgeUserId,
+}) {
+  const data = initialData,
+    setData = onDataChange;
+  const [tab, setTab] = useState("today"),
+    [selectedProject, setSelectedProject] = useState("p1"),
+    [blockDate, setBlockDate] = useState(localDate()),
+    [blockMode, setBlockMode] = useState("plan"),
+    [collapsedToday, setCollapsedToday] = useState({}),
+    [todayTaskTab, setTodayTaskTab] = useState("project"),
+    [todayCompletedOpen, setTodayCompletedOpen] = useState({project:false, personal:false}),
+    [blockFirst, setBlockFirst] = useState(null),
+    [blockDraft, setBlockDraft] = useState(""),
+    [blockEditing, setBlockEditing] = useState(null),
+    [blockRange, setBlockRange] = useState(null),
+    [sleepEditing, setSleepEditing] = useState(false),
+    [sleepDraftStart, setSleepDraftStart] = useState("22:00"),
+    [sleepDraftEnd, setSleepDraftEnd] = useState("06:00"),
+    [karmaCategory, setKarmaCategory] = useState("me"),
+    [karmaDraft, setKarmaDraft] = useState(""),
+    [calendarView, setCalendarView] = useState("month"),
+    [focusDate, setFocusDate] = useState(localDate()),
+    [modal, setModal] = useState(null),
+    [editing, setEditing] = useState(null),
+    [pomTask, setPomTask] = useState(""),
+    [seconds, setSeconds] = useState(1500),
+    [running, setRunning] = useState(false),
+    [mode, setMode] = useState("focus"),
+    [round, setRound] = useState(0),
+    [toast, setToast] = useState(""),
+    [pomView, setPomView] = useState("timer"),
+    [statView, setStatView] = useState("daily"),
+    [statMonth, setStatMonth] = useState(localDate().slice(0, 7)),
+    [showDone, setShowDone] = useState(false),
+    [viewDate,setViewDate]=useState(localDate()),
+    [analysisPeriod,setAnalysisPeriod]=useState("daily"),
+    [customFocusMinutes,setCustomFocusMinutes]=useState(25),
 
-function App(){
- const [session,setSession]=useState(null),[authReady,setAuthReady]=useState(false),[screen,setScreen]=useState('diet'),[sub,setSub]=useState('record');
- const uid=session?.user?.id;
- const [data,setData]=useState({diet_days:[],diet_logs:[],activity_logs:[],user_goals:[],my_app_links:[],care_plans:[],care_plan_completions:[],sleep_logs:[],custom_items:[]});
- const [loading,setLoading]=useState(false),[message,setMessage]=useState(''),[now,setNow]=useState(Date.now());
- const [collapsedGroups,setCollapsedGroups]=useState({});
- const [pet,setPet]=useState('고미'),[petBoth,setPetBoth]=useState(false),[reviewCat,setReviewCat]=useState(''),[reviewView,setReviewView]=useState('calendar'),[reviewItem,setReviewItem]=useState('전체'),[reviewPet,setReviewPet]=useState('전체');
- const [selectedDay,setSelectedDay]=useState(localDate()),[month,setMonth]=useState(localDate().slice(0,7)),[dietNote,setDietNote]=useState(''),[paste,setPaste]=useState('');
- const [metric,setMetric]=useState('protein_g'),[ratio,setRatio]=useState('calories'),[goalModal,setGoalModal]=useState(false),[goalDraft,setGoalDraft]=useState(DEFAULT_GOALS),[authMode,setAuthMode]=useState('login');
- const [recovery,setRecovery]=useState(false),[newPassword,setNewPassword]=useState('');
- const [editingApp,setEditingApp]=useState(null),[appUrl,setAppUrl]=useState('');
- const [planDraft,setPlanDraft]=useState({id:null,category:'',item:'',title:'',date:localDate(),time:'',repeat:'none',repeat_days:7,pet:'고미'});
- const [planModal,setPlanModal]=useState(false),[planShowDone,setPlanShowDone]=useState(false);
- const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[passwordConfirm,setPasswordConfirm]=useState(''),[authNotice,setAuthNotice]=useState(''),[busy,setBusy]=useState(false);
+    [clockNow, setClockNow] = useState(Date.now()),
+    [audioStatus, setAudioStatus] = useState("");
+  const tickSound = data.settings?.tickSound ?? false,
+    tickType = clockType(data.settings?.tickType),
+    goalHours = data.settings?.goalHours ?? 3;
+  const setting = (key, value) =>
+    setData((d) => ({ ...d, settings: { ...d.settings, [key]: value } }));
+  const setTickSound = (v) => setting("tickSound", v),
+    setTickType = (v) => setting("tickType", v),
+    setGoalHours = (v) => setting("goalHours", v);
+  const alarmEnabled = data.settings?.alarmEnabled ?? true;
+  const setAlarmEnabled = v => setting("alarmEnabled",v);
+  const endAt = useRef(null);
+  const dialDrag = useRef(null);
+  const dialValue = useRef(25);
+  const audioRef = useRef(null);
+  const bellBufferRef = useRef(null);
+  const bellLoadRef = useRef(null);
+  const testAudioRef = useRef(null);
+  const previewRef = useRef(null);
+  const previewGeneration = useRef(0);
+  const latest = useRef({});
+  latest.current = { data, pomTask, mode, round };
+  useEffect(() => {
+    const refresh = () => setClockNow(Date.now());
+    const i = setInterval(refresh, 1000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(i);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+  useEffect(
+    () => () => {
+      previewGeneration.current++;
+      previewRef.current?.stop();
+      audioRef.current?.close();
+      testAudioRef.current?.pause();
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 2800);
+    return () => clearTimeout(t);
+  }, [toast]);
+  const update = (fn) =>
+    setData((old) => (typeof fn === "function" ? fn(old) : fn));
+  const project = (id) => data.projects.find((p) => p.id === id);
+  const taskProject = (t) => project(t.projectId);
+  const addTask = (t) => {
+    let id = uid();
+    update((d) => ({
+      ...d,
+      tasks: [
+        ...d.tasks,
+        {
+          id,
+          title: t.title.trim(),
+          projectId: t.projectId || "",
+          due: t.due || "",
+          time: t.time || "",
+          status: t.status || "todo",
+          subtasks: [],
+          tally: t.tally || null,
+          tallies: Array.isArray(t.tallies)?t.tallies:[],
+          estimatedPomodoros: pomCount(t.estimatedPomodoros),
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+        },
+      ],
+    }));
+    setModal(null);
+    setEditing(null);
+  };
+  const changeTask = (id, fields) =>
+    update((d) => ({
+      ...d,
+      tasks: d.tasks.map((t) => (t.id === id ? { ...t, ...fields } : t)),
+    }));
+  const advanceTally = (task) => {
+    const tally = task.tally;
+    if (!tally || !Number(tally.total)) return;
+    const total=Math.max(1,Number(tally.total));
+    const step=Math.max(1,Number(tally.step)||1);
+    const count=Math.min(total,(Number(tally.count)||0)+step);
+    changeTask(task.id,{tally:{...tally,count}});
+  };
+  const advanceMultiTally=(task,index)=>{
+    const counters=task.tallies||[];
+    const counter=counters[index];if(!counter)return;
+    const total=Math.max(1,Number(counter.total)||1);
+    const count=Math.min(total, (Number(counter.count)||0)+Math.max(1,Number(counter.step)||1));
+    changeTask(task.id,{tallies:counters.map((c,i)=>i===index?{...c,count}:c)});
+  };
+  const reorderTask=(id,anchorId,targetStatus)=>update(d=>{
+    const moving=d.tasks.find(t=>t.id===id);
+    if (!moving || (anchorId && id===anchorId)) return d;
+    const group=d.tasks.filter(t=>t.id!==id&&t.status===(targetStatus||moving.status)&&t.projectId===moving.projectId);
+    const index=anchorId?group.findIndex(t=>t.id===anchorId):group.length;
+    group.splice(index<0?group.length:index,0,{...moving,status:targetStatus||moving.status});
+    const order=new Map(group.map((t,i)=>[t.id,i]));
+    return {...d,tasks:d.tasks.map(t=>order.has(t.id)?{...t,status:targetStatus||moving.status,order:order.get(t.id)}:t)};
+  });
+  const completeOrStatus = (task, status) =>
+    changeTask(task.id, {
+      status,
+      completedAt: status === "done" ? new Date().toISOString() : null,
+    });
+  const renameSelectedProject = () => {
+  const target = data.projects.find(p => p.id === selectedProject);
+  if (!target) return;
+  const next = window.prompt("프로젝트 이름 수정", target.name);
+  if (next === null || !next.trim() || next.trim() === target.name) return;
+  update(d => ({ ...d, projects: d.projects.map(p => p.id === target.id ? {...p, name: next.trim()} : p) }));
+};
+  const deleteSelectedProject = () => {
+    const item = data.projects.find(p => p.id === selectedProject);
+    if (!item || !window.confirm(`프로젝트 “${item.name}”을 삭제할까?\n소속 할 일은 삭제하지 않고 개인 일정으로 옮겨져.`)) return;
+    update(d => ({
+      ...d,
+      projects: d.projects.filter(p => p.id !== item.id),
+      tasks: d.tasks.map(t => t.projectId === item.id ? {...t, projectId: null} : t),
+    }));
+    setSelectedProject(data.projects.find(p => p.id !== item.id)?.id || "");
+  };
+  const [pinMenuId, setPinMenuId] = useState(null);
+  const pinHold = useRef(null);
+  const pinHoldOrigin = useRef(null);
+  const clearPinHold = () => {
+    if (pinHold.current) clearTimeout(pinHold.current);
+    pinHold.current = null;
+    pinHoldOrigin.current = null;
+  };
+  useEffect(() => () => clearPinHold(), []);
+  const beginPinHold = (event, id) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    clearPinHold();
+    pinHoldOrigin.current = {x:event.clientX,y:event.clientY,pointerId:event.pointerId};
+    pinHold.current = setTimeout(() => {
+      setPinMenuId(id);
+      pinHold.current = null;
+      pinHoldOrigin.current = null;
+    }, 550);
+  };
+  const trackPinHold = event => {
+    const origin=pinHoldOrigin.current;
+    if (origin && (Math.abs(event.clientX-origin.x)>12 || Math.abs(event.clientY-origin.y)>12)) clearPinHold();
+  };
+  const togglePin = task => {
+    update(d => {
+      const group=d.tasks.filter(t=>t.projectId===task.projectId && Number.isFinite(t.pinOrder));
+      const next=group.reduce((m,t)=>Math.max(m,t.pinOrder),0)+1;
+      return {...d,tasks:d.tasks.map(t=>t.id===task.id?{...t,pinOrder:Number.isFinite(t.pinOrder)?null:next}:t)};
+    });
+    setPinMenuId(null);
+  };
+  const removeTask = (id) => {
+    update((d) => ({ ...d, tasks: d.tasks.filter((t) => t.id !== id) }));
+    setEditing(null);
+  };
+  const now = new Date(clockNow);
+  const today = localDate(now);
+  const visibleDate = viewDate;
+  const timeText = (seconds) =>
+    `${pad(Math.floor(seconds / 3600))}:${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`;
+  // Each session uses its own fixed window (local device time).
+  const sessionTimer = (startHour, endHour) => {
+    const start = new Date(clockNow);
+    start.setHours(startHour, 0, 0, 0);
+    const end = new Date(clockNow);
+    end.setHours(endHour, 0, 0, 0);
+    const total = end.getTime() - start.getTime();
+    const elapsed = Math.max(0, Math.min(total, clockNow - start.getTime()));
+    const remainingSeconds = Math.max(0, Math.ceil((end.getTime() - Math.max(clockNow, start.getTime())) / 1000));
+    return { text: timeText(remainingSeconds), progress: elapsed / total };
+  };
+  const todayTasks = data.tasks
+    .filter(
+      (t) =>
+        (t.status !== "done" && (!t.due || t.due <= visibleDate)) ||
+        (t.status === "done" &&
+          t.completedAt &&
+          localDate(new Date(t.completedAt)) === visibleDate),
+    )
+    .sort((a,b) => {const ap=Number.isFinite(a.pinOrder),bp=Number.isFinite(b.pinOrder); if(ap!==bp)return ap?-1:1; if(ap&&bp)return a.pinOrder-b.pinOrder;return (a.order??0)-(b.order??0)||(a.time||"99:99").localeCompare(b.time||"99:99");});
+  const plannedTasks = data.tasks.filter((t) => t.due && t.status !== "done");
+  const todayVisibleTasks = todayTasks.filter(t => todayTaskTab === "project" ? Boolean(taskProject(t)) : !taskProject(t));
+  const todayCompletedVisible = todayVisibleTasks.filter(t => t.status === "done");
+  const todayNotDone = todayTasks.filter((t) => t.status !== "done");
+  const selectedPomTask = data.tasks.find((t) => t.id === pomTask);
+  function reportAudioError(error) {
+    setAudioStatus(
+      "소리를 켜지 못했어. 소리 테스트를 다시 눌러 줘. (" +
+        (error?.message || "오디오 확인 필요") +
+        ")",
+    );
+  }
+  function activateAudio() {
+    // Call directly from a tap, before awaiting anything (Safari user activation).
+    try {
+      if (window.navigator.audioSession) {
+        try {
+          window.navigator.audioSession.type = "playback";
+        } catch {}
+      }
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return Promise.reject(new Error("Web Audio 미지원"));
+      if (!audioRef.current || audioRef.current.state === "closed")
+        audioRef.current = new AudioContext();
+      const ctx = audioRef.current;
+      if (!bellLoadRef.current) {
+        bellLoadRef.current = fetch(focusBellSound)
+          .then(response => { if (!response.ok) throw new Error('Bell download failed'); return response.arrayBuffer(); })
+          .then(buffer => ctx.decodeAudioData(buffer))
+          .then(decoded => { bellBufferRef.current = decoded; return decoded; })
+          .catch(error => { bellLoadRef.current = null; console.warn('종소리를 준비하지 못했어', error); });
+      }
+      const resumed = ctx.resume();
+      const source = ctx.createBufferSource();
+      source.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      source.connect(ctx.destination);
+      source.start(0);
+      return Promise.resolve(resumed).then(() => {
+        if (ctx.state !== "running") throw new Error("오디오가 일시 중단됐어");
+        return ctx;
+      });
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+  function testSound() {
+    // A real short WAV through the media path also tests Safari's speaker route.
+    try {
+      const ready = activateAudio();
+      if (!testAudioRef.current) {
+        const rate = 16000,
+          count = 6400;
+        const bytes = new Uint8Array(44 + count * 2),
+          view = new DataView(bytes.buffer);
+        const text = (offset, value) =>
+          [...value].forEach((c, i) =>
+            view.setUint8(offset + i, c.charCodeAt(0)),
+          );
+        text(0, "RIFF");
+        view.setUint32(4, 36 + count * 2, true);
+        text(8, "WAVE");
+        text(12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, rate, true);
+        view.setUint32(28, rate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        text(36, "data");
+        view.setUint32(40, count * 2, true);
+        for (let i = 0; i < count; i++) {
+          const t = i / rate,
+            envelope = Math.min(1, t / 0.01) * Math.exp(-t * 9);
+          view.setInt16(
+            44 + i * 2,
+            Math.round(Math.sin(2 * Math.PI * 660 * t) * envelope * 12000),
+            true,
+          );
+        }
+        let binary = "";
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        testAudioRef.current = new window.Audio(
+          "data:audio/wav;base64," + window.btoa(binary),
+        );
+        testAudioRef.current.preload = "auto";
+      }
+      const audio = testAudioRef.current;
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 0.8;
+      // Both play() and resume() run in the original button gesture.
+      const played = audio.play();
+      Promise.allSettled([ready, Promise.resolve(played)]).then((results) => {
+        const failed = results.find((result) => result.status === "rejected");
+        if (failed) reportAudioError(failed.reason);
+        else
+          setAudioStatus(
+            "짧은 확인음이 들리는지 확인해 줘. 이제 초침 미리 듣기를 눌러 봐.",
+          );
+      });
+    } catch (error) {
+      reportAudioError(error);
+    }
+  }
+  function stopPreview() {
+    previewGeneration.current++;
+    previewRef.current?.stop();
+    previewRef.current = null;
+  }
+  function previewClock() {
+    stopPreview();
+    const generation = previewGeneration.current;
+    const ready = activateAudio();
+    setAudioStatus("시계 소리를 준비하고 있어…");
+    ready
+      .then(async (ctx) => {
+        const buffer = await loadClockBuffer(ctx, tickType);
+        if (generation !== previewGeneration.current) return;
+        if (running && mode === "focus" && tickSound) {
+          setAudioStatus("선택한 시계 소리가 집중 타이머에서 재생 중이야.");
+          return;
+        }
+        previewRef.current = createClockVoice(ctx, buffer, { duration: 8 });
+        setAudioStatus("8초 미리 듣기 · 반복되는 경계까지 들어봐.");
+      })
+      .catch((error) => {
+        if (generation === previewGeneration.current) reportAudioError(error);
+      });
+  }
+  useEffect(() => {
+    stopPreview();
+    if (!running || mode !== "focus" || !tickSound) return;
+    let cancelled = false,
+      voice;
+    const ctx = audioRef.current;
+    if (!ctx) {
+      reportAudioError(new Error("소리 테스트를 먼저 눌러 줘"));
+      return;
+    }
+    (async () => {
+      const buffer = await loadClockBuffer(ctx, tickType);
+      if (cancelled) return;
+      if (ctx.state !== "running") await ctx.resume();
+      if (cancelled) return;
+      if (ctx.state !== "running") throw new Error("오디오가 일시 중단됐어");
+      // One decoded source loops on the audio thread: no ended/restart or JS interval.
+      voice = createClockVoice(ctx, buffer);
+    })().catch((error) => {
+      if (!cancelled) reportAudioError(error);
+    });
+    const resume = () => {
+      if (
+        !cancelled &&
+        document.visibilityState === "visible" &&
+        ctx.state !== "running"
+      )
+        ctx.resume().catch(reportAudioError);
+    };
+    document.addEventListener("visibilitychange", resume);
+    return () => {
+      cancelled = true;
+      voice?.stop();
+      document.removeEventListener("visibilitychange", resume);
+    };
+  }, [running, mode, tickSound, tickType]);
+  function ringBell() {
+    const ctx = audioRef.current;
+    if (!ctx || !bellBufferRef.current) {
+      // Fallback when the user started before sound decoding finished.
+      const audio = new Audio(focusBellSound);
+      audio.volume = 0.8;
+      audio.play().catch(error => console.warn('종소리 재생 차단', error));
+      return;
+    }
+    try {
+      const voice = ctx.createBufferSource();
+      voice.buffer = bellBufferRef.current;
+      const volume = ctx.createGain();
+      volume.gain.value = 0.8;
+      voice.connect(volume);
+      volume.connect(ctx.destination);
+      if (ctx.state === 'suspended') void ctx.resume();
+      voice.start(0);
+    } catch (error) { console.warn('종소리 재생 실패', error); }
+  }
+  // Server timer is authoritative. Local ticks only render its deadline.
+  const [pomReady,setPomReady] = useState(false);
+  const [pomBusy,setPomBusy] = useState(false);
+  const [pomError,setPomError] = useState('');
+  const [remotePomSessions,setRemotePomSessions] = useState([]);
+  const pomRemote = useRef(null);
+  const pomBusyRef = useRef(false);
+  const lastPomRevision = useRef(-1);
+  const applyPomResponse = (result) => {
+    if (!result?.state) return;
+    const p=result.state;
+    if (Number(p.revision)<lastPomRevision.current) return;
+    lastPomRevision.current=Number(p.revision);
+    pomRemote.current=p;
+    setMode(p.mode);
+    setRound(Number(p.round)||0);
+    setCustomFocusMinutes(Number(p.focusMinutes)||0);
+    setPomTask(p.taskId||'');
+    const until=p.runningUntil?Date.parse(p.runningUntil):null;
+    endAt.current=until;
+    setRunning(Boolean(until));
+    setSeconds(until?Math.max(0,Math.ceil((until-Date.now())/1000)):Number(p.remainingSeconds)||0);
+    setRemotePomSessions(Array.isArray(result.sessions)?result.sessions:[]);
+    setPomReady(true);
+    setPomError('');
+  };
+  const pomAction = async (action,args={},quiet=false) => {
+    if (!bridgeClient || pomBusyRef.current) return;
+    pomBusyRef.current=true;
+    if (!quiet) setPomBusy(true);
+    try {
+      const {data:result,error}=await bridgeClient.rpc('focus_pomodoro_action',{
+        p_action:action,p_focus_minutes:args.minutes??null,p_task_id:args.taskId??null,p_mode:args.mode??null
+      });
+      if(error) throw error;
+      applyPomResponse(result);
+    }catch(e){if(!quiet)setPomError('서버 타이머 동기화 실패. 연결과 SQL 설치를 확인해 줘.');}
+    finally{pomBusyRef.current=false;if(!quiet)setPomBusy(false);}
+  };
+  useEffect(()=>{
+    if (!bridgeClient || !bridgeUserId) {setPomError('로그인이 필요해.');return;}
+    void pomAction('read');
+    const timer=setInterval(()=>void pomAction('read',{},true),3000);
+    const onVisible=()=>{if(document.visibilityState==='visible')void pomAction('read',{},true)};
+    document.addEventListener('visibilitychange',onVisible);
+    return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',onVisible)};
+  },[bridgeClient,bridgeUserId]);
+  useEffect(()=>{
+    if (!running || !endAt.current) return;
+    const tick=()=>setSeconds(Math.max(0,Math.ceil((endAt.current-Date.now())/1000)));
+    const timer=setInterval(tick,250);
+    return()=>clearInterval(timer);
+  },[running]);
+  const pomSessions=[...(data.sessions||[]),...remotePomSessions].filter((s,i,a)=>a.findIndex(x=>String(x.id)===String(s.id))===i);
+  const changeFocusMinutes = (minutes) => {
+    const next = Math.max(0, Math.min(60, Math.round(minutes)));
+    dialValue.current = next;
+    setCustomFocusMinutes(next);
+    setSeconds(next * 60);
+    void pomAction("configure",{minutes:next});
+  };
+  const dialAngle = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left - rect.width / 2;
+    const y = event.clientY - rect.top - rect.height / 2;
+    return (Math.atan2(y, x) * 180 / Math.PI + 450) % 360;
+  };
+  const dialStart = (event) => {
+    if (running || mode !== "focus") return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dialDrag.current = { id: event.pointerId, last: dialAngle(event), accumulated: dialValue.current };
+  };
+  const dialMove = (event) => {
+    const drag = dialDrag.current;
+    if (!drag || drag.id !== event.pointerId || running || mode !== "focus") return;
+    const angle = dialAngle(event);
+    let delta = angle - drag.last;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    drag.last = angle;
+    drag.accumulated = Math.max(0, Math.min(60, drag.accumulated + delta / 6));
+    changeFocusMinutes(drag.accumulated);
+  };
+  const dialEnd = () => { dialDrag.current = null; };
+  const resetTimer = (m = mode) => {
+    void pomAction('configure',{mode:m,minutes:customFocusMinutes});
+  };
+  function dateItems(date) {
+    return data.tasks.filter(
+      (t) =>
+        t.due === date ||
+        (date === today && t.status !== "done" && t.due && t.due < visibleDate),
+    );
+  }
+  function KarmaPanel() {
+    const all = Array.isArray(data.karmaEntries) ? data.karmaEntries : [];
+    const items = all.filter((entry) => entry.category === karmaCategory)
+      .slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))
+      .slice(0,20);
+    const last = all.reduce((latest, item) => {
+      const timestamp = Date.parse(item.createdAt);
+      return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
+    }, 0);
+    const elapsed = last ? Math.max(0, Math.floor((Date.now()-last)/1000)) : 0;
+    const timer = `${pad(Math.floor(elapsed/3600))}:${pad(Math.floor(elapsed/60)%60)}:${pad(elapsed%60)}`;
+    function saveKarma(e) {
+      e.preventDefault();
+      const memo = karmaDraft.trim();
+      if (!memo) return;
+      const createdAt = new Date().toISOString();
+      update(d => ({ ...d, karmaEntries: [ ...(Array.isArray(d.karmaEntries) ? d.karmaEntries : []),
+        { id: uid(), category: karmaCategory, text: memo, createdAt } ] }));
+      setKarmaDraft("");
+    }
+    function deleteKarma(id) {
+      if (!window.confirm('이 카르마 기록을 삭제할까? 삭제한 기록은 되돌릴 수 없어.')) return;
+      update(d => ({...d, karmaEntries: (Array.isArray(d.karmaEntries) ? d.karmaEntries : []).filter(entry => entry.id !== id)}));
+    }
+    function downloadKarma() {
+      const rows = [['날짜','시각','구분','메모'], ...all.slice()
+        .sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt))
+        .map(entry => {const date=new Date(entry.createdAt);return [
+          Number.isNaN(date.getTime())?'':localDate(date),
+          Number.isNaN(date.getTime())?'':`${pad(date.getHours())}:${pad(date.getMinutes())}`,
+          entry.category==='world'?'세상':'나',entry.text||'' ];})];
+      const csv = '\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value).replaceAll('"','""')+'"').join(',')).join('\r\n');
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const url=URL.createObjectURL(blob);
+      const anchor=document.createElement('a');anchor.href=url;anchor.download=`FocusFlow_Karma_${localDate()}.csv`;
+      document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    return <section className="karma-page" style={{paddingBottom:24}}>
+      <div className="section-top"><div><div className="eyebrow">작은 선행을 기록하는 공간</div><h1>카르마</h1></div></div>
+      <div className="stat-card" style={{textAlign:'center',padding:'22px 12px',marginBottom:18}}>
+        <div style={{fontSize:13,color:'#9680aa',fontWeight:700}}>From Last Good Karma</div>
+        <div style={{fontSize:'clamp(27px,9vw,40px)',fontWeight:750,fontVariantNumeric:'tabular-nums',letterSpacing:1,marginTop:10}} aria-label="마지막 카르마 이후 경과 시간">{timer}</div>
+      </div>
+      <div className="pom-subnav" role="tablist" aria-label="카르마 유형">
+        <button role="tab" aria-selected={karmaCategory==='me'} className={karmaCategory==='me'?'active':''} onClick={()=>setKarmaCategory('me')}>나</button>
+        <button role="tab" aria-selected={karmaCategory==='world'} className={karmaCategory==='world'?'active':''} onClick={()=>setKarmaCategory('world')}>세상</button>
+      </div>
+      <form onSubmit={saveKarma} className="stat-card" style={{marginTop:16,marginBottom:18}}>
+        <label style={{display:'block',fontWeight:700,color:'#775991',marginBottom:10}} htmlFor="karma-memo">{karmaCategory==='me'?'나를 위한 카르마':'세상을 위한 카르마'}</label>
+        <textarea id="karma-memo" rows={4} value={karmaDraft} onChange={e=>setKarmaDraft(e.target.value)} placeholder="오늘의 카르마를 기록해 줘" style={{width:'100%',boxSizing:'border-box',resize:'vertical',padding:12,borderRadius:12,border:'1px solid #e5dcea',fontSize:15}} />
+        <button className="primary" type="submit" disabled={!karmaDraft.trim()} style={{width:'100%',minHeight:52,marginTop:16,borderRadius:13,padding:'13px 16px',fontSize:16,fontWeight:750,display:'flex',alignItems:'center',justifyContent:'center'}}>기록하기</button>
+      </form>
+      <div aria-label="카르마 최근 기록" className="karma-record-list">
+        {items.map(entry=>{const date=new Date(entry.createdAt);return <article key={entry.id} className="stat-card" style={{marginBottom:10,padding:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:8}}>
+            <div style={{fontSize:12,color:'#978aa2',fontVariantNumeric:'tabular-nums'}}>{Number.isNaN(date.getTime())?'':`${String(date.getFullYear()).slice(-2)}${pad(date.getMonth()+1)}${pad(date.getDate())}`}　{Number.isNaN(date.getTime())?'':`${pad(date.getHours())}:${pad(date.getMinutes())}`}</div>
+            <button type="button" aria-label="카르마 기록 삭제" title="이 기록 삭제" onClick={()=>deleteKarma(entry.id)} style={{width:40,height:40,flexShrink:0,display:'grid',placeItems:'center',border:'1px solid #f0e5ed',borderRadius:10,color:'#ad8191',background:'#fff'}}> <Trash2 size={17}/> </button>
+          </div>
+          <div style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{entry.text}</div>
+        </article>})}
+        {!items.length && <p className="hint">아직 기록이 없어. 첫 카르마를 남겨봐.</p>}
+      </div>
+      <button type="button" className="secondary" onClick={downloadKarma} style={{width:'100%',marginTop:14}}>전체 기록 다운로드하기 (CSV)</button>
+    </section>;
+  }
+  const moveTodayKanbanFromHandle = (taskId, targetStatus) => {
+    if (!['todo','doing','done'].includes(targetStatus)) return;
+    update(d => ({...d, tasks: d.tasks.map(t => t.id !== taskId ? t : ({
+      ...t, status: targetStatus,
+      completedAt: targetStatus === 'done' ? (t.completedAt || new Date().toISOString()) : null
+    }))}));
+  };
+  const handleKanbanPointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.stopPropagation();
+    clearPinHold();
+    const handle=e.currentTarget;
+    handle.dataset.dragging='true';
+    handle.style.background='#efe7fb';
+    handle.style.color='#795bb4';
+    try { handle.setPointerCapture(e.pointerId); } catch {}
+  };
+  const handleKanbanPointerUp = (e, taskId) => {
+    e.stopPropagation();
+    const handle=e.currentTarget;
+    if (handle.dataset.dragging !== 'true') return;
+    handle.dataset.dragging='false';
+    handle.style.background='';
+    handle.style.color='';
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    const lane=el?.closest('[data-today-kanban-lane]');
+    if (lane) moveTodayKanbanFromHandle(taskId,lane.getAttribute('data-today-kanban-lane'));
+    try { handle.releasePointerCapture(e.pointerId); } catch {}
+  };
+  const handleKanbanPointerCancel = e => {
+    const handle=e.currentTarget;
+    handle.dataset.dragging='false';
+    handle.style.background='';
+    handle.style.color='';
+  };
+  function TaskCard({ task, compact = false }) {
+    const p = taskProject(task),
+      total = (task.subtasks || []).length,
+      complete = (task.subtasks || []).filter((s) => s.done).length;
+    return (
+      <div
+        className={"task-card today-compact-card " + (compact ? "compact" : "")}
+        onClick={() => {if(pinMenuId!==task.id)setEditing(task.id)}}
+        onPointerDown={(e) => { if (!e.target.closest('button,input,a,select')) beginPinHold(e,task.id); }}
+        onPointerMove={trackPinHold}
+        onPointerUp={clearPinHold}
+        onPointerCancel={clearPinHold}
+        onContextMenu={(e) => {e.preventDefault();clearPinHold();setPinMenuId(task.id);}}
+        style={{WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none'}}
+      >
+        <div className="task-head">
+          <span
+            className="project-dot"
+            style={{ background: p?.color || "#b8b3bf" }}
+          />
+          <span className="task-project">{p?.name || "개인 일정"}</span>
+          <small style={{marginLeft:"auto",fontSize:11,color:"#90889a"}}>{task.due||""}{task.time?" · "+task.time:""}</small>
+          {task.due && task.due < today && task.status !== "done" && (
+            <span className="carry">자동 이월</span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="task-title" style={{ flex: 1, minWidth: 0 }}>
+            {Number.isFinite(task.pinOrder) && <span aria-label="고정됨" style={{marginRight:4}}>⭐</span>}
+            {task.title}
+          </div>
+          {total > 0 && (
+            <svg viewBox="0 0 40 40" width="36" height="36" role="img"
+              aria-label={`서브태스크 진행률 ${Math.round(complete / total * 100)}%`}
+              style={{ flexShrink: 0, display: 'block' }}>
+              <circle cx="20" cy="20" r="15" fill="none" stroke="#e9e4ef" strokeWidth="5" />
+              <circle cx="20" cy="20" r="15" fill="none" stroke="#9c85cd" strokeWidth="5"
+                strokeDasharray={`${(complete / total) * (2 * Math.PI * 15)} ${2 * Math.PI * 15}`}
+                transform="rotate(-90 20 20)" strokeLinecap="butt"
+                style={{ transition: 'stroke-dasharray 180ms ease' }} />
+            </svg>
+          )}
+          <TaskEstimate count={task.estimatedPomodoros} />
+        </div>
+        {task.tally?.total > 0 && <button type="button" aria-label={`${task.title} 횟수 추가`} onClick={e=>{e.stopPropagation();advanceTally(task)}} style={{width:"100%",border:0,textAlign:"left",marginTop:6,padding:"8px 10px",borderRadius:9,fontWeight:650,background:`linear-gradient(to right,#efb7bc ${Math.min(100,100*(task.tally.count||0)/task.tally.total)}%,#f2eef5 0%)`}}>{task.tally.count||0}/{task.tally.total} · +{task.tally.step||1}</button>}
+        {(task.tallies||[]).map((counter,i)=><button key={counter.id||i} type="button" aria-label={`${counter.label||task.title} 횟수 추가`} onClick={e=>{e.stopPropagation();advanceMultiTally(task,i)}} style={{width:"100%",border:0,textAlign:"left",marginTop:6,padding:"8px 10px",borderRadius:9,fontWeight:650,background:`linear-gradient(to right,#efb7bc ${Math.min(100,100*(counter.count||0)/Math.max(1,counter.total))}%,#f2eef5 0%)`}}>{counter.label?counter.label+" · ":""}{counter.count||0}/{counter.total} · +{counter.step||1}</button>)}
+        <div className="task-foot">
+          <span>{task.tally?.total ? `${task.tally.count||0}/${task.tally.total}` : ""}</span>
+          {total > 0 && (
+            <span>
+              ☑ {complete}/{total}
+            </span>
+          )}
+        </div>
+        {!compact && total > 0 && (
+          <div className="card-subtasks">
+            {task.subtasks.map((sub) => (
+              <label key={sub.id} onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={sub.done}
+                  onChange={(e) =>
+                    changeTask(task.id, {
+                      subtasks: task.subtasks.map((x) =>
+                        x.id === sub.id ? { ...x, done: e.target.checked } : x,
+                      ),
+                    })
+                  }
+                />
+                <span className={sub.done ? "struck" : ""}>{sub.text}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        {pinMenuId===task.id && <div className="today-pin-actions" onClick={e=>e.stopPropagation()} style={{padding:'8px 0',display:'flex',justifyContent:'flex-end',gap:10}}>
+          <button type="button" onClick={e=>{e.stopPropagation();togglePin(task)}}>{Number.isFinite(task.pinOrder)?'☆ 고정 해제':'⭐ 맨 위에 고정'}</button>
+          <button type="button" onClick={e=>{e.stopPropagation();setPinMenuId(null)}}>닫기</button>
+        </div>}
+      </div>
+    );
+  }
+  const toggleTodaySection = (key) => setCollapsedToday(prev => ({...prev,[key]:!prev[key]}));
+  function Kanban() {
+    return (
+      <>
+        <div
+          aria-label="오늘의 시간"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+            gap: 10,
+            marginBottom: 24,
+          }}
+        >
+          {[
+            { label: "현재 시각", text: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`, progress: null },
+            { label: "오전 타이머", ...sessionTimer(6, 12) },
+            { label: "오후 타이머", ...sessionTimer(12, 18) },
+            { label: "저녁 타이머", ...sessionTimer(18, 22) },
+          ].map(({ label, text, progress }, i) => (
+            <div
+              key={label}
+              role="timer"
+              aria-label={`${label}: ${text}${progress === null ? "" : `, ${Math.round(progress * 100)}% 경과`}`}
+              style={{
+                padding: "15px 12px",
+                borderRadius: 15,
+                border: "1px solid #e9e1f0",
+                background: progress === null
+                  ? "#f3edf9"
+                  : `linear-gradient(to right, #e7d9f6 ${Math.round(progress * 100)}%, #ffffff ${Math.round(progress * 100)}%)`,
+                minWidth: 0,
+                transition: "background 0.5s ease",
+              }}
+            >
+              <div style={{ fontSize: 12, color: "#8b7b9c", marginBottom: 7, fontWeight: 650 }}>
+                {label}
+              </div>
+              <div style={{
+                fontSize: "clamp(21px,6vw,30px)",
+                fontWeight: 750,
+                fontVariantNumeric: "tabular-nums",
+                letterSpacing: "-.5px",
+                color: i === 0 ? "#7854ab" : "#53465f",
+                whiteSpace: "nowrap",
+              }}>
+                {text}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="today-heading-compact" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'nowrap',width:'100%',marginBottom:12}}>
+          <div style={{minWidth:0,flex:'1 1 auto'}}>
+            <div className="eyebrow" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6',display:'flex',alignItems:'flex-end',minHeight:28,paddingBottom:1}}>
+              {new Date(visibleDate+'T12:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})}
+              <span aria-label="날짜 이동" style={{display:'inline-flex',alignItems:'center',gap:2,marginLeft:8,fontSize:'inherit',fontWeight:'inherit',color:'inherit',whiteSpace:'nowrap',verticalAlign:'baseline'}}>
+                <button type="button" aria-label="이전 날짜" onClick={()=>setViewDate(d=>dayAdd(d,-1))} style={{appearance:'none',padding:0,width:16,height:18,minWidth:16,display:'inline-flex',alignItems:'center',justifyContent:'center',background:'transparent',color:'inherit',border:0,font:'inherit',lineHeight:1,cursor:'pointer'}}>{'<'}</button>
+                <button type="button" aria-label="다음 날짜" onClick={()=>setViewDate(d=>dayAdd(d,1))} style={{appearance:'none',padding:0,width:16,height:18,minWidth:16,display:'inline-flex',alignItems:'center',justifyContent:'center',background:'transparent',color:'inherit',border:0,font:'inherit',lineHeight:1,cursor:'pointer'}}>{'>'}</button>
+              </span>
+            </div>
+            <div style={{display:'flex',alignItems:'baseline',gap:8,whiteSpace:'nowrap'}}>
+              <h1 role="button" tabIndex={0} aria-expanded={!collapsedToday.tasks} onClick={()=>toggleTodaySection("tasks")} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggleTodaySection("tasks")}}} style={{cursor:"pointer",fontSize:27,letterSpacing:'-0.8px',whiteSpace:'nowrap',margin:'5px 0 0'}}>오늘의 할 일</h1>
+              <ProgressBadge done={todayTasks.filter(t=>t.status==='done').length} total={todayTasks.length}/>
 
- const [periods,setPeriods]=useState({water:'week',sleep:'week',nutrition:'week'});
- const [sleepModal,setSleepModal]=useState(null);
- const [sleepWhen,setSleepWhen]=useState('');
- const [editingCustom,setEditingCustom]=useState(null);
- const [cycleOverrides,setCycleOverrides]=useState({});
- useEffect(()=>{if(!uid){setCycleOverrides({});return;}try{setCycleOverrides(JSON.parse(localStorage.getItem(`care-cycles:${uid}`)||'{}'))}catch{setCycleOverrides({})}},[uid]);
- const setCycle=(area,category,item,value)=>{const key=`${area}:${category}:${item}`;setCycleOverrides(prev=>{const next={...prev};if(value==='default')delete next[key];else next[key]=Number(value);try{localStorage.setItem(`care-cycles:${uid}`,JSON.stringify(next))}catch{}return next})};
+            </div>
+          </div>
+          <button type="button" className="primary small" aria-label="할 일 추가" onClick={()=>{setModal('task');setEditing(null);}} style={{width:36,minWidth:36,height:38,padding:0,display:'grid',placeItems:'center',flexShrink:0}}><Plus size={20}/></button>
+        </div>
 
- const longPressTimer=useRef(null),longPressTriggered=useRef(false);
- const openButtonManagement=(category,item)=>{setCustomCategory(category);setCustomName(item);setEditingCustom({name:item})};
- const startButtonLongPress=(category,item)=>{clearTimeout(longPressTimer.current);longPressTriggered.current=false;longPressTimer.current=setTimeout(()=>{longPressTriggered.current=true;openButtonManagement(category,item)},650)};
- const stopButtonLongPress=()=>clearTimeout(longPressTimer.current);
+        {!collapsedToday.tasks && <div style={{display:'grid',gap:20,marginBottom:15}}>
+          {[['project','프로젝트'],['personal','개인 일정']].map(([groupKey,groupLabel])=>{
+            const groupTasks=todayTasks.filter(t=>groupKey==='project'?Boolean(taskProject(t)):!taskProject(t));
+            const groupCompleted=groupTasks.filter(t=>t.status==='done');
+            return <section key={groupKey} aria-label={groupLabel} style={{display:'grid',gap:7}}>
+              <div style={{display:'flex',alignItems:'baseline',gap:9,marginTop:6,marginBottom:3}}><h2 style={{fontSize:18,margin:0}}>{groupLabel}</h2><ProgressBadge done={groupCompleted.length} total={groupTasks.length}/></div>
+          {groupTasks.filter(t=>t.status!=='done').map(t=>{
+            const subtasks=t.subtasks||[];
+            const count=subtasks.filter(x=>x.done).length;
+            const proj=taskProject(t);
+            return <div key={t.id} className="today-list-row" onPointerDown={e=>{if(!e.target.closest('button,input,a,select,label'))beginPinHold(e,t.id)}} onPointerMove={trackPinHold} onPointerUp={clearPinHold} onPointerCancel={clearPinHold} onContextMenu={e=>{e.preventDefault();clearPinHold();setPinMenuId(t.id)}} style={{background:'white',border:'1px solid #e9e1f0',borderRadius:16,padding:'9px 12px',WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <button type="button" onClick={()=>completeOrStatus(t,t.status==='doing'?'done':'doing')} aria-label={`${t.title} ${t.status==='doing'?'완료':'진행 시작'}`} style={{width:28,height:28,flexShrink:0,border:'2px solid #ac98c7',borderRadius:'50%',background:t.status==='doing'?'#a58fcf':'white'}}/>
+                <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>{if(pinMenuId!==t.id)setEditing(t.id)}}>
+                  <div style={{display:'flex',alignItems:'center',gap:5,fontWeight:700,fontSize:14,overflowWrap:'anywhere'}}>
+                    {Number.isFinite(t.pinOrder)&&<span>⭐</span>}
+                    <span>{t.title}</span>
+                    {!!t.estimatedPomodoros && <span style={{display:'inline-flex',flexShrink:0,alignItems:'center',gap:2}}><TaskEstimate count={t.estimatedPomodoros}/></span>}
+                  </div>
+                  <div style={{fontSize:11,color:'#978aa5',marginTop:2,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div>
+                </div>
+                {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" role="img" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`} style={{flexShrink:0}}>
+                  <circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/>
+                  <circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/>
+                </svg>}
+              </div>
+              {subtasks.length>0&&<div style={{margin:'6px 0 0 36px',display:'grid',gap:5,borderTop:'1px solid #f3eef6',paddingTop:6}}>
+                {subtasks.map(sub=><label key={sub.id} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:sub.done?'#aaa':'#675b70'}} onClick={e=>e.stopPropagation()}>
+                  <input type="checkbox" checked={!!sub.done} onChange={e=>changeTask(t.id,{subtasks:subtasks.map(x=>x.id===sub.id?{...x,done:e.target.checked}:x)})} style={{accentColor:'#9c85cd'}}/>
+                  <span style={{textDecoration:sub.done?'line-through':'none'}}>{sub.text}</span>
+                </label>)}
+              </div>}
+              {pinMenuId===t.id&&<div onClick={e=>e.stopPropagation()} style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:8}}><button type="button" onClick={()=>togglePin(t)}>{Number.isFinite(t.pinOrder)?'☆ 고정 해제':'⭐ 맨 위에 고정'}</button><button type="button" onClick={()=>setPinMenuId(null)}>닫기</button></div>}
+            </div>;
+          })}
+          {!groupTasks.some(t=>t.status!=='done')&&<div style={{padding:18,textAlign:'center',color:'#a397ae'}}>남은 할 일이 없어 🎉</div>}
+          <button type="button" aria-expanded={!!todayCompletedOpen[groupKey]} onClick={()=>setTodayCompletedOpen(v=>({...v,[groupKey]:!v[groupKey]}))} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',border:0,borderRadius:12,padding:'12px 14px',marginTop:8,background:'#f0ebf5',color:'#8874ad',fontWeight:750,fontSize:13,cursor:'pointer'}}><span>완료한 할 일 ({groupCompleted.length})</span><ChevronDown size={17} style={{transform:todayCompletedOpen[groupKey]?'rotate(180deg)':'none'}}/></button>
+          {todayCompletedOpen[groupKey]&&groupCompleted.map(t=>{
+            const proj=taskProject(t);
+            const subtasks=t.subtasks||[];
+            const count=subtasks.filter(x=>x.done).length;
+            return <div key={t.id} style={{background:'#f4f1f6',border:'1px solid #e9e3ee',borderRadius:16,padding:'9px 12px',display:'flex',alignItems:'center',gap:10,color:'#9a93a2'}}>
+              <button type="button" aria-label={`${t.title} 완료 취소`} onClick={()=>completeOrStatus(t,'todo')} style={{width:28,height:28,flexShrink:0,borderRadius:'50%',background:'#e4ddee',border:'2px solid #a58fc6',color:'#876bb5',fontWeight:700}}>✓</button>
+              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>setEditing(t.id)}><div style={{display:'flex',alignItems:'center',gap:5,fontSize:14,fontWeight:650,textDecoration:'line-through',overflowWrap:'anywhere'}}>{Number.isFinite(t.pinOrder)?'⭐ ':''}<span>{t.title}</span>{!!t.estimatedPomodoros&&<TaskEstimate count={t.estimatedPomodoros}/>}</div><div style={{fontSize:11,marginTop:3,display:'flex',alignItems:'center',gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:'50%',background:proj?.color||'#b8b3bf',display:'inline-block',flexShrink:0}}/>{proj?.name||'개인 일정'}{t.due?' · '+t.due:''}{t.time?' · '+t.time:''}</div></div>
+              {subtasks.length>0&&<svg viewBox="0 0 40 40" width="32" height="32" aria-label={`서브태스크 ${count}/${subtasks.length} 완료`}><circle cx="20" cy="20" r="15" stroke="#e9e4ef" strokeWidth="5" fill="none"/><circle cx="20" cy="20" r="15" stroke="#9c85cd" strokeWidth="5" fill="none" strokeDasharray={`${94.248*count/subtasks.length} 94.248`} transform="rotate(-90 20 20)"/></svg>}
+            </div>;
+          })}
+            </section>;
+          })}
+        </div>}
+        {!collapsedToday.tasks && <p className="hint">
+          미완료 투두는 다음 날에도 표시돼. 완료한 일은 아래에 모아 보여줘. 원래 날짜와 시간은 보존해.
+        </p>}
+        <div className={`today-fold-wrapper ${collapsedToday.study?"is-folded":""}`} onClickCapture={e=>{if(e.target.closest("h1")){e.stopPropagation();toggleTodaySection("study")}}}>
+        <LinkedActivities
+          source="study" client={bridgeClient} userId={bridgeUserId} today={today}
+          checks={data.activityChecks || {}}
+          onCheck={(key, done, pinOrder, subChecks) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}}))}
+        />
+        </div>
+        <div className={`today-fold-wrapper ${collapsedToday.workout?"is-folded":""}`} onClickCapture={e=>{if(e.target.closest("h1")){e.stopPropagation();toggleTodaySection("workout")}}}>
+        <HomeWorkouts
+          client={bridgeClient}
+          userId={bridgeUserId}
+          today={today}
+          checks={data.homeWorkoutChecks || {}}
+          onCheck={(key, done, pinOrder, subChecks) => setData(d=>({...d, homeWorkoutChecks:{...(d.homeWorkoutChecks||{}),[key]:{...(d.homeWorkoutChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}}))}
+        />
+        </div>
+        <div className={`today-fold-wrapper ${collapsedToday.mind?"is-folded":""}`} onClickCapture={e=>{if(e.target.closest("h1")){e.stopPropagation();toggleTodaySection("mind")}}}>
+        <LinkedActivities
+          source="mind" client={bridgeClient} userId={bridgeUserId} today={today}
+          checks={data.activityChecks || {}}
+          onCheck={(key, done, pinOrder, subChecks) => setData(d=>({...d, activityChecks:{...(d.activityChecks||{}),[key]:{...(d.activityChecks?.[key]||{}),done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}}))}
+        />
+        </div>
+      </>
+    );
+  }
+  function CalendarChecklist({date}) {
+    const categories=["오늘의 할 일","공부","운동","명상"];
+    const tasks=dateItems(date);
+    const category=t=>{const name=((taskProject(t)?.name||"")+" "+t.title).toLowerCase();if(/명상|호흡|만트라/.test(name))return "명상";if(/운동|헬스|근력|스트레칭|요가|필라테스/.test(name))return "운동";if(/공부|암기|논점|학습|중국어|독서/.test(name))return "공부";return "오늘의 할 일"};
+    return <div className="day-checklists">{categories.map(group=>{
+      const local=tasks.filter(t=>category(t)===group);
+      return <section key={group} style={{padding:"10px 0",borderBottom:"1px solid #f0ebf4"}}>
+        {group === "오늘의 할 일" && <h3 style={{fontSize:14,margin:"4px 0 8px",display:"flex",gap:8,alignItems:"baseline"}}>{group}<ProgressBadge done={local.filter(t=>t.status==="done").length} total={local.length}/></h3>}
+        {local.map(t=>{
+          const subs=Array.isArray(t.subtasks)?t.subtasks:[];
+          const complete=t.status==="done";
+          return <div key={t.id} style={{padding:"8px 0",color:complete?"#aaa":"#574b65"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <input type="checkbox" aria-label={`${t.title} 완료`} checked={complete} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/>
+              <span style={{textDecoration:complete?"line-through":"none",flex:1,minWidth:0,overflowWrap:"anywhere"}}>{t.title}</span>
+              <span style={{display:"inline-flex",alignItems:"center",gap:6}}><TaskEstimate count={t.estimatedPomodoros}/><small>{t.time||""}</small></span>
+            </div>
+            {subs.length>0&&<div style={{padding:"6px 0 2px 40px",display:"grid",gap:7}}>
+              <span style={{fontSize:11,color:"#9484a5"}}>{subs.filter(s=>s.done).length}/{subs.length} 완료</span>
+              {subs.map((sub,i)=><label key={sub.id??i} style={{display:"flex",alignItems:"center",gap:9,fontSize:13,color:sub.done?"#aaa":"#574b65"}}>
+                <input type="checkbox" checked={!!sub.done} onChange={e=>changeTask(t.id,{subtasks:subs.map((s,j)=>(sub.id!=null?s.id===sub.id:j===i)?{...s,done:e.target.checked}:s)})}/>
+                <span style={{textDecoration:sub.done?"line-through":"none"}}>{sub.text}</span>
+              </label>)}
+            </div>}
+          </div>;
+        })}
+        {group === "오늘의 할 일" && local.length===0 && <span style={{fontSize:12,color:"#aaa"}}>일정 없음</span>}
+        {group!=="오늘의 할 일"&&<CalendarExternal heading={group} localTotal={local.length} localDone={local.filter(t=>t.status==="done").length} source={group==="공부"?"study":group==="운동"?"workout":"mind"} date={date} client={bridgeClient} userId={bridgeUserId} checks={group==="운동"?(data.homeWorkoutChecks||{}):(data.activityChecks||{})} onCheck={(key,done,pinOrder,subChecks)=>update(d=>{
+          const field=group==="운동"?"homeWorkoutChecks":"activityChecks";
+          const prev=d[field]?.[key]||{};
+          return {...d,[field]:{...(d[field]||{}),[key]:{...prev,done,...(pinOrder!==undefined?{pinOrder}:{}),...(subChecks!==undefined?{subChecks}:{})}}};
+        })}/>}
+      </section>;
+    })}</div>;
+  }
+  function Calendar() {
+    const base = new Date(focusDate + "T12:00:00"),
+      day = base.getDay(),
+      first = localDate(new Date(base.getFullYear(), base.getMonth(), 1));
+    const start =
+      calendarView === "month"
+        ? dayAdd(first, -new Date(first + "T12:00:00").getDay())
+        : calendarView === "week"
+          ? dayAdd(focusDate, -day)
+          : focusDate;
+    const length =
+      calendarView === "month"
+        ? 42
+        : calendarView === "week"
+          ? 7
+          : calendarView === "three"
+            ? 3
+            : 1;
+    const days = Array.from({ length }, (_, i) => dayAdd(start, i));
+    const jump = (n) =>
+      setFocusDate(
+        calendarView === "month"
+          ? localDate(
+              new Date(
+                base.getFullYear(),
+                base.getMonth() + n,
+                Math.min(base.getDate(), 28),
+              ),
+            )
+          : dayAdd(
+              focusDate,
+              n *
+                (calendarView === "week"
+                  ? 7
+                  : calendarView === "three"
+                    ? 3
+                    : 1),
+            ),
+      );
+    return (
+      <>
+        <div className="section-top">
+          <div>
+            <div className="eyebrow">프로젝트별 색상으로 일정 구분</div>
+            <h1>캘린더</h1>
+          </div>
+          <button className="primary small" onClick={() => setModal("task")}>
+            <Plus size={16} /> 일정
+          </button>
+        </div>
+        <div className="views">
+          {[
+            ["month", "월간"],
+            ["week", "주간"],
+            ["three", "3일"],
+            ["day", "1일"],
+          ].map(([id, name]) => (
+            <button
+              key={id}
+              className={calendarView === id ? "selected" : ""}
+              onClick={() => setCalendarView(id)}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <div className="calendar-nav">
+          <button onClick={() => jump(-1)}>
+            <ChevronLeft size={19} />
+          </button>
+          <strong>
+            {calendarView === "month"
+              ? `${base.getFullYear()}년 ${base.getMonth() + 1}월`
+              : `${focusDate.replaceAll("-", ".")}부터`}
+          </strong>
+          <button onClick={() => jump(1)}>
+            <ChevronRight size={19} />
+          </button>
+          <button className="today-btn" onClick={() => setFocusDate(today)}>
+            오늘
+          </button>
+        </div>
+        {calendarView === "month" ? (
+          <>
+            <div className="month-grid weekday">
+              {"일월화수목금토".split("").map((x) => (
+                <div key={x}>{x}</div>
+              ))}
+            </div>
+            <div className="month-grid days">
+              {days.map((date) => {
+                let items = dateItems(date);
+                return (
+                  <button
+                    key={date}
+                    className={
+                      "day-cell " +
+                      (date.slice(0, 7) !== focusDate.slice(0, 7)
+                        ? "muted "
+                        : "") +
+                      (date === focusDate ? "active" : "")
+                    }
+                    onClick={() => setFocusDate(date)}
+                  >
+                    <span className={date === today ? "today-round" : ""}>
+                      {Number(date.slice(8))}
+                    </span>
+                    <div className="dots">
+                      {items.slice(0, 5).map((t) => (
+                        <i
+                          key={t.id}
+                          style={{
+                            background: taskProject(t)?.color || "#aaa",
+                          }}
+                        />
+                      ))}
+                      {items.length > 5 && (
+                        <span className="calendar-extra-count" aria-label={`추가 일정 ${items.length - 5}개`}>
+                          +{items.length - 5}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="selected-day-agenda">
+              <h2>{focusDate} 일정</h2>
+              {CalendarChecklist({date:focusDate})}
+            </div>
+          </>
+        ) : (
+          <div className="agenda">
+            {days.map((date) => (
+              <div className="agenda-day" key={date}>
+                <div className="agenda-day-head">
+                  {new Date(date + "T12:00:00").toLocaleDateString("ko-KR", {
+                    month: "short",
+                    day: "numeric",
+                    weekday: "short",
+                  })}{" "}
+                  {date === today && <span className="tiny-tag">오늘</span>}
+                </div>
+                <div className="agenda-items">
+                  {CalendarChecklist({date})}
 
- const [customName,setCustomName]=useState('');
- const [customCategory,setCustomCategory]=useState('');
- const PERIODS=[['week','일주일'],['month','월별'],['quarter','3개월'],['half','6개월'],['year','1년']];
- const periodDays=(period)=>({week:7,month:30,quarter:90,half:180,year:365}[period]||7);
- const datePoints=(period)=>{const n=periodDays(period),todayAt=new Date();todayAt.setHours(12,0,0,0);const end=localDate(todayAt);const begin=new Date(todayAt);begin.setDate(begin.getDate()-n+1);const start=localDate(begin);let points=[];for(let i=0;i<n;i++){const d=new Date(begin);d.setDate(d.getDate()+i);points.push(localDate(d))}const bucket=period==='week'?1:period==='month'?1:period==='quarter'?7:period==='half'?14:30;const groups=[];for(let i=0;i<points.length;i+=bucket)groups.push(points.slice(i,i+bucket));return groups.map(list=>({label:list.length===1?list[0].slice(5):list[0].slice(5)+'~'+list[list.length-1].slice(5),dates:list}));};
- const dateStats=(kind)=>datePoints(periods[kind]).map(group=>{const records=group.dates.map(day=>data.diet_days.find(x=>x.day===day));const sleepHours=group.dates.map(day=>data.sleep_logs.some(s=>s.woke_at&&sleepDayOf(s)===day)?sleepTotalForDay(data.sleep_logs,day):null).filter(v=>v!==null);const nutritionRecords=records.filter(r=>r?.nutrition_updated_at);return {day:group.label,goal:num(goals[metric]),water:records.reduce((v,r)=>v+num(r?.water_cups),0)/group.dates.length,sleep:sleepHours.length?sleepHours.reduce((v,x)=>v+x,0)/sleepHours.length:null, nutrition:nutritionRecords.length?nutritionRecords.reduce((v,r)=>v+num(r[metric]),0)/nutritionRecords.length:null, nutritionCount:nutritionRecords.length};});
- const PeriodPicker=({kind})=><div className="segment period-segment">{PERIODS.map(([id,name])=><button key={id} className={periods[kind]===id?'active':''} onClick={()=>setPeriods(prev=>({...prev,[kind]:id}))}>{name}</button>)}</div>;
- const openSleep=(row,kind)=>{setSleepModal({id:row?.id||null,kind,slept_at:row?.slept_at||'',woke_at:row?.woke_at||''});setSleepWhen(new Date().toLocaleString('sv-SE').slice(0,16))};
- const saveSleep=async()=>{const d=sleepModal;if(!d)return;const iso=new Date(sleepWhen).toISOString();if(!sleepWhen||Number.isNaN(new Date(sleepWhen).getTime()))return warn('시간을 확인해 주세요');setBusy(true);try{const base=d.id?data.sleep_logs.find(x=>x.id===d.id):data.sleep_logs.find(x=>!x.woke_at);let payload;if(d.kind==='sleep'){payload={user_id:uid,sleep_day:localDate(new Date(iso)),slept_at:iso,woke_at:base?.woke_at||null};}else{if(!base?.slept_at)throw Error('먼저 달 버튼으로 취침을 기록해 주세요');payload={user_id:uid,sleep_day:base.sleep_day,slept_at:base.slept_at,woke_at:iso};if(new Date(payload.woke_at)<=new Date(payload.slept_at))throw Error('기상 시간은 취침 시간 이후여야 해요');}let q=base?supabase.from('sleep_logs').update(payload).eq('id',base.id).eq('user_id',uid):supabase.from('sleep_logs').insert(payload);const {error}=await q;if(error)throw error;setSleepModal(null);await refresh()}catch(e){warn(e.message)}finally{setBusy(false)}};
- const editSleep=(row)=>{setSleepModal({id:row.id,kind:'edit',slept_at:row.slept_at,woke_at:row.woke_at});};
- const saveSleepEdit=async()=>{const x=sleepModal;const start=new Date(x.slept_at),end=x.woke_at?new Date(x.woke_at):null;if(!Number.isFinite(start.getTime())||(end&&(!Number.isFinite(end.getTime())||end<=start)))return warn('취침·기상 시간을 확인해 주세요');setBusy(true);try{const {error}=await supabase.from('sleep_logs').update({slept_at:start.toISOString(),woke_at:end?.toISOString()||null,sleep_day:localDate(start)}).eq('id',x.id).eq('user_id',uid);if(error)throw error;setSleepModal(null);await refresh()}catch(e){warn(e.message)}finally{setBusy(false)}};
- const groupItems=(area,category)=>{const base=(GROUPS[area]||[]).find(g=>g.name===category)?.items||[];const custom=data.custom_items.filter(x=>x.area===area&&x.category===category);const hidden=new Set(custom.filter(x=>x.hidden).map(x=>x.name));return [...base.filter(n=>!hidden.has(n)),...custom.filter(x=>!x.hidden&&!base.includes(x.name)).map(x=>x.name)];};
- const changeCustom=async(action)=>{const name=customName.trim();if(action!=='delete'&&!name)return warn('버튼 이름을 입력해 주세요');if(action==='delete'&&!window.confirm('버튼을 삭제할까요? 기존 기록은 보존됩니다.'))return;const old=editingCustom?.name;setBusy(true);try{const existing=data.custom_items.find(x=>x.area===screen&&x.category===customCategory&&x.name===old);let error;if(action==='delete'){({error}=await supabase.from('custom_items').upsert({user_id:uid,area:screen,category:customCategory,name:old,hidden:true},{onConflict:'user_id,area,category,name'}));}else if(old&&old!==name){if(data.activity_logs.some(x=>x.area===screen&&x.category===customCategory&&x.item===old))throw Error('기존 기록이 있는 버튼은 이름을 바꿀 수 없어요. 새 버튼을 추가해 주세요.');if(existing){const q=await supabase.from('custom_items').delete().eq('id',existing.id);if(q.error)throw q.error;}({error}=await supabase.from('custom_items').upsert({user_id:uid,area:screen,category:customCategory,name,hidden:false},{onConflict:'user_id,area,category,name'}));}else{({error}=await supabase.from('custom_items').upsert({user_id:uid,area:screen,category:customCategory,name,hidden:false},{onConflict:'user_id,area,category,name'}));}if(error)throw error;setEditingCustom(null);await refresh();}catch(e){warn(e.message)}finally{setBusy(false)}};
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="legend">
+          {data.projects.map((p) => (
+            <span key={p.id}>
+              <i style={{ background: p.color }} />
+              {p.name}
+            </span>
+          ))}
+          <span>
+            <i style={{ background: "#b8b3bf" }} />
+            개인 일정
+          </span>
+        </div>
+      </>
+    );
+  }
+  function Projects() {
+    const selected = project(selectedProject);
+    const items = data.tasks.filter(t => t.projectId === selectedProject);
+    const todo = items.filter(t => t.status !== "done" && t.status !== "doing");
+    const doing = items.filter(t => t.status === "doing");
+    const done = items.filter(t => t.status === "done");
+    const renderGroups = (tasks) => {
+      const sorted = [...tasks].sort(byDueThenTitle);
+      const groups = [];
+      for (const task of sorted) {
+        const label = koreanWeekLabel(task.due);
+        if (!groups.length || groups[groups.length - 1].label !== label) groups.push({label, tasks: []});
+        groups[groups.length - 1].tasks.push(task);
+      }
+      return groups.map(group => (
+        <section key={group.label} className="project-week-group">
+          <h3 className="project-week-heading">{group.label}</h3>
+          <div className="project-task-list">{group.tasks.map(renderItem)}</div>
+        </section>
+      ));
+    };
+    const renderItem = (t) => (
+      <div key={t.id} className="project-item-wrap" data-project-task-id={t.id}
+        onPointerDown={e => { if(!e.target.closest('button,input,a,select')) beginPinHold(e,t.id); }}
+        onPointerMove={trackPinHold}
+        onPointerUp={clearPinHold}
+        onPointerCancel={clearPinHold}
+        onContextMenu={e => { e.preventDefault(); clearPinHold(); setPinMenuId(t.id); }}
+        onSelectStart={e => e.preventDefault()}
+        onDragStart={e => e.preventDefault()}
+        style={{WebkitTouchCallout:'none',WebkitUserSelect:'none',userSelect:'none',touchAction:'pan-y'}}>
+        <div className="project-list-item compact-project-row">
+          <button type="button" className={`project-status-button status-${t.status}`}
+            aria-label={`${t.title}: ${t.status === "done" ? "완료" : t.status === "doing" ? "진행 중" : "할 일"}. 다음 상태로 변경`}
+            onClick={() => completeOrStatus(t, t.status === "todo" ? "doing" : t.status === "doing" ? "done" : "todo")}>
+            {t.status === "done" ? <Check size={15} strokeWidth={3} /> : null}
+          </button>
+          <div className="list-middle" onClick={() => {if(pinMenuId!==t.id)setEditing(t.id)}} style={{WebkitUserSelect:'none',userSelect:'none',WebkitTouchCallout:'none'}}>
+            <strong className={t.status === "done" ? "struck" : ""}>
+              {Number.isFinite(t.pinOrder) ? '⭐ ' : ''}{t.title}
+            </strong>
+            <small>
+              {t.due
+                ? `${t.due}${t.time ? " · " + t.time : ""}`
+                : "날짜 미설정"}
+            </small>
+          </div>
+          <div onClick={() => setEditing(t.id)} style={{ cursor: "pointer" }}>
+            <TaskEstimate count={t.estimatedPomodoros} />
+          </div>
+          <ChevronRight
+            size={17}
+            color="#b8b0be"
+            onClick={() => setEditing(t.id)}
+          />
+        </div>
+        {pinMenuId === t.id && (
+          <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',gap:8,padding:'8px 12px',background:'#f7f2ff'}}>
+            <button type="button" onClick={e=>{e.stopPropagation();togglePin(t)}} style={{padding:'10px 14px',borderRadius:10,background:'#fff',color:'#8061b6',fontWeight:700}}>
+              {Number.isFinite(t.pinOrder) ? '☆ 고정 해제' : '⭐ 맨 위에 고정'}
+            </button>
+            <button type="button" onClick={e=>{e.stopPropagation();setPinMenuId(null)}} style={{padding:'10px',color:'#8a8195'}}>닫기</button>
+          </div>
+        )}
+        {(t.subtasks || []).length > 0 && (
+          <div className="inline-subtasks">
+            {(t.subtasks || []).map((sub) => (
+              <label key={sub.id} className="inline-subtask">
+                <input
+                  type="checkbox"
+                  checked={sub.done}
+                  onChange={(e) =>
+                    changeTask(t.id, {
+                      subtasks: (t.subtasks || []).map((x) =>
+                        x.id === sub.id ? { ...x, done: e.target.checked } : x,
+                      ),
+                    })
+                  }
+                />
+                <span className={sub.done ? "struck" : ""}>{sub.text}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+    return (
+      <>
+        <div className="section-top">
+          <div>
+            <h1>프로젝트</h1>
+          </div>
+          <button className="primary small" onClick={() => setModal("project")}>
+            <Plus size={16} /> 목록
+          </button>
+        </div>
+        <label className="project-select-label">
+          프로젝트 목록
+          <select
+            className="select-full"
+            value={selected?.id || ""}
+            onChange={(e) => setSelectedProject(e.target.value)}
+          >
+            {data.projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {selected && (
+          <div className="project-summary">
+            <div>
+              <h2>
+                <i
+                  className="project-color-swatch"
+                  style={{ background: selected.color }}
+                />
+                {selected.name}
+              </h2>
+              <p>
+                {done.length}/{items.length}개 완료
+              </p>
+            </div>
+            <button type="button" className="secondary" onClick={renameSelectedProject} aria-label="선택 프로젝트 이름 수정" style={{marginLeft:"auto",padding:"6px",minWidth:34,minHeight:34,color:"#8d6dce"}}><Pencil size={16}/></button>
+            <button type="button" className="secondary" onClick={deleteSelectedProject} aria-label="선택 프로젝트 삭제" style={{padding:"6px",minWidth:34,minHeight:34,color:"#bf667c"}}><Trash2 size={16}/></button>
+            <button
+              className="secondary add-only project-add-compact"
+              aria-label="투두 추가"
+              onClick={() => {
+                setEditing(null);
+                setModal("task");
+              }}
+            >
+              <Plus size={17} />
+            </button>
+          </div>
+        )}
+        <section className="project-status-section">
+          <h2>할 일 <span>({todo.length})</span></h2>
+          {todo.length ? renderGroups(todo) : <div className="empty-panel">할 일이 없어.</div>}
+        </section>
+        <section className="project-status-section">
+          <h2>진행 중인 할 일 <span>({doing.length})</span></h2>
+          {doing.length ? renderGroups(doing) : <div className="empty-panel">진행 중인 할 일이 없어.</div>}
+        </section>
+        <button className="completed-toggle" aria-expanded={showDone} onClick={() => setShowDone(v => !v)}>
+          <ChevronDown size={17} style={{transform:showDone ? "rotate(180deg)" : "none"}} />
+          완료된 할 일 ({done.length})
+        </button>
+        {showDone && <section className="project-status-section">
+          {done.length ? renderGroups(done) : <div className="empty-panel">완료한 일이 없어.</div>}
+        </section>}
+      </>
+    );
+  }
+  function Pomodoro() {
+    const sessionsToday = pomSessions.filter(
+      (s) => localDate(new Date(s.endedAt)) === today,
+    );
+    return (
+      <>
+        {pomError && <p role="alert" style={{color:"#b34b62"}}>{pomError}</p>}
+        <div className="section-top">
+          <div>
+            <div className="eyebrow">투두와 연결되는 집중 기록</div>
+            <h1>뽀모도로</h1>
+          </div>
+        </div>
+        <div className="pom-subnav">
+          <button
+            className={pomView === "timer" ? "active" : ""}
+            onClick={() => setPomView("timer")}
+          >
+            타이머
+          </button>
+          <button
+            className={pomView === "stats" ? "active" : ""}
+            onClick={() => setPomView("stats")}
+          >
+            통계
+          </button>
+        </div>
+        {pomView === "stats" ? (
+          PomStats()
+        ) : (
+          <>
+            <div className="pom-panel">
+              <div className="label">집중할 오늘의 할 일</div>
+              <select
+                className="select-full"
+                disabled={running}
+                value={pomTask}
+                onChange={(e) => {setPomTask(e.target.value);void pomAction("configure",{taskId:e.target.value});}}
+              >
+                <option value="">할 일 선택 (선택 사항)</option>
+                {todayNotDone.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {taskProject(t)?.name || "개인"} · {t.title}
+                  </option>
+                ))}
+              </select>
+              <div className="mode-switch">
+                <button
+                  className={mode === "focus" ? "active" : ""}
+                  onClick={() => resetTimer("focus")}
+                >
+                  집중 {customFocusMinutes}분
+                </button>
+                <button
+                  className={mode === "break" ? "active" : ""}
+                  onClick={() => resetTimer("break")}
+                >
+                  휴식 5분
+                </button>
+              </div>
+              <div className="timer-circle" role="slider" aria-label="집중 시간 (원형 다이얼)" aria-valuemin={0} aria-valuemax={60} aria-valuenow={customFocusMinutes} tabIndex={mode === "focus" && !running ? 0 : -1} onKeyDown={(e) => {if(running || mode !== "focus")return;if(e.key === "ArrowRight" || e.key === "ArrowUp"){e.preventDefault();changeFocusMinutes(customFocusMinutes+1);}if(e.key === "ArrowLeft" || e.key === "ArrowDown"){e.preventDefault();changeFocusMinutes(customFocusMinutes-1);}}} style={{position:"relative",touchAction:"none",background:`conic-gradient(from 0deg,#aa8fd9 0deg ${Math.max(0,Math.min(360,seconds/3600*360))}deg,#eae2f5 ${Math.max(0,Math.min(360,seconds/3600*360))}deg 360deg)`}} onPointerDown={dialStart} onPointerMove={dialMove} onPointerUp={dialEnd} onPointerCancel={dialEnd} onLostPointerCapture={dialEnd}>
+                <div className="timer-mode">
+                  {mode === "focus" ? "FOCUS TIME" : "BREAK TIME"}
+                </div>
+                <div className="timer-digits">
+                  {pad(Math.floor(seconds / 60))}:{pad(seconds % 60)}
+                </div>
+
+              </div>
+              <label className="tick-option">
+                <span>집중 종료 알림 <small>집중이 끝나면 땡~</small></span>
+                <input
+                  type="checkbox"
+                  checked={alarmEnabled}
+                  onChange={e => setAlarmEnabled(e.target.checked)}
+                  aria-label="집중 종료 알림 켜기"
+                />
+                <span className="tick-toggle" aria-hidden="true" />
+              </label>
+              <label className="tick-option">
+                <span>
+                  시계 초침 소리 <small>집중하는 동안 째깍째깍</small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={tickSound}
+                  onChange={(e) => {
+                    setTickSound(e.target.checked);
+                    if (e.target.checked) {
+                      activateAudio().catch(reportAudioError);
+                    }
+                  }}
+                  aria-label="시계 소리 켜기"
+                />
+                <span className="tick-toggle" aria-hidden="true" />
+              </label>
+              <div className="tick-type-row">
+                <label htmlFor="tick-type">초침 종류</label>
+                <select
+                  id="tick-type"
+                  value={tickType}
+                  onChange={(e) => setTickType(e.target.value)}
+                >
+                  {Object.entries(CLOCK_SOUNDS).map(([id, sound]) => (
+                    <option key={id} value={id}>
+                      {sound.label}
+                    </option>
+                  ))}
+                </select>
+                <button onClick={previewClock}>미리 듣기</button>
+              </div>
+              <div style={{ width: "100%", marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={testSound}
+                  aria-label="소리 테스트"
+                >
+                  🔊 소리 테스트
+                </button>
+                {audioStatus && (
+                  <p
+                    className="hint"
+                    role="status"
+                    style={{ margin: "8px 0 0" }}
+                  >
+                    {audioStatus}
+                  </p>
+                )}
+              </div>
 
 
- useEffect(()=>{const interval=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(interval)},[]);
- useEffect(()=>{if(!supabase){setAuthReady(true);return}supabase.auth.getSession().then(({data})=>{setSession(data.session);setAuthReady(true)});const{data:{subscription}}=supabase.auth.onAuthStateChange((event,s)=>{setSession(s);if(event==='PASSWORD_RECOVERY')setRecovery(true)});return()=>subscription.unsubscribe()},[]);
- const refresh=async()=>{if(!uid)return;try{const rows=await fetchAll(uid);setData(rows)}catch(e){setMessage(`동기화 실패: ${e.message}`)}};
- useEffect(()=>{if(!uid){setData({diet_days:[],diet_logs:[],activity_logs:[],user_goals:[],my_app_links:[],care_plans:[],care_plan_completions:[],sleep_logs:[],custom_items:[]});return}refresh();const c=supabase.channel('care-log-'+uid).on('postgres_changes',{event:'*',schema:'public',table:'diet_days',filter:`user_id=eq.${uid}`},refresh).on('postgres_changes',{event:'*',schema:'public',table:'diet_logs',filter:`user_id=eq.${uid}`},refresh).on('postgres_changes',{event:'*',schema:'public',table:'activity_logs',filter:`user_id=eq.${uid}`},refresh).on('postgres_changes',{event:'*',schema:'public',table:'user_goals',filter:`user_id=eq.${uid}`},refresh).on('postgres_changes',{event:'*',schema:'public',table:'my_app_links',filter:`user_id=eq.${uid}`},refresh).on('postgres_changes',{event:'*',schema:'public',table:'care_plans',filter:`user_id=eq.${uid}`},refresh).on('postgres_changes',{event:'*',schema:'public',table:'sleep_logs',filter:`user_id=eq.${uid}`},refresh).on('postgres_changes',{event:'*',schema:'public',table:'custom_items',filter:`user_id=eq.${uid}`},refresh).subscribe();const onFocus=()=>refresh();window.addEventListener('focus',onFocus);return()=>{window.removeEventListener('focus',onFocus);supabase.removeChannel(c)}},[uid]);
- const goals={...DEFAULT_GOALS,...data.user_goals[0]};const today=localDate();const selectedRecord=data.diet_days.find(x=>x.day===selectedDay)||{};const dayData=data.diet_days.find(x=>x.day===today)||{};
- const warn=t=>{setMessage(t);setTimeout(()=>setMessage(''),4500)};
- async function mutate(table,values,op='insert',id){if(busy)return false;setBusy(true);try{let query;if(op==='upsert')query=supabase.from(table).upsert(values,{onConflict:table==='user_goals'?'user_id':table==='my_app_links'?'user_id,app_name':'user_id,day'});else if(op==='delete')query=supabase.from(table).delete().eq('id',id).eq('user_id',uid);else query=supabase.from(table).insert(values);const{error}=await query;if(error)throw error;await refresh();return true}catch(e){warn(`저장 실패: ${e.message}`);return false}finally{setBusy(false)}}
- async function saveDay(patch){await mutate('diet_days',{user_id:uid,day:today,...{water_cups:dayData.water_cups||0,vegetables:!!dayData.vegetables,supplements:!!dayData.supplements},...patch},'upsert')}
- async function logActivity(area,cat,item){if(busy)return;setBusy(true);try{const pets=area==='pets'?(petBoth?['고미','쩌미']:[pet]):[null];const{error}=await supabase.from('activity_logs').insert(pets.map(p=>({user_id:uid,area,category:cat,item,pet:p})));if(error)throw error;await refresh();warn(`${item} 기록 완료`)}catch(e){warn(e.message)}finally{setBusy(false)}}
- async function addDiet(){const t=dietNote.trim();if(!t)return;const good=await mutate('diet_logs',{user_id:uid,day:today,note:t});if(good)setDietNote('')}
- async function remove(table,id){if(!window.confirm('이 기록을 삭제할까요?'))return;await mutate(table,{},'delete',id)}
- async function editDiet(entry){const v=window.prompt('식단 메모 수정',entry.note);if(v===null||!v.trim())return;setBusy(true);try{const{error}=await supabase.from('diet_logs').update({note:v.trim()}).eq('id',entry.id).eq('user_id',uid);if(error)throw error;await refresh()}catch(e){warn(e.message)}finally{setBusy(false)}}
- const parseNutrition=text=>{const input=text.replace(/,/g,'');const d=input.match(/20\d{2}-\d{2}-\d{2}/)?.[0]||today;function extract(regex){const m=input.match(regex);return m?Number(m[1]):null}return{day:d,calories:extract(/(?:총칼로리|칼로리|열량)\s*[:：]?\s*(\d+(?:\.\d+)?)/i)??extract(/(\d+(?:\.\d+)?)\s*kcal/i),carbs_g:extract(/탄수화물\s*[:：]?\s*(\d+(?:\.\d+)?)/),protein_g:extract(/단백질\s*[:：]?\s*(\d+(?:\.\d+)?)/),fat_g:extract(/지방\s*[:：]?\s*(\d+(?:\.\d+)?)/)}};
- const parsed=parseNutrition(paste);const canPaste=['calories','protein_g','carbs_g','fat_g'].every(k=>parsed[k]!==null&&parsed[k]>=0)&&/^\d{4}-\d{2}-\d{2}$/.test(parsed.day)&&!Number.isNaN(new Date(parsed.day).getTime());
- async function pasteNutrition(){if(!canPaste){warn('칼로리, 탄수화물, 단백질, 지방 수치를 모두 입력해 주세요.');return}const existing=data.diet_days.find(x=>x.day===parsed.day);if(!window.confirm(`${koDate(parsed.day)}의 하루 누적 영양정보를 ${existing?.nutrition_updated_at?'기존 값에서 새 값으로 교체':'등록'}할까요?\n(기존 기록에 더하지 않습니다.)`))return;const good=await mutate('diet_days',{user_id:uid,day:parsed.day,water_cups:existing?.water_cups||0,vegetables:!!existing?.vegetables,supplements:!!existing?.supplements,calories:parsed.calories,protein_g:parsed.protein_g,carbs_g:parsed.carbs_g,fat_g:parsed.fat_g,nutrition_updated_at:new Date().toISOString()},'upsert');if(good){setPaste('');warn('하루 누적 영양정보를 갱신했어요.')}}
- async function saveGoals(){const values=Object.fromEntries(Object.keys(DEFAULT_GOALS).map(k=>[k,num(goalDraft[k])]));if(Object.values(values).some(v=>v<=0)){warn('목표는 0보다 커야 해요.');return}const good=await mutate('user_goals',{user_id:uid,...values},'upsert');if(good)setGoalModal(false)}
- async function saveAppUrl(){if(!editingApp)return;const clean=appUrl.trim();if(clean){try{const parsed=new URL(clean);if(!['http:','https:'].includes(parsed.protocol))throw Error('invalid')}catch{warn('https:// 로 시작하는 올바른 웹사이트 주소를 입력해 주세요.');return}}const good=await mutate('my_app_links',{user_id:uid,app_name:editingApp,url:clean},'upsert');if(good){setEditingApp(null);setAppUrl('');warn('앱 주소를 저장했어요.')}}
- const resetPlan=(x=null)=>{setPlanDraft(x?{id:x.id,category:x.category,item:x.item||'',title:x.title,date:x.due_date,time:x.due_time?.slice(0,5)||'',repeat:x.repeat_rule,repeat_days:x.repeat_days||7,pet:x.pet||'고미'}:{id:null,category:(GROUPS[screen]||[])[0]?.name||'',item:'',title:'',date:localDate(),time:'',repeat:'none',repeat_days:7,pet:'고미'});setPlanModal(true)};
- async function savePlan(){const d=planDraft; if(!d.title.trim()||!d.date||!d.category){warn('계획명, 대항목, 날짜를 입력해 주세요.');return}if(d.repeat==='custom'&&(!Number.isInteger(Number(d.repeat_days))||Number(d.repeat_days)<1)){warn('반복 간격을 1일 이상으로 설정해 주세요.');return}const row={user_id:uid,area:screen,category:d.category,item:d.item||null,title:d.title.trim(),pet:screen==='pets'?d.pet:null,due_date:d.date,due_time:d.time||null,repeat_rule:d.repeat,repeat_days:d.repeat==='custom'?Number(d.repeat_days):null,status:'pending'};setBusy(true);try{const q=d.id?supabase.from('care_plans').update(row).eq('id',d.id).eq('user_id',uid):supabase.from('care_plans').insert(row);const{error}=await q;if(error)throw error;setPlanModal(false);await refresh();warn('계획을 저장했어요.')}catch(e){warn('계획 저장 실패: '+e.message)}finally{setBusy(false)}}
- async function completePlan(p){if(busy)return;if(!window.confirm(`「${p.title}」 완료 처리하고 실제 기록을 남길까요?`))return;setBusy(true);try{const{error}=await supabase.rpc('complete_care_plan',{p_plan_id:p.id});if(error)throw error;await refresh();warn('완료 시간과 실행 기록을 저장했어요.')}catch(e){warn('완료 처리 실패: '+e.message)}finally{setBusy(false)}}
- async function deletePlan(p){if(!window.confirm(`「${p.title}」 계획을 삭제할까요? 완료한 기록은 유지돼요.`))return;await mutate('care_plans',{},'delete',p.id)}
- function switchScreen(id){setScreen(id);setSub('record');setReviewCat('');setReviewItem('전체');setReviewView('calendar')}
- const days=lastDays(),rows7=days.map(day=>({day,record:data.diet_days.find(x=>x.day===day)}));
- const selectedMetric=metricFields.find(m=>m.key===metric);
- const metricAvg=rows7.filter(x=>x.record?.nutrition_updated_at).map(x=>num(x.record[metric])/num(goals[metric])*100);const avgProgress=metricAvg.length?metricAvg.reduce((a,b)=>a+b,0)/metricAvg.length:null;
- const valid7=rows7.filter(x=>x.record?.nutrition_updated_at).map(x=>x.record);const averages={protein_g:0,carbs_g:0,fat_g:0};for(const key of Object.keys(averages))averages[key]=valid7.length?valid7.reduce((s,x)=>s+num(x[key]),0)/valid7.length:0;
- const donut=[{key:'carbs_g',name:'탄수화물',color:'#e5aa73',value:averages.carbs_g*(ratio==='calories'?4:1)},{key:'protein_g',name:'단백질',color:'#9780d5',value:averages.protein_g*(ratio==='calories'?4:1)},{key:'fat_g',name:'지방',color:'#6fafaa',value:averages.fat_g*(ratio==='calories'?9:1)}];const donutTotal=donut.reduce((s,x)=>s+x.value,0);
- if(!configured)return <div className="startup"><div className="brand-icon">✦</div><h1>Care Log</h1><p>Supabase 연결 정보를 아직 설정하지 않았어요.</p><p>프로젝트의 <code>.env</code> 또는 Cloudflare Pages 환경변수에 <code>VITE_SUPABASE_URL</code>과 <code>VITE_SUPABASE_ANON_KEY</code>를 입력해 주세요.</p><p>먼저 <code>supabase/schema.sql</code>을 SQL Editor에서 실행하세요.</p></div>;
- if(!authReady)return <div className="startup">연결하는 중…</div>;
- if(recovery&&session)return <div className="auth-shell"><div className="auth-card"><h1>새 비밀번호 설정</h1><p>새롭게 사용할 비밀번호를 입력해 주세요.</p><form onSubmit={async e=>{e.preventDefault();setBusy(true);const{error}=await supabase.auth.updateUser({password:newPassword});setBusy(false);if(error){setAuthNotice(error.message)}else{setRecovery(false);setNewPassword('');setAuthNotice('')}}}><label>새 비밀번호<input type="password" minLength={6} required value={newPassword} onChange={e=>setNewPassword(e.target.value)}/></label><button className="primary full" disabled={busy}>비밀번호 변경</button></form>{authNotice&&<div className="auth-notice">{authNotice}</div>}</div></div>;
- if(!session)return <div className="auth-shell"><div className="auth-card"><div className="brand-icon">✦</div><h1>Care Log</h1><p>생활의 작은 기록을 한곳에</p><div className="segment auth-tabs"><button type="button" className={authMode==='login'?'active':''} onClick={()=>{setAuthMode('login');setAuthNotice('')}}>로그인</button><button type="button" className={authMode==='signup'?'active':''} onClick={()=>{setAuthMode('signup');setAuthNotice('')}}>회원가입</button></div><form onSubmit={async e=>{e.preventDefault();if(busy)return;setAuthNotice('');if(authMode==='signup'&&password!==passwordConfirm){setAuthNotice('비밀번호 확인이 일치하지 않아요.');return}setBusy(true);try{if(authMode==='reset'){const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});if(error)throw error;setAuthNotice('비밀번호 재설정 메일을 보냈어요. 메일함을 확인해 주세요.')}else if(authMode==='login'){const {error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error}else{const {data,error}=await supabase.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin}});if(error)throw error;setAuthNotice(data.session?'회원가입이 완료되었어요.':'회원가입 요청이 완료되었어요. 이메일 인증 메일을 확인한 후 로그인해 주세요.');if(!data.session){setAuthMode('login');setPassword('');setPasswordConfirm('')}}}catch(err){const msg=err.message||'요청에 실패했어요.';setAuthNotice(msg==='Invalid login credentials'?'이메일 또는 비밀번호를 확인해 주세요.':msg)}finally{setBusy(false)}}}><label>이메일<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required placeholder="email@example.com"/></label>{authMode!=='reset'&&<label>비밀번호<input type="password" autoComplete={authMode==='login'?'current-password':'new-password'} value={password} onChange={e=>setPassword(e.target.value)} required minLength={6} placeholder="6자리 이상"/></label>}{authMode==='signup'&&<label>비밀번호 확인<input type="password" autoComplete="new-password" value={passwordConfirm} onChange={e=>setPasswordConfirm(e.target.value)} required minLength={6} placeholder="비밀번호 다시 입력"/></label>}<button className="primary full auth-submit" disabled={busy}>{busy?'처리 중…':authMode==='login'?'로그인':authMode==='signup'?'회원가입':'재설정 메일 보내기'}</button></form>{authMode==='login'&&<button className="auth-link" type="button" onClick={()=>{setAuthMode('reset');setAuthNotice('')}}>비밀번호를 잊으셨나요?</button>}{authMode==='reset'&&<button className="auth-link" type="button" onClick={()=>{setAuthMode('login');setAuthNotice('')}}>로그인으로 돌아가기</button>}{authNotice&&<div className="auth-notice" role="status">{authNotice}</div>}<small>모든 기록은 계정별로 저장되며 다른 사용자와 공유되지 않습니다.</small></div></div>;
- const groupList=(GROUPS[screen]||[]).map(g=>({...g,items:groupItems(screen,g.name)}));const activeCat=reviewCat||groupList[0]?.name;const activeItems=groupList.find(g=>g.name===activeCat)?.items||[];
- const defaultInterval=(area,category,item)=>{
-   if(area==='exercise')return category==='명상'?1:3;
-   if(area==='pets')return ['미용','건강관리'].includes(category)?(item.includes('목욕')||item.includes('발톱')?30:7):1;
-   if(area==='cleaning')return ['내방','화장실'].includes(category)?7:1;
-   if(['손톱깎기','발톱깎기','눈썹관리','제모하기'].includes(item))return 14;
-   if(['목욕하기','마사지괄사','LED기기','트리트먼트 앰플','보습팩'].includes(item))return 7;
-   return 1;
- };
- const intervalFor=(area,category,item)=>cycleOverrides[`${area}:${category}:${item}`]??defaultInterval(area,category,item);
- const scoreItem=(category,item)=>{
-   const interval=Number(intervalFor(screen,category,item));
-   if(!Number.isFinite(interval)||interval<=0)return {kind:'unset',label:'미설정',percent:null,done:0,total:0};
-   const windowDays=Math.max(7,interval);
-   const start=dayOrdinal(localDate())-windowDays+1;
-   const expected=Math.max(1,Math.ceil(windowDays/interval));
-   const uniqueDays=new Set(data.activity_logs.filter(x=>x.area===screen&&x.category===category&&x.item===item&&(screen!=='pets'||x.pet===pet)&&dayOrdinal(localDate(new Date(x.created_at)))>=start).map(x=>localDate(new Date(x.created_at))));
-   const completed=Math.min(expected,uniqueDays.size);
-   const percent=Math.min(100,Math.round(completed/expected*100));
-   return {kind:percent<40?'danger':percent<80?'warning':'good',label:percent<40?'주의':percent<80?'보통':'좋음',percent,done:completed,total:expected};
- };
- const scoreGroup=(category)=>{
-   const scores=groupItems(screen,category).map(item=>scoreItem(category,item));
-   const expected=scores.reduce((sum,x)=>sum+x.total,0);
-   const completed=scores.reduce((sum,x)=>sum+x.done,0);
-   if(!expected)return {kind:'unset',label:'미설정',percent:null,done:0,total:0};
-   const percent=Math.min(100,Math.round(completed/expected*100));
-   return {kind:percent<40?'danger':percent<80?'warning':'good',label:percent<40?'주의':percent<80?'보통':'좋음',percent,done:completed,total:expected};
- };
- const activities=data.activity_logs.filter(x=>x.area===screen&&(screen!=='pets'||(reviewPet==='전체'||x.pet===reviewPet)));
- const groupLogs=activities.filter(x=>x.category===activeCat);const filteredLogs=groupLogs.filter(x=>reviewItem==='전체'||x.item===reviewItem);
- const renderCalendar=(marks,onSelect)=>{const [y,m]=month.split('-').map(Number);const first=new Date(y,m-1,1).getDay();const count=new Date(y,m,0).getDate();return <div className="cal"><div className="cal-head"><button onClick={()=>{const d=new Date(y,m-2,1);setMonth(localDate(d).slice(0,7))}}><ChevronLeft size={18}/></button><b>{y}년 {m}월</b><button onClick={()=>{const d=new Date(y,m,1);setMonth(localDate(d).slice(0,7))}}><ChevronRight size={18}/></button></div><div className="cal-grid">{['일','월','화','수','목','금','토'].map(t=><span className="weekday" key={t}>{t}</span>)}{Array.from({length:first},(_,i)=><span key={'empty'+i}/>)}{Array.from({length:count},(_,i)=>{const d=`${month}-${String(i+1).padStart(2,'0')}`;return <button key={d} className={`cal-cell ${selectedDay===d?'chosen':''}`} onClick={()=>{setSelectedDay(d);onSelect?.(d)}}><span>{i+1}</span>{marks.has(d)&&<span className="dot"/>}</button>})}</div></div>};
- return <div className="app-shell"><header><div className="header-inner"><div><span className="eyebrow">DAILY WELLNESS JOURNAL</span><h1><span className="star">✦</span> Care Log</h1></div><div className="header-actions"><button title="마이앱" aria-label="마이앱 열기" onClick={()=>switchScreen("myapps")}>📱</button><button title="목표 설정" onClick={()=>{setGoalDraft({...DEFAULT_GOALS,...goals});setGoalModal(true)}}><Settings2 size={19}/></button><button title="로그아웃" onClick={()=>supabase.auth.signOut()}><LogOut size={19}/></button></div></div></header>
- <main><div className="page-heading"><h2>{LABELS[screen]}</h2><span>{koDate(today)}</span></div>{screen!=='myapps'&&<div className="segment main-segment"><button className={sub==='record'?'active':''} onClick={()=>setSub('record')}>기록</button><button className={sub==='review'?'active':''} onClick={()=>{setSub('review');setMonth(today.slice(0,7));setSelectedDay(today)}}>회고</button>{screen!=='diet'&&<button className={sub==='plan'?'active':''} onClick={()=>setSub('plan')}>계획</button>}</div>}
- {screen==='myapps'?<div className="myapps-page">{MY_APPS.map(group=><section className="panel" key={group.group}><h3>{group.group}</h3><div className="myapps-grid">{group.apps.map(([name,emoji,defaultUrl])=>{const override=data.my_app_links.find(x=>x.app_name===name);const url=override?override.url:defaultUrl;return <div className="myapp-card" key={name}><button className="myapp-open" onClick={()=>{if(url)window.open(url,'_blank','noopener,noreferrer');else{setEditingApp(name);setAppUrl('')}}}><span className="myapp-emoji">{emoji}</span><b>{name}</b><small>{url?'앱 열기':'주소 등록 필요'}</small></button><button className="myapp-edit" aria-label={`${name} 주소 수정`} onClick={()=>{setEditingApp(name);setAppUrl(url||'')}}><Settings2 size={15}/></button></div>})}</div></section>)}<p className="footnote">앱 버튼을 누르면 해당 사이트가 열려요. 오른쪽 설정 버튼에서 주소를 바꿀 수 있고, 주소는 계정에 저장돼요.</p></div>:screen==='diet'?(sub==='record'?<>
- <section className="panel diet-collapsible"><button type="button" className="diet-fold-heading" aria-expanded={!collapsedGroups["diet:record-water"]} onClick={()=>setCollapsedGroups(prev=>({...prev,["diet:record-water"]:!prev["diet:record-water"]}))}><span>오늘의 물 섭취</span><ChevronRight size={19} className={collapsedGroups["diet:record-water"]?"fold-arrow":"fold-arrow open"}/></button>{!collapsedGroups["diet:record-water"]&&<div className="diet-collapse-body"><div className="section-head"><h3><Droplets size={19} color="#5d9ed8"/> 오늘의 물 섭취</h3><b>{num(dayData.water_cups)}/{goals.water_cups}잔</b></div><div className="glasses">{Array.from({length:20},(_,i)=><button key={i} disabled={busy} className={i<num(dayData.water_cups)?'glass filled':'glass'} onClick={()=>saveDay({water_cups:num(dayData.water_cups)===i+1?i:i+1})}><span>▰</span><Droplets size={20}/></button>)}</div><div className="water-sub"><span>{num(dayData.water_cups)*num(goals.cup_ml)}mL 섭취</span><span>목표 {goals.water_cups*goals.cup_ml}mL</span></div><div className="progress"><div className="progress-fill blue" style={{width:`${Math.min(100,num(dayData.water_cups)/goals.water_cups*100)}%`}}/></div><div className="binary-row"><button disabled={busy} className={`toggle ${dayData.vegetables?'on-green':''}`} onClick={()=>saveDay({vegetables:!dayData.vegetables})}>{dayData.vegetables?<Check size={16}/>:<span className="open-circle"/>} 채소 {dayData.vegetables?'Y':'N'}</button><button disabled={busy} className={`toggle ${dayData.supplements?'on-purple':''}`} onClick={()=>saveDay({supplements:!dayData.supplements})}>{dayData.supplements?<Check size={16}/>:<span className="open-circle"/>} 영양제 {dayData.supplements?'Y':'N'}</button></div></div>}</section>
- <section className="panel diet-collapsible"><button className="diet-fold-heading" onClick={()=>setCollapsedGroups(p=>({...p,['diet:record-sleep']:!p['diet:record-sleep']}))}><span>수면 기록</span><ChevronRight size={19} className={collapsedGroups['diet:record-sleep']?'fold-arrow':'fold-arrow open'}/></button>{!collapsedGroups['diet:record-sleep']&&<div className="diet-collapse-body"><div className="sleep-actions"><button aria-label="취침 기록" title="취침 기록" onClick={()=>openSleep(null,'sleep')}><Moon size={20}/></button><button aria-label="기상 기록" title="기상 기록" onClick={()=>openSleep(null,'wake')}><Sun size={20}/></button></div><div className="log-list">{data.sleep_logs.slice(0,15).map(x=><div key={x.id} className="log-item"><span className="log-text"><SleepDetail entry={x}/></span><button onClick={()=>editSleep(x)} aria-label="수면 수정"><Pencil size={16}/></button></div>)}</div></div>}</section>
- <section className="panel diet-collapsible"><button type="button" className="diet-fold-heading" aria-expanded={!collapsedGroups["diet:record-log"]} onClick={()=>setCollapsedGroups(prev=>({...prev,["diet:record-log"]:!prev["diet:record-log"]}))}><span>오늘의 식단 타임로그</span><ChevronRight size={19} className={collapsedGroups["diet:record-log"]?"fold-arrow":"fold-arrow open"}/></button>{!collapsedGroups["diet:record-log"]&&<div className="diet-collapse-body"><div className="section-head"><h3><Clock3 size={18}/> 오늘의 식단 타임로그</h3><span className="muted small">메모만 기록</span></div><form className="input-row" onSubmit={e=>{e.preventDefault();addDiet()}}><input placeholder="지금 먹은 음식을 간단히 적어줘" value={dietNote} onChange={e=>setDietNote(e.target.value)} maxLength={2000}/><button className="primary square" disabled={busy||!dietNote.trim()}><Plus size={19}/></button></form><div className="log-list">{data.diet_logs.filter(x=>x.day===today).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(log=><div className="log-item" key={log.id}><span className="time">{localTime(log.created_at)}</span><span className="log-text" onClick={()=>editDiet(log)} title="눌러서 수정">{log.note}</span><button className="delete" onClick={()=>remove('diet_logs',log.id)}><X size={17}/></button></div>)}{!data.diet_logs.some(x=>x.day===today)&&<div className="empty">아직 오늘의 식단 메모가 없어요.</div>}</div></div>}</section>
- <section className="panel diet-collapsible"><button type="button" className="diet-fold-heading" aria-expanded={!collapsedGroups["diet:record-nutrition"]} onClick={()=>setCollapsedGroups(prev=>({...prev,["diet:record-nutrition"]:!prev["diet:record-nutrition"]}))}><span>오늘의 영양 섭취</span><ChevronRight size={19} className={collapsedGroups["diet:record-nutrition"]?"fold-arrow":"fold-arrow open"}/></button>{!collapsedGroups["diet:record-nutrition"]&&<div className="diet-collapse-body"><div className="section-head"><h3>오늘의 영양 섭취</h3><button className="text-button" onClick={()=>{setGoalDraft({...DEFAULT_GOALS,...goals});setGoalModal(true)}}>목표 수정</button></div><div className="nutrition-grid">{[{key:'calories',label:'총칼로리',unit:'kcal'},...metricFields.slice(0,3)].map(m=>{const v=num(dayData[m.key]),goal=num(goals[m.key]);return <div className="nutrition-card" key={m.key}><div className="muted small">{m.label}</div><div className="value-line"><strong>{dayData.nutrition_updated_at?fmt(v):'–'}</strong><small>/ {fmt(goal)}{m.unit}</small></div><div className="progress"><div className="progress-fill" style={{width:`${Math.min(100,goal?v/goal*100:0)}%`}}/></div><small>{dayData.nutrition_updated_at?`${Math.round(v/goal*100)}% 달성`:'분석 전'}</small></div>})}</div>{dayData.nutrition_updated_at&&<p className="footnote">마지막 영양 업데이트: {stamp(dayData.nutrition_updated_at)}</p>}</div>}</section>
- <section className="panel diet-collapsible"><button type="button" className="diet-fold-heading" aria-expanded={!collapsedGroups["diet:record-paste"]} onClick={()=>setCollapsedGroups(prev=>({...prev,["diet:record-paste"]:!prev["diet:record-paste"]}))}><span>영양정보 붙여넣기</span><ChevronRight size={19} className={collapsedGroups["diet:record-paste"]?"fold-arrow":"fold-arrow open"}/></button>{!collapsedGroups["diet:record-paste"]&&<div className="diet-collapse-body"><div className="section-head"><h3><ClipboardPaste size={18}/> 영양정보 붙여넣기</h3></div><p className="hint">타임로그를 캡처해 ChatGPT에서 하루 누적 영양정보를 받은 뒤 여기에 붙여넣어 줘. 여러 번 등록해도 기존값에 더하지 않고 교체해.</p><textarea value={paste} onChange={e=>setPaste(e.target.value)} rows={3} placeholder="2026-10-31 | 누적갱신 | 1350kcal | 탄수화물 140g | 단백질 91g | 지방 47g"/>{paste&&<div className="preview">{canPaste?`${parsed.day} · ${parsed.calories}kcal · 탄수화물 ${parsed.carbs_g}g · 단백질 ${parsed.protein_g}g · 지방 ${parsed.fat_g}g`:'네 가지 영양 수치와 날짜를 확인해 줘.'}</div>}<button className="primary full" onClick={pasteNutrition} disabled={!canPaste||busy}>하루 누적 영양정보 업데이트</button></div>}</section>
- </>:<>
- <section className="panel diet-collapsible"><button className="diet-fold-heading" onClick={()=>setCollapsedGroups(p=>({...p,['diet:review-water']:!p['diet:review-water']}))}>물 통계 <ChevronRight size={19}/></button>{!collapsedGroups['diet:review-water']&&<div className="diet-collapse-body"><PeriodPicker kind="water"/><LinePlot points={dateStats('water').map(x=>({label:x.day,value:x.water}))} goal={goals.water_cups} unit="잔"/><div className="stats-row"><div><small>기간 평균 섭취</small><strong>{fmt(dateStats('water').reduce((s,x)=>s+x.water,0)/Math.max(1,dateStats('water').length))}잔</strong></div></div></div>}</section>
- <section className="panel diet-collapsible"><button className="diet-fold-heading" onClick={()=>setCollapsedGroups(p=>({...p,['diet:review-sleep']:!p['diet:review-sleep']}))}>수면 통계 <ChevronRight size={19}/></button>{!collapsedGroups['diet:review-sleep']&&<div className="diet-collapse-body"><PeriodPicker kind="sleep"/><LinePlot points={dateStats('sleep').map(x=>({label:x.day,value:x.sleep}))} unit="시간"/><p className="footnote">취침일 기준 수면 시간 · 기록 없는 날은 선이 이어지지 않아요.</p></div>}</section>
- <section className="panel diet-collapsible"><button className="diet-fold-heading" onClick={()=>setCollapsedGroups(p=>({...p,['diet:review-nutrition']:!p['diet:review-nutrition']}))}>영양 통계 <ChevronRight size={19}/></button>{!collapsedGroups['diet:review-nutrition']&&<div className="diet-collapse-body"><p className="hint">목표 대비 실제 섭취량</p><PeriodPicker kind="nutrition"/><div className="segment metric-segment">{metricFields.map(m=><button key={m.key} className={metric===m.key?'active':''} onClick={()=>setMetric(m.key)}>{m.label}</button>)}</div><div className="section-head graph-title"><b>{selectedMetric.label}</b><span className="muted small">일일 목표 {fmt(goals[metric])}{selectedMetric.unit}</span></div><BarPlot points={dateStats('nutrition').map(x=>({label:x.day,value:x.nutrition}))} goal={num(goals[metric])}/><div className="legend"><span><i className="legend-box gray"/> 목표</span><span><i className="legend-box purple"/> 실제 섭취</span></div><div className="achievement"><small>평균 달성률</small><strong>{dateStats('nutrition').some(x=>x.nutrition!==null)?`${Math.round(dateStats('nutrition').filter(x=>x.nutrition!==null).reduce((s,x)=>s+x.nutrition/goals[metric]*100,0)/dateStats('nutrition').filter(x=>x.nutrition!==null).length)}%`:'–'}</strong><span>기록이 있는 기간 기준 · 미기록 제외</span></div></div>}</section>
- <section className="panel diet-collapsible"><button type="button" className="diet-fold-heading" aria-expanded={!collapsedGroups["diet:review-ratio"]} onClick={()=>setCollapsedGroups(prev=>({...prev,["diet:review-ratio"]:!prev["diet:review-ratio"]}))}><span>최근 7일 평균 탄단지 비율</span><ChevronRight size={19} className={collapsedGroups["diet:review-ratio"]?"fold-arrow":"fold-arrow open"}/></button>{!collapsedGroups["diet:review-ratio"]&&<div className="diet-collapse-body"><div className="segment"><button className={ratio==='calories'?'active':''} onClick={()=>setRatio('calories')}>칼로리 비율</button><button className={ratio==='grams'?'active':''} onClick={()=>setRatio('grams')}>그람수 비율</button></div><Donut parts={donut} total={donutTotal} unit={ratio==='calories'?'kcal':'g'}/><div className="donut-legend">{donut.map(x=><div key={x.key}><span><i style={{background:x.color}}/>{x.name}</span><b>{fmt(x.value)}{ratio==='calories'?'kcal':'g'} · {donutTotal?(x.value/donutTotal*100).toFixed(1):'0'}%</b></div>)}</div><p className="footnote">기록이 있는 {valid7.length}일의 하루 평균 기준 · 탄수화물/단백질 4kcal/g, 지방 9kcal/g</p></div>}</section>
- <section className="panel diet-collapsible"><button type="button" className="diet-fold-heading" aria-expanded={!collapsedGroups["diet:review-calendar"]} onClick={()=>setCollapsedGroups(prev=>({...prev,["diet:review-calendar"]:!prev["diet:review-calendar"]}))}><span>월간 식단 캘린더</span><ChevronRight size={19} className={collapsedGroups["diet:review-calendar"]?"fold-arrow":"fold-arrow open"}/></button>{!collapsedGroups["diet:review-calendar"]&&<div className="diet-collapse-body">{renderCalendar(new Set([...data.diet_logs.map(x=>x.day),...data.diet_days.filter(x=>x.nutrition_updated_at||x.water_cups||x.vegetables||x.supplements).map(x=>x.day),...data.sleep_logs.filter(x=>x.woke_at).map(sleepDayOf)]))}<h4>{koDate(selectedDay)} 전체 기록</h4><div className="daily-summary"><div>총칼로리 <b>{selectedRecord.nutrition_updated_at?`${fmt(selectedRecord.calories)} kcal`:'분석 없음'}</b></div>{metricFields.slice(0,3).map(m=><div key={m.key}>{m.label}<b>{selectedRecord.nutrition_updated_at?`${fmt(selectedRecord[m.key])}g`:'–'}</b></div>)}<div>물 <b>{num(selectedRecord.water_cups)}잔 · {num(selectedRecord.water_cups)*goals.cup_ml}mL</b></div><div>채소 <b>{selectedRecord.vegetables?'Y':'N'}</b></div><div>영양제 <b>{selectedRecord.supplements?'Y':'N'}</b></div><div>수면 <b>{data.sleep_logs.some(x=>x.woke_at&&sleepDayOf(x)===selectedDay)?`${sleepTotalForDay(data.sleep_logs,selectedDay).toFixed(1)}시간`:'기록 없음'}</b></div></div><h4>수면 기록</h4>{data.sleep_logs.filter(x=>sleepDayOf(x)===selectedDay).map(x=><div className="log-item" key={x.id}><SleepDetail entry={x}/><button onClick={()=>editSleep(x)} aria-label="수면 기록 수정"><Pencil size={15}/></button></div>)}<h4>먹은 로그</h4><div className="log-list">{data.diet_logs.filter(x=>x.day===selectedDay).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(x=><div className="log-item" key={x.id}><span className="time">{localTime(x.created_at)}</span><span className="log-text" onClick={()=>editDiet(x)}>{x.note}</span><button className="delete" onClick={()=>remove('diet_logs',x.id)}><X size={16}/></button></div>)}{!data.diet_logs.some(x=>x.day===selectedDay)&&<div className="empty">식단 메모가 없어요.</div>}</div>{selectedDay!==today&&<p className="footnote">과거 날짜 메모는 눌러 수정할 수 있어요. 물/영양 상태 수정은 추후 확장 기능입니다.</p>}</div>}</section>
- </>):(sub==='plan'?<section className="panel care-plans-panel"><div className="section-head"><h3>앞으로 할 일</h3><button className="primary plan-add" onClick={()=>resetPlan()}><Plus size={16}/> 계획 추가</button></div>{screen==='pets'&&<p className="footnote">고미와 쩌미의 계획은 각각 따로 등록하고 관리해요.</p>}<label className="plan-done-filter"><input type="checkbox" checked={planShowDone} onChange={e=>setPlanShowDone(e.target.checked)}/> 완료한 계획도 보기</label><div className="plan-list">{data.care_plans.filter(p=>p.area===screen&&(planShowDone||p.status==='pending')).sort((a,b)=>(a.status==='completed')-(b.status==='completed')||String(a.due_date).localeCompare(String(b.due_date))||String(a.due_time||'').localeCompare(String(b.due_time||''))).map(p=><article key={p.id} className={'plan-card '+(p.status==='completed'?'is-done':'')}><div className="plan-info"><div className="plan-meta">{p.due_date} {p.due_time?.slice(0,5)||''} · {p.category}{p.pet?' · '+p.pet:''}</div><b>{p.title}</b><small>{p.repeat_rule==='daily'?'매일 반복':p.repeat_rule==='weekly'?'매주 반복':p.repeat_rule==='monthly'?'매월 반복':p.repeat_rule==='custom'?`${p.repeat_days}일마다 반복`:p.status==='completed'?'완료됨':'1회 계획'}</small>{p.item&&<small>기록 항목: {p.item}</small>}</div><div className="plan-actions">{p.status==='pending'&&<button className="plan-done-btn" onClick={()=>completePlan(p)} disabled={busy} title="완료하고 실행 기록 남기기"><CheckCircle2 size={19}/></button>}{p.status==='pending'&&<button onClick={()=>resetPlan(p)} title="수정 또는 연기"><Pencil size={17}/></button>}<button onClick={()=>deletePlan(p)} title="삭제"><Trash2 size={17}/></button></div></article>)}{!data.care_plans.some(p=>p.area===screen&&(planShowDone||p.status==='pending'))&&<div className="empty">등록한 계획이 없어요. + 계획 추가를 눌러보세요.</div>}</div></section>:sub==='record'?<>
- {screen==='pets'&&<div className="pet-switch"><div className="segment"><button className={pet==='고미'?'active':''} onClick={()=>setPet('고미')}>🐩 고미</button><button className={pet==='쩌미'?'active':''} onClick={()=>setPet('쩌미')}>🐩 쩌미</button></div><label className="both"><input type="checkbox" checked={petBoth} onChange={e=>setPetBoth(e.target.checked)}/> 둘 다 기록</label></div>}
- <div className="care-status-summary" aria-label="카테고리별 관리 상태">{groupList.map(group=>{const score=scoreGroup(group.name);return <div key={group.name} className="care-summary-entry"><span className="care-summary-name">{group.name}</span><span className={`care-summary-value care-status-${score.kind}`}><i className="care-status-dot"/>{score.percent===null?'미설정':`${score.percent}%`}</span><span className="care-summary-label">{score.label}</span></div>})}</div>
- <p className="care-status-hint">기본 권장 주기로 계산한 관리 달성률 · 연필 또는 길게 누르기로 주기를 바꿀 수 있어요.{screen==='pets'?` 현재 ${pet} 기준`:''}</p>
- {groupList.map((group,index)=>{const collapseKey=`${screen}:${group.name}`;const isCollapsed=Boolean(collapsedGroups[collapseKey]);return <section className="panel activity-group" key={group.name}><button type="button" className="activity-heading" aria-expanded={!isCollapsed} aria-controls={`activity-items-${screen}-${index}`} onClick={()=>setCollapsedGroups(prev=>({...prev,[collapseKey]:!prev[collapseKey]}))}><span className="activity-heading-label"><span className={`category-bullet bullet-${index%6}`}/>{group.name}</span><ChevronRight className={isCollapsed?'fold-arrow':'fold-arrow open'} size={19}/></button><button type="button" className="manage-items" onClick={()=>{setCustomCategory(group.name);setCustomName('');setEditingCustom({name:null})}}><Plus size={15}/> 버튼 관리</button>{!isCollapsed&&<div className="activity-grid" id={`activity-items-${screen}-${index}`}>{group.items.map(item=>{const log=data.activity_logs.find(x=>x.area===screen&&x.category===group.name&&x.item===item&&(screen!=='pets'||x.pet===pet));return <div className="activity-cell" key={item}><button className="activity-button" disabled={busy} onPointerDown={e=>{if(e.pointerType!=='mouse'||e.button===0)startButtonLongPress(group.name,item)}} onPointerUp={stopButtonLongPress} onPointerCancel={stopButtonLongPress} onPointerLeave={stopButtonLongPress} onContextMenu={e=>{e.preventDefault();stopButtonLongPress();longPressTriggered.current=true;openButtonManagement(group.name,item)}} onClick={e=>{if(longPressTriggered.current){e.preventDefault();longPressTriggered.current=false;return}logActivity(screen,group.name,item)}}><span className="elapsed"><Clock3 size={12}/>{since(log?.created_at,now)}</span><span className="activity-item-name"><b>{item}</b><i className={`care-status-dot care-item-dot care-item-${scoreItem(group.name,item).kind}`} title={scoreItem(group.name,item).percent===null?'상태등 계산 제외':`${scoreItem(group.name,item).label} ${scoreItem(group.name,item).percent}%`} aria-label={scoreItem(group.name,item).percent===null?'미설정':`${scoreItem(group.name,item).label} ${scoreItem(group.name,item).percent}%`}/></span></button><button className="item-edit" onClick={()=>{setCustomCategory(group.name);setCustomName(item);setEditingCustom({name:item})}} title={`${item} 수정 또는 삭제`}><Pencil size={12}/></button></div>})}</div>}</section>})}
- </>:<><section className="panel"><div className="section-head"><h3>기록 회고</h3><div className="segment compact"><button className={reviewView==='calendar'?'active':''} onClick={()=>setReviewView('calendar')}>캘린더</button><button className={reviewView==='history'?'active':''} onClick={()=>setReviewView('history')}>항목별 기록</button></div></div><div className="chip-row">{groupList.map(g=><button key={g.name} className={activeCat===g.name?'chip active':'chip'} onClick={()=>{setReviewCat(g.name);setReviewItem('전체')}}>{g.name}</button>)}</div>{screen==='pets'&&<div className="segment pet-review"><button className={reviewPet==='전체'?'active':''} onClick={()=>setReviewPet('전체')}>전체</button><button className={reviewPet==='고미'?'active':''} onClick={()=>setReviewPet('고미')}>고미</button><button className={reviewPet==='쩌미'?'active':''} onClick={()=>setReviewPet('쩌미')}>쩌미</button></div>}
- {reviewView==='calendar'?<>{renderCalendar(new Set(groupLogs.map(x=>localDate(new Date(x.created_at)))))}<h4>{koDate(selectedDay)} · {activeCat}</h4><ActivityHistory logs={groupLogs.filter(x=>localDate(new Date(x.created_at))===selectedDay)} onDelete={x=>remove('activity_logs',x.id)} showPet={screen==='pets'}/></>:<><label className="field-label">소항목 선택<select value={reviewItem} onChange={e=>setReviewItem(e.target.value)}><option value="전체">전체 항목</option>{activeItems.map(i=><option key={i} value={i}>{i}</option>)}</select></label><div className="stats-row"><div><small>최근 30일</small><strong>{filteredLogs.filter(x=>Date.now()-new Date(x.created_at).getTime()<30*86400000).length}회</strong></div><div><small>마지막 실행</small><strong>{since(filteredLogs[0]?.created_at,now)}</strong></div></div><h4>모든 기록 · 최신순</h4><ActivityHistory logs={filteredLogs} onDelete={x=>remove('activity_logs',x.id)} showPet={screen==='pets'}/></>}
- </section></>)}
- </main><nav className="bottom-nav">{[['diet','식단','🍱'],['hygiene','개인위생','🧴'],['cleaning','청소','🧹'],['pets','고미쩌미','🐩'],['exercise','운동','💪']].map(([id,label,emoji])=><button key={id} className={screen===id?'active':''} onClick={()=>switchScreen(id)}><span>{emoji}</span><small>{label}</small></button>)}</nav>
- {message&&<div className="toast" role="status">{message}</div>}
- {editingApp&&<div className="modal-back" onClick={()=>setEditingApp(null)}><div className="modal" onClick={e=>e.stopPropagation()}><div className="section-head"><h3>{editingApp} 주소 설정</h3><button onClick={()=>setEditingApp(null)}><X size={20}/></button></div><label className="field-label">앱 웹사이트 주소<input type="url" placeholder="https://example.pages.dev" value={appUrl} onChange={e=>setAppUrl(e.target.value)}/></label><p className="footnote">비워서 저장하면 이 앱의 링크가 비활성화돼요.</p><button className="primary full" disabled={busy} onClick={saveAppUrl}>저장</button></div></div>}
- {planModal&&<div className="modal-back" onClick={()=>setPlanModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}><div className="section-head"><h3>{planDraft.id?'계획 수정 · 연기':'새 계획 추가'}</h3><button onClick={()=>setPlanModal(false)}><X size={20}/></button></div><label className="field-label">계획 이름<input value={planDraft.title} onChange={e=>setPlanDraft(p=>({...p,title:e.target.value}))} placeholder="예: 머리 자르기, 미용 예약" maxLength={120}/></label><label className="field-label">대항목<select value={planDraft.category} onChange={e=>setPlanDraft(p=>({...p,category:e.target.value,item:''}))}>{(GROUPS[screen]||[]).map(g=><option key={g.name} value={g.name}>{g.name}</option>)}</select></label><label className="field-label">기록 항목 (선택)<select value={planDraft.item} onChange={e=>setPlanDraft(p=>({...p,item:e.target.value}))}><option value="">자유 계획 (계획명으로 기록)</option>{((GROUPS[screen]||[]).find(g=>g.name===planDraft.category)?.items||[]).map(x=><option key={x}>{x}</option>)}</select></label>{screen==='pets'&&<label className="field-label">반려견<select value={planDraft.pet} onChange={e=>setPlanDraft(p=>({...p,pet:e.target.value}))}><option>고미</option><option>쩌미</option></select></label>}<div className="plan-date-row"><label className="field-label">예정일<input type="date" value={planDraft.date} onChange={e=>setPlanDraft(p=>({...p,date:e.target.value}))}/></label><label className="field-label">시간 (선택)<input type="time" value={planDraft.time} onChange={e=>setPlanDraft(p=>({...p,time:e.target.value}))}/></label></div><label className="field-label">반복<select value={planDraft.repeat} onChange={e=>setPlanDraft(p=>({...p,repeat:e.target.value}))}><option value="none">반복 안 함</option><option value="daily">매일</option><option value="weekly">매주</option><option value="monthly">매월</option><option value="custom">사용자 지정</option></select></label>{planDraft.repeat==='custom'&&<label className="field-label">며칠마다 반복<input type="number" min="1" max="365" value={planDraft.repeat_days} onChange={e=>setPlanDraft(p=>({...p,repeat_days:e.target.value}))}/></label>}<p className="footnote">완료를 누르면 실제 시간이 회고 기록에 남아요. 반복 계획은 다음 예정일로 자동 이동해요.</p><button className="primary full" disabled={busy||!planDraft.title.trim()} onClick={savePlan}>저장</button></div></div>}
- {sleepModal&&<div className="modal-back" onClick={()=>setSleepModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}><div className="section-head"><h3>수면 {sleepModal.kind==='edit'?'수정':sleepModal.kind==='sleep'?'취침':'기상'} 시간</h3><button onClick={()=>setSleepModal(null)}><X size={18}/></button></div>{sleepModal.kind==='edit'?<><label className="field-label">취침<input type="datetime-local" value={sleepModal.slept_at?new Date(new Date(sleepModal.slept_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):''} onChange={e=>setSleepModal(p=>({...p,slept_at:new Date(e.target.value).toISOString()}))}/></label><label className="field-label">기상<input type="datetime-local" value={sleepModal.woke_at?new Date(new Date(sleepModal.woke_at).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):''} onChange={e=>setSleepModal(p=>({...p,woke_at:e.target.value?new Date(e.target.value).toISOString():null}))}/></label><button className="primary full" onClick={saveSleepEdit}>수정 저장</button></>:<><label className="field-label">자동 입력된 시간 (수정 가능)<input type="datetime-local" value={sleepWhen} onChange={e=>setSleepWhen(e.target.value)}/></label><button className="primary full" onClick={saveSleep}>기록 저장</button></>}</div></div>}
- {editingCustom&&<div className="modal-back" onClick={()=>setEditingCustom(null)}><div className="modal" onClick={e=>e.stopPropagation()}><div className="section-head"><h3>{customCategory} 버튼 관리</h3><button onClick={()=>setEditingCustom(null)}><X size={18}/></button></div><label className="field-label">버튼 이름<input value={customName} maxLength={60} onChange={e=>setCustomName(e.target.value)}/></label><button className="primary full" onClick={()=>changeCustom('save')}>추가 / 수정 저장</button>{editingCustom.name&&<label className="field-label">상태등 기준 주기<select value={cycleOverrides[`${screen}:${customCategory}:${editingCustom.name}`]===undefined?'default':String(cycleOverrides[`${screen}:${customCategory}:${editingCustom.name}`])} onChange={e=>setCycle(screen,customCategory,editingCustom.name,e.target.value)}><option value="default">기본 권장 주기</option><option value="1">매일</option><option value="2">2일마다</option><option value="3">3일마다</option><option value="7">7일마다</option><option value="14">14일마다</option><option value="30">30일마다</option><option value="0">상태등 계산 제외</option></select></label>}{editingCustom.name&&<button className="full" onClick={()=>changeCustom('delete')}>버튼 삭제 (기록은 보존)</button>}</div></div>}
- {goalModal&&<div className="modal-back" onClick={()=>setGoalModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}><div className="section-head"><h3>일일 목표 설정</h3><button onClick={()=>setGoalModal(false)}><X size={20}/></button></div>{[{key:'water_cups',name:'하루 물 목표',unit:'잔'},{key:'cup_ml',name:'한 컵 용량',unit:'mL'},{key:'calories',name:'칼로리',unit:'kcal'},{key:'protein_g',name:'단백질',unit:'g'},{key:'carbs_g',name:'탄수화물',unit:'g'},{key:'fat_g',name:'지방',unit:'g'}].map(x=><label className="goal-field" key={x.key}>{x.name} ({x.unit})<input type="number" min="1" step={x.key==='cup_ml'||x.key==='water_cups'?'1':'0.1'} value={goalDraft[x.key]} onChange={e=>setGoalDraft(p=>({...p,[x.key]:e.target.value}))}/></label>)}<button className="primary full" onClick={saveGoals} disabled={busy}>저장</button></div></div>}
- </div>;
+              <div className="timer-actions">
+                <button
+                  className="reset"
+                  onClick={() => resetTimer()}
+                  aria-label="초기화"
+                >
+                  <RotateCcw size={20} />
+                </button>
+                <button
+                  className="primary start"
+                  disabled={!pomReady || pomBusy}
+                  onClick={() => {
+                    if (!running && mode==='focus' && seconds===0) {setToast('집중 시간을 1분 이상 설정해 줘.');return;}
+                    if (!running) activateAudio().catch(reportAudioError);
+                    void pomAction(running?'pause':'start');
+                  }}
+                >
+                  {running ? (
+                    <Pause size={18} fill="currentColor" />
+                  ) : (
+                    <Play size={18} fill="currentColor" />
+                  )}
+                  {running ? "일시정지" : "시작"}
+                </button>
+                <button
+                  className="stop-btn"
+                  disabled={!pomReady || pomBusy}
+                  onClick={() => void pomAction('stop')}
+                  aria-label="정지"
+                >
+                  <Square size={18} /> 정지
+                </button>
+              </div>
+            </div>
+            <div className="session-summary">
+              <h2>오늘의 집중</h2>
+              <div>
+                <span>
+                  <b>{sessionsToday.length}</b> 회
+                </span>
+                <span>
+                  <b>
+                    {sessionsToday.reduce(
+                      (a, s) => a + (Number(s.minutes) || 0),
+                      0,
+                    )}
+                  </b>{" "}
+                  분
+                </span>
+              </div>
+              {sessionsToday
+                .slice()
+                .reverse()
+                .map((s) => (
+                  <p key={s.id}>
+                    ✓{" "}
+                    {data.tasks.find((t) => t.id === s.taskId)?.title || "집중"}{" "}
+                    · {s.minutes}분
+                  </p>
+                ))}
+            </div>
+          </>
+        )}
+      </>
+    );
+  }
+  function PomStats() {
+    const sessions = pomSessions,
+      total = sessions.reduce((n, s) => n + (Number(s.minutes) || 0), 0),
+      weekStart = dayAdd(today, -6),
+      week = sessions.filter(
+        (s) =>
+          localDate(new Date(s.endedAt)) >= weekStart &&
+          localDate(new Date(s.endedAt)) <= today,
+      ),
+      todayMinutes = sessionsTodayMinutes(),
+      monthStart = statMonth + "-01",
+      first = new Date(monthStart + "T12:00:00"),
+      offset = (first.getDay() + 6) % 7,
+      numDays = new Date(
+        first.getFullYear(),
+        first.getMonth() + 1,
+        0,
+      ).getDate(),
+      calendar = [
+        ...Array(offset).fill(null),
+        ...Array.from(
+          { length: numDays },
+          (_, i) => statMonth + "-" + pad(i + 1),
+        ),
+      ],
+      daily = (d) =>
+        sessions
+          .filter((s) => localDate(new Date(s.endedAt)) === d)
+          .reduce((n, s) => n + (Number(s.minutes) || 0), 0),
+      days = Array.from(
+        {
+          length:
+            statView === "daily"
+              ? 7
+              : statView === "weekly"
+                ? 7
+                : statView === "monthly"
+                  ? 6
+                  : 12,
+        },
+        (_, i) => {
+          if (statView === "daily") {
+            const date = dayAdd(today, i - 6);
+            return { label: date.slice(5), minutes: daily(date) };
+          }
+          if (statView === "weekly") {
+            const end = dayAdd(today, -(6 - i) * 7),
+              start = dayAdd(end, -6);
+            return {
+              label: start.slice(5) + "~" + end.slice(5),
+              minutes: sessions
+                .filter((s) => {
+                  const d = localDate(new Date(s.endedAt));
+                  return d >= start && d <= end;
+                })
+                .reduce((n, s) => n + (Number(s.minutes) || 0), 0),
+            };
+          }
+          if (statView === "yearly") {
+            const year = Number(today.slice(0, 4)) - 11 + i;
+            return {
+              label: String(year),
+              minutes: sessions
+                .filter((s) => new Date(s.endedAt).getFullYear() === year)
+                .reduce((n, s) => n + (Number(s.minutes) || 0), 0),
+            };
+          }
+          const date = new Date(
+              Number(today.slice(0, 4)),
+              Number(today.slice(5, 7)) -
+                (statView === "monthly" ? 5 - i : 11 - i),
+              1,
+            ),
+            month = localDate(date).slice(0, 7);
+          return {
+            label: month.slice(2),
+            minutes: sessions
+              .filter((s) => localDate(new Date(s.endedAt)).startsWith(month))
+              .reduce((n, s) => n + (Number(s.minutes) || 0), 0),
+          };
+        },
+      ),
+      max = Math.max(goalHours * 60, 1, ...days.map((d) => d.minutes)),
+      achieved = calendar.filter((d) => d && daily(d) >= goalHours * 60).length;
+    function sessionsTodayMinutes() {
+      return sessions
+        .filter((s) => localDate(new Date(s.endedAt)) === today)
+        .reduce((n, s) => n + (Number(s.minutes) || 0), 0);
+    }
+    return (
+      <div className="pom-stat-page">
+        <div className="stat-card">
+          <h2>집중 요약</h2>
+          <div className="stat-metrics">
+            <div>
+              <b>{(total / 60).toFixed(1)}</b>
+              <small>총 집중 시간(h)</small>
+            </div>
+            <div>
+              <b>
+                {(
+                  week.reduce((n, s) => n + (Number(s.minutes) || 0), 0) / 60
+                ).toFixed(1)}
+              </b>
+              <small>최근 7일(h)</small>
+            </div>
+            <div>
+              <b>{(todayMinutes / 60).toFixed(1)}</b>
+              <small>오늘(h)</small>
+            </div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-title">
+            <h2>뽀모도로 기록</h2>
+            <small>{sessions.length}회 기록</small>
+          </div>
+          <div className="stat-bars">
+            {Array.from({ length: 24 }, (_, h) => (
+              <div key={h} className="stat-hour">
+                <span>{pad(h)}:00</span>
+                <div>
+                  {sessions
+                    .filter(
+                      (s) =>
+                        new Date(s.endedAt).getHours() === h &&
+                        localDate(new Date(s.endedAt)) === today,
+                    )
+                    .map((s) => (
+                      <i
+                        key={s.id}
+                        title={`${s.minutes}분`}
+                        style={{
+                          width: Math.min(100, (s.minutes / 60) * 100) + "%",
+                        }}
+                      />
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-title">
+            <h2>일일 집중 목표</h2>
+            <button
+              className="goal-button"
+              onClick={() => {
+                const value = window.prompt(
+                  "하루 집중 목표 (시간)",
+                  String(goalHours),
+                );
+                if (value !== null && Number(value) > 0 && Number(value) <= 24)
+                  setGoalHours(Number(value));
+              }}
+            >
+              목표: {goalHours}시간
+            </button>
+          </div>
+          <p className="stat-sub">목표 달성: {achieved}일 · 선택 월 기준</p>
+          <div className="stat-month-nav">
+            <button
+              onClick={() =>
+                setStatMonth(
+                  localDate(
+                    new Date(
+                      Number(statMonth.slice(0, 4)),
+                      Number(statMonth.slice(5, 7)) - 2,
+                      1,
+                    ),
+                  ).slice(0, 7),
+                )
+              }
+            >
+              ‹
+            </button>
+            <strong>{statMonth.replace("-", "년 ")}월</strong>
+            <button
+              onClick={() =>
+                setStatMonth(
+                  localDate(
+                    new Date(
+                      Number(statMonth.slice(0, 4)),
+                      Number(statMonth.slice(5, 7)),
+                      1,
+                    ),
+                  ).slice(0, 7),
+                )
+              }
+            >
+              ›
+            </button>
+          </div>
+          <div className="stat-calendar">
+            {["월", "화", "수", "목", "금", "토", "일"].map((x) => (
+              <b key={x}>{x}</b>
+            ))}
+            {calendar.map((d, i) => (
+              <div
+                key={i}
+                className={d && daily(d) >= goalHours * 60 ? "goal-done" : ""}
+              >
+                {d ? Number(d.slice(-2)) : ""}
+                {d && daily(d) > 0 && <span>●</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="stat-card"><h2>카테고리 분석</h2><div className="stat-switch">{[["daily","일별"],["weekly","주별"],["monthly","월별"]].map(([id,label])=><button key={id} className={analysisPeriod===id?"active":""} onClick={()=>setAnalysisPeriod(id)}>{label}</button>)}</div>{(()=>{const sums=new Map();const from=analysisPeriod==="daily"?today:analysisPeriod==="weekly"?dayAdd(today,-6):today.slice(0,7)+"-01";for(const record of sessions){const date=localDate(new Date(record.endedAt));if(date<from||date>today)continue;const task=data.tasks.find(t=>t.id===record.taskId);const name=project(record.projectId||task?.projectId)?.name||"미분류";sums.set(name,(sums.get(name)||0)+(Number(record.minutes)||0))}return [...sums].length?[...sums].sort((a,b)=>b[1]-a[1]).map(([name,value])=><p key={name} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f0ebf4"}}><span>{name}</span><b>{Number(value.toFixed(1))}분</b></p>):<p className="hint">해당 기간에 집중 기록이 없어.</p>})()}</div>
+        <div className="stat-card">
+          <h2>집중 시간</h2>
+          <div className="stat-switch">
+            {[
+              ["daily", "일일"],
+              ["weekly", "주간"],
+              ["monthly", "월간"],
+              ["yearly", "연간"],
+            ].map(([v, label]) => (
+              <button
+                key={v}
+                className={statView === v ? "active" : ""}
+                onClick={() => setStatView(v)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="stat-chart">
+            {days.map((d, i) => (
+              <div className="stat-col" key={i}>
+                <div className="stat-bar-area">
+                  <div
+                    style={{
+                      height:
+                        Math.max(d.minutes ? 3 : 0, (100 * d.minutes) / max) +
+                        "%",
+                    }}
+                  />
+                </div>
+                <small>{d.label}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // Standalone daily time blocks, stored through the existing Focus Flow sync.
+  const timeBlocks = Array.isArray(data.timeBlocks) ? data.timeBlocks : [];
+  const changeBlockDate = (delta) => {
+    setBlockDate(d => dayAdd(d, delta));
+    setBlockFirst(null);
+    setBlockRange(null);
+  };
+  const openBlock = (block) => {
+    setBlockFirst(null);
+    setBlockRange({start:block.start,end:block.end});
+    setBlockEditing(block.id);
+    setBlockDraft(block.title);
+  };
+  const selectBlockHour = (hour) => {
+    const sleep = blockMode === "actual" ? (data.timeBlockSleepActual?.[blockDate] || {start:22,end:6}) : {start:22,end:6};
+    const asleep = h => sleep.start > sleep.end ? (h >= sleep.start || h < sleep.end) : (h >= sleep.start && h < sleep.end);
+    if (asleep(hour)) {
+      if (blockMode === "actual") { setSleepDraftStart(`${pad(sleep.start)}:00`); setSleepDraftEnd(`${pad(sleep.end)}:00`); setSleepEditing(true); }
+      return;
+    }
+    const current = timeBlocks.find(b => b.date === blockDate && (b.mode || "plan") === blockMode && hour >= b.start && hour < b.end);
+    if (current) { openBlock(current); return; }
+    if (blockFirst === null) {
+      setBlockFirst(hour);
+      setBlockRange({start:hour,end:hour+1});
+    } else {
+      const start = Math.min(blockFirst, hour);
+      const end = Math.max(blockFirst, hour) + 1;
+      const conflicts = Array.from({length:end-start},(_,i)=>start+i).some(asleep) || timeBlocks.some(b => b.date === blockDate && (b.mode || "plan") === blockMode && b.start < end && start < b.end);
+      if (!conflicts) setBlockRange({start,end});
+      setBlockFirst(null);
+    }
+  };
+  const saveTimeBlock = () => {
+    const title = blockDraft.trim();
+    if (!title || !blockRange) return;
+    setData(d => ({...d, timeBlocks:[...(Array.isArray(d.timeBlocks)?d.timeBlocks:[]).filter(b=>b.id!==blockEditing),
+      {id:blockEditing === "new" ? uid() : blockEditing,date:blockDate,mode:blockMode,start:blockRange.start,end:blockRange.end,title}]}));
+    setBlockRange(null);setBlockFirst(null);setBlockEditing(null);setBlockDraft("");
+  };
+  function TimeBlocks() {
+    const blocks = timeBlocks.filter(b=>b.date===blockDate && (b.mode || "plan") === blockMode).sort((a,b)=>a.start-b.start);
+    const day = new Date(blockDate+"T12:00:00");
+    const sleep = blockMode === "actual" ? (data.timeBlockSleepActual?.[blockDate] || {start:22,end:6}) : {start:22,end:6};
+    const isSleep = h => sleep.start > sleep.end ? (h >= sleep.start || h < sleep.end) : (h >= sleep.start && h < sleep.end);
+    // 06:00–22:00 is the 16-hour planning window. Count overlaps once.
+    const occupiedHours = new Set();
+    for (const b of blocks) {
+      const start = Number(b.start), end = Number(b.end);
+      if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+      for (let h = Math.max(6, Math.floor(start)); h < Math.min(22, Math.ceil(end)); h++) {
+        if (!isSleep(h)) occupiedHours.add(h);
+      }
+    }
+    const available = Array.from({length:16},(_,i)=>i+6).filter(h=>!isSleep(h)).length;
+    const allocated = occupiedHours.size;
+    return <section className={`timeblock-page mode-${blockMode}`}>
+      <h1>타임블록</h1>
+      <div className="timeblock-week-navigation" aria-label="주간 날짜 탐색">
+        <button type="button" aria-label="이전 주" onClick={()=>changeBlockDate(-7)}><ChevronLeft size={20}/></button>
+        <span>{day.getFullYear()}년 {day.getMonth()+1}월</span>
+        <button type="button" aria-label="다음 주" onClick={()=>changeBlockDate(7)}><ChevronRight size={20}/></button>
+      </div>
+      <div className="timeblock-week" role="group" aria-label="일주일 날짜 선택">
+        {Array.from({length:7},(_,i)=>{
+          const weekDay = dayAdd(blockDate, i - day.getDay());
+          const date = new Date(weekDay+"T12:00:00");
+          return <button type="button" key={weekDay} className={weekDay===blockDate?"active":""}
+            aria-pressed={weekDay===blockDate} aria-label={`${date.getMonth()+1}월 ${date.getDate()}일 ${"일월화수목금토"[i]}요일`}
+            onClick={()=>{setBlockDate(weekDay);setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>
+            <span className="timeblock-weekday">{"일월화수목금토"[i]}</span>
+            <span className="timeblock-weekday-number">{date.getDate()}</span>
+          </button>;
+        })}
+      </div>
+      <div className="timeblock-selected-date" aria-live="polite">{day.getFullYear()}년 {day.getMonth()+1}월 {day.getDate()}일 {"일월화수목금토"[day.getDay()]}요일</div>
+      <div className="timeblock-switch" role="tablist" aria-label="계획과 실제">
+        <button type="button" role="tab" aria-selected={blockMode==="plan"} className={blockMode==="plan"?"active":""} onClick={()=>{setBlockMode("plan");setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>계획</button>
+        <button type="button" role="tab" aria-selected={blockMode==="actual"} className={blockMode==="actual"?"active":""} onClick={()=>{setBlockMode("actual");setBlockFirst(null);setBlockRange(null);setBlockEditing(null)}}>실제</button>
+      </div>
+      <p className="timeblock-allocation" aria-live="polite">기배정 {allocated}시간 <span aria-hidden="true">·</span> 미배정 {Math.max(0,available - allocated)}시간</p>
+      <div className="timeblock-grid">
+        {Array.from({length:24},(_,index)=>{
+          const hour = (index + 6) % 24;
+          const sleeping = isSleep(hour);
+          const block = sleeping ? null : blocks.find(b=>hour>=b.start&&hour<b.end);
+          const isStart = block?.start===hour;
+          const selected = !sleeping && blockRange && !blockEditing && hour>=blockRange.start&&hour<blockRange.end;
+          const sleepLabel = hour === sleep.start || (index === 0 && sleeping);
+          return <button type="button" key={hour} className={`timeblock-hour ${sleeping?'sleeping':''} ${block?'occupied':''} ${selected?'selected':''}`}
+            aria-label={`${pad(hour)}시 ${sleeping?'수면':block?.title||'시간 선택'}`} onClick={()=>selectBlockHour(hour)}>
+            <span className="timeblock-hourlabel">{pad(hour)}:00</span>
+            <span className="timeblock-content">{sleeping && sleepLabel && <strong>☾ 수면 {pad(sleep.start)}:00–다음 날 {pad(sleep.end)}:00</strong>}{isStart && <strong>{block.title}</strong>}{selected && !block && <span>선택 중</span>}</span>
+          </button>;
+        })}
+      </div>
+      {sleepEditing && blockMode === 'actual' && <div className="timeblock-overlay" onClick={()=>setSleepEditing(false)}>
+        <form className="timeblock-dialog" onClick={e=>e.stopPropagation()} onSubmit={e=>{
+          e.preventDefault();
+          const st=Number(sleepDraftStart.split(':')[0]), en=Number(sleepDraftEnd.split(':')[0]);
+          if(!Number.isInteger(st)||!Number.isInteger(en)||st===en)return;
+          setData(d=>({...d,timeBlockSleepActual:{...(d.timeBlockSleepActual||{}),[blockDate]:{start:st,end:en}}}));
+          setSleepEditing(false);setBlockFirst(null);setBlockRange(null);
+        }}>
+          <h3>실제 수면 시간</h3>
+          <p className="timeblock-sleep-help">시간 단위로 수정할 수 있어. 종료 시간은 다음 날 기준이야.</p>
+          <div className="timeblock-sleep-inputs"><label>취침 <input type="time" step="3600" value={sleepDraftStart} onChange={e=>setSleepDraftStart(e.target.value)}/></label><label>기상 <input type="time" step="3600" value={sleepDraftEnd} onChange={e=>setSleepDraftEnd(e.target.value)}/></label></div>
+          <div className="timeblock-actions"><button type="button" onClick={()=>{setData(d=>{const next={...(d.timeBlockSleepActual||{})};delete next[blockDate];return {...d,timeBlockSleepActual:next}});setSleepEditing(false)}}>기본 22–06으로</button><button type="button" onClick={()=>setSleepEditing(false)}>취소</button><button type="submit" className="timeblock-save">저장</button></div>
+        </form>
+      </div>}
+      {blockRange && !blockEditing && <div className="timeblock-selection">
+        <span>{pad(blockRange.start)}:00–{pad(blockRange.end)}:00</span>
+        <button onClick={()=>{setBlockDraft("");setBlockEditing("new")}}>{blockMode==="plan"?"+ 계획 적기":"+ 실제 기록"}</button>
+        <button onClick={()=>{setBlockRange(null);setBlockFirst(null)}}>취소</button>
+      </div>}
+      {blockEditing && blockRange && <div className="timeblock-overlay" onClick={()=>{setBlockEditing(null);setBlockRange(null);setBlockFirst(null)}}>
+        <form className="timeblock-dialog" onClick={e=>e.stopPropagation()} onSubmit={e=>{e.preventDefault();saveTimeBlock()}}>
+          <h3>{pad(blockRange.start)}:00 – {pad(blockRange.end)}:00</h3>
+          <input autoFocus maxLength={120} placeholder="무엇을 할까요?" value={blockDraft} onChange={e=>setBlockDraft(e.target.value)}/>
+          <div className="timeblock-actions">
+            {blockEditing!=="new"&&<button type="button" className="timeblock-delete" onClick={()=>{setData(d=>({...d,timeBlocks:(d.timeBlocks||[]).filter(b=>b.id!==blockEditing)}));setBlockEditing(null);setBlockRange(null)}}>삭제</button>}
+            <button type="button" onClick={()=>{setBlockEditing(null);setBlockRange(null)}}>취소</button>
+            <button type="submit" className="timeblock-save" disabled={!blockDraft.trim()}>저장</button>
+          </div>
+        </form>
+      </div>}
+    </section>;
+  }
+  const editTask = data.tasks.find((t) => t.id === editing);
+  return (
+    <div className="app">
+      <header>
+        <button
+          type="button"
+          className="brand"
+          aria-label="Focus Flow · 오늘로 이동"
+          onClick={() => setTab("today")}
+          style={{ padding: 0, textAlign: "left" }}
+        >
+          <span className="brand-mark">✳</span> Focus Flow
+        </button>
+        <div className="header-actions">
+          <button type="button" className={`header-timer ${tab === "timelog" ? "is-active" : ""}`} onClick={() => setTab("timelog")} aria-label="타임로그 열기" title="타임로그"><Clock3 size={20}/></button>
+          <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => setTab("pom")} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={20}/></button>
+          <button className="header-pill" onClick={onLogout}>로그아웃</button>
+        </div>
+      </header>
+      <main>
+        {tab === "today"
+          ? Kanban()
+          : tab === "timelog"
+            ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
+          : tab === "timeblocks"
+            ? TimeBlocks()
+          : tab === "calendar"
+            ? Calendar()
+            : tab === "pom"
+              ? Pomodoro()
+              : tab === "karma"
+                ? KarmaPanel()
+                : Projects()}
+      </main>
+      <nav className="bottom-nav">
+        {[
+          ["today", Columns3, "오늘"],
+          ["projects", FolderKanban, "프로젝트"],
+          ["timeblocks", Clock3, "타임블록"],
+          ["calendar", CalendarDays, "일정"],
+          ["karma", Heart, "카르마"],
+        ].map(([id, Icon, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={tab === id ? "nav-active" : ""}
+          >
+            <Icon size={21} strokeWidth={tab === id ? 2.6 : 1.8} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+      {modal === "task" && (
+        <TaskModal
+          projects={data.projects}
+          preProject={tab === "projects" ? selectedProject : ""}
+          onClose={() => setModal(null)}
+          onSave={addTask}
+        />
+      )}
+      {modal === "project" && (
+        <ProjectModal
+          onClose={() => setModal(null)}
+          onSave={(p) => {
+            const id = uid();
+            update((d) => ({ ...d, projects: [...d.projects, { ...p, id }] }));
+            setSelectedProject(id);
+            setModal(null);
+          }}
+        />
+      )}
+      {editTask && (
+        <EditTask
+          key={editTask.id}
+          task={editTask}
+          projects={data.projects}
+          onClose={() => setEditing(null)}
+          onChange={(fields) => changeTask(editTask.id, fields)}
+          onStatus={(s) => completeOrStatus(editTask, s)}
+          onDelete={() => removeTask(editTask.id)}
+          onFocus={() => {
+            setPomTask(editTask.id);
+            setEditing(null);
+            setTab("pom");
+          }}
+        />
+      )}
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  );
 }
-function ActivityHistory({logs,onDelete,showPet}){return <div className="log-list">{logs.map(x=><div className="log-item" key={x.id}><div className="history-text"><b>{x.item}</b>{showPet&&<span className="pet-tag">{x.pet}</span>}<small>{stamp(x.created_at)}</small></div><button className="delete" onClick={()=>onDelete(x)} title="기록 삭제"><Trash2 size={16}/></button></div>)}{!logs.length&&<div className="empty">해당 기록이 없어요.</div>}</div>}
-function LinePlot({points,goal,unit}){const values=points.map(p=>p.value).filter(v=>v!==null&&Number.isFinite(v));const max=Math.max(1,goal||0,...values)*1.18;const px=i=>38+i*(286/Math.max(1,points.length-1)),py=v=>168-v/max*137;return <div className="chart-scroll"><svg viewBox="0 0 360 215" className="chart-svg" role="img" aria-label="기간별 선그래프">{goal!=null&&<line x1="34" y1={py(goal)} x2="340" y2={py(goal)} stroke="#d3d1db" strokeDasharray="5 4"/>}{points.map((p,i)=>{if(p.value===null)return null;const prev=points[i-1];return <g key={i}>{prev&&prev.value!==null&&<line x1={px(i-1)} y1={py(prev.value)} x2={px(i)} y2={py(p.value)} stroke="#9780d5" strokeWidth="2.5"/>}<circle cx={px(i)} cy={py(p.value)} r="3" fill="#9780d5"/></g>})}{points.filter((p,i)=>i%Math.max(1,Math.ceil(points.length/7))===0).map(p=>{const i=points.indexOf(p);return <text key={i} x={px(i)} y="196" fontSize="9" fill="#777" textAnchor="middle">{p.label}</text>})}</svg><p className="footnote">{goal!=null?`목표 ${goal}${unit} · `:''}보라색: 실제 기록</p></div>}
-function BarPlot({points,goal}){const max=Math.max(goal,...points.map(x=>x.value||0),1)*1.17;const y=v=>170-v/max*140;const width=Math.max(360,points.length*42+35);return <div className="chart-scroll"><svg viewBox={`0 0 ${width} 215`} style={{minWidth:width}} className="chart-svg" role="img" aria-label="계획 실제 비교 막대그래프">{points.map((p,i)=>{const left=16+i*42;return <g key={i}><rect x={left} y={y(goal)} width="14" height={170-y(goal)} rx="3" fill="#e0e0e6"/>{p.value!==null&&<rect x={left+16} y={y(p.value)} width="14" height={170-y(p.value)} rx="3" fill="#9780d5"/>}<text x={left+15} y="189" fontSize="9" textAnchor="middle" fill="#777">{p.label}</text></g>})}</svg></div>}
-function Donut({parts,total,unit}){let offset=0;return <div className="donut-wrap"><svg viewBox="0 0 220 220" role="img" aria-label="최근 7일 평균 영양소 비율 도넛그래프"><circle cx="110" cy="110" r="72" fill="none" stroke="#efedf2" strokeWidth="27"/>{total>0&&parts.map(p=>{const frac=p.value/total*100;const off=offset;offset+=frac;return <circle key={p.key} cx="110" cy="110" r="72" fill="none" stroke={p.color} strokeWidth="27" pathLength="100" strokeDasharray={`${frac} ${100-frac}`} strokeDashoffset={-off} transform="rotate(-90 110 110)"/>})}<text x="110" y="104" fontSize="12" fill="#888593" textAnchor="middle">7일 평균</text><text x="110" y="127" fontSize="19" fontWeight="bold" fill="#33303e" textAnchor="middle">{fmt(total)}{unit}</text></svg></div>}
-export default App;
+function pomCount(value) {
+  return Math.max(0, Math.min(5, Math.floor(Number(value) || 0)));
+}
+function PomClock({ filled = true, size = 20 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 26"
+      aria-hidden="true"
+      style={{ display: "block", flexShrink: 0 }}
+    >
+      <rect
+        x="9"
+        y="0"
+        width="6"
+        height="3"
+        rx="1.5"
+        fill={filled ? "#ed6978" : "#e6e3e9"}
+      />
+      <circle cx="12" cy="15" r="10" fill={filled ? "#ed6978" : "#e6e3e9"} />
+      <path
+        d="M12 9v6l3 3"
+        fill="none"
+        stroke="white"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+function ProgressBadge({done = 0, total = 0}) {
+  const pct = total ? Math.round(done / total * 100) : 0;
+  return <span aria-label={`진행률 ${done}/${total}, ${pct}%`} style={{fontSize:11,color:"#9484a5",fontWeight:600,whiteSpace:"nowrap"}}>{done}/{total} · {pct}%</span>;
+}
+function TaskEstimate({ count }) {
+  const n = pomCount(count);
+  if (!n) return null;
+  return (
+    <div
+      className="task-pom-estimate"
+      aria-label={`예상 뽀모도로 ${n}회, ${n * 25}분`}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: 4,
+        flexShrink: 0,
+        maxWidth: 110,
+      }}
+    >
+      <div style={{ display: "flex", gap: 3 }}>
+        {Array.from({ length: n }, (_, i) => (
+          <PomClock key={i} size={15} />
+        ))}
+      </div>
+    </div>
+  );
+}
+function PomEstimatePicker({ value, onChange }) {
+  const n = pomCount(value);
+  return (
+    <fieldset
+      style={{ border: 0, padding: 0, margin: "5px 0 20px", minWidth: 0 }}
+    >
+      <legend
+        style={{ fontSize: 12, fontWeight: 650, color: "#817689", padding: 0 }}
+      >
+        예상 뽀모도로 개수
+      </legend>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 5,
+          marginTop: 10,
+        }}
+      >
+        {[1, 2, 3, 4, 5].map((i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={`예상 뽀모도로 ${i}회`}
+            aria-pressed={i <= n}
+            onClick={() => onChange(i === n ? 0 : i)}
+            style={{
+              display: "grid",
+              placeItems: "center",
+              minWidth: 40,
+              minHeight: 44,
+              padding: 5,
+              borderRadius: 10,
+            }}
+          >
+            <PomClock filled={i <= n} size={32} />
+          </button>
+        ))}
+      </div>
+      <div
+        aria-live="polite"
+        style={{ marginTop: 8, fontSize: 12, color: n ? "#ce6775" : "#a297aa" }}
+      >
+        {n ? `${n}회 · ${n * 25}분` : "선택 안 함 · 1회 25분"}
+      </div>
+    </fieldset>
+  );
+}
+function TaskModal({ projects, preProject, onClose, onSave }) {
+  const [title, setTitle] = useState(""),
+    [projectId, setProjectId] = useState(preProject || projects[0]?.id || ""),
+    [due, setDue] = useState(""),
+    [hasSchedule, setHasSchedule] = useState(false),
+    [time, setTime] = useState(""),
+    [estimatedPomodoros] = useState(0);
+  return (
+    <div
+      className="overlay"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <form
+        className="sheet"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (title.trim())
+            onSave({ title, projectId, due, time, estimatedPomodoros, tally:null,tallies:[] });
+        }}
+      >
+        <div className="sheet-top">
+          <h2>새 할 일</h2>
+          <button type="button" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <label>
+          할 일 이름
+          <input
+            autoFocus
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="무엇을 할까?"
+          />
+        </label>
+        <label>
+          프로젝트
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+          >
+            <option value="">개인 일정 (프로젝트 없음)</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          일정
+          <select value={hasSchedule ? "yes" : "no"} onChange={e => {
+            const enabled = e.target.value === "yes";
+            setHasSchedule(enabled);
+            setDue(enabled ? (due || localDate()) : "");
+            if (!enabled) setTime("");
+          }}>
+            <option value="no">일정 없음</option>
+            <option value="yes">일정 있음</option>
+          </select>
+        </label>
+        {hasSchedule && <div className="field-row">
+          <label>날짜<input type="date" value={due} required onChange={e => setDue(e.target.value)} /></label>
+          <label>
+            <span className="time-label-row">시간 (선택) <button type="button" aria-label="시간 초기화" title="시간 초기화" onClick={()=>setTime("")}>↺</button></span>
+            <input type="time" value={time} onChange={e => setTime(e.target.value)} />
+          </label>
+        </div>}
+        <button className="primary save" type="submit">
+          추가하기
+        </button>
+      </form>
+    </div>
+  );
+}
+function ProjectModal({ onClose, onSave }) {
+  const [name, setName] = useState(""),
+    [color, setColor] = useState("#a897dd");
+  return (
+    <div
+      className="overlay"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <form
+        className="sheet"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim()) onSave({ name: name.trim(), color });
+        }}
+      >
+        <div className="sheet-top">
+          <h2>새 프로젝트</h2>
+          <button type="button" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <label>
+          프로젝트 이름
+          <input
+            autoFocus
+            required
+            placeholder="예: 중국어 공부"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        <label>
+          구분 색상
+          <div className="colors">
+            {[
+              "#a897dd",
+              "#b9a6e6",
+              "#e1a0b8",
+              "#e9b6c9",
+              "#8dbfb4",
+              "#a8d1c5",
+              "#e5b174",
+              "#efc998",
+              "#8faedc",
+              "#b0c5e8",
+            ].map((c) => (
+              <button
+                type="button"
+                aria-label={c}
+                className={color === c ? "picked" : ""}
+                style={{ background: c }}
+                key={c}
+                onClick={() => setColor(c)}
+              />
+            ))}
+          </div>
+          <div className="custom-color">
+            <span>사용자 지정</span>
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              aria-label="사용자 지정 색상"
+            />
+          </div>
+        </label>
+        <button className="primary save">프로젝트 추가</button>
+      </form>
+    </div>
+  );
+}
+function EditTask({
+  task,
+  projects,
+  onClose,
+  onChange,
+  onStatus,
+  onDelete,
+  onFocus,
+}) {
+  const [sub, setSub] = useState("");
+  const addSub = (e) => {
+    e.preventDefault();
+    if (sub.trim()) {
+      onChange({
+        subtasks: [
+          ...task.subtasks,
+          { id: uid(), text: sub.trim(), done: false },
+        ],
+      });
+      setSub("");
+    }
+  };
+  return (
+    <div
+      className="overlay"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="sheet edit-sheet">
+        <div className="sheet-top">
+          <h2>할 일 상세</h2>
+          <button onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <label>
+          제목
+          <input
+            value={task.title}
+            onChange={(e) => onChange({ title: e.target.value })}
+          />
+        </label>
+        <label>
+          프로젝트
+          <select
+            value={task.projectId}
+            onChange={(e) => onChange({ projectId: e.target.value })}
+          >
+            <option value="">개인 일정</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          일정
+          <select value={task.due ? "yes" : "no"} onChange={e => {
+            if (e.target.value === "yes") onChange({due: localDate()});
+            else onChange({due:"", time:""});
+          }}>
+            <option value="no">일정 없음</option>
+            <option value="yes">일정 있음</option>
+          </select>
+        </label>
+        {!!task.due && <div className="field-row">
+          <label>날짜<input type="date" value={task.due} onChange={e => onChange({due:e.target.value})} /></label>
+          <label>
+            <span className="time-label-row">시간 (선택) <button type="button" title="시간 초기화" aria-label="시간 초기화" onClick={()=>onChange({time:""})}>↺</button></span>
+            <input type="time" value={task.time || ""} onChange={e => onChange({time:e.target.value})} />
+          </label>
+        </div>}
+        <label>
+          진행 상태
+          <select
+            value={task.status}
+            onChange={(e) => onStatus(e.target.value)}
+          >
+            <option value="todo">할 일</option>
+            <option value="doing">진행 중</option>
+            <option value="done">완료</option>
+          </select>
+        </label>
+        <div className="subtask-title">
+          서브태스크{" "}
+          <span>
+            {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length}
+          </span>
+        </div>
+        <div className="subtask-list">
+          {task.subtasks.map((s) => (
+            <div key={s.id} className="subtask">
+              <input
+                type="checkbox"
+                checked={s.done}
+                onChange={(e) =>
+                  onChange({
+                    subtasks: task.subtasks.map((x) =>
+                      x.id === s.id ? { ...x, done: e.target.checked } : x,
+                    ),
+                  })
+                }
+              />
+              <span className={s.done ? "struck" : ""}>{s.text}</span>
+              <button
+                onClick={() =>
+                  onChange({
+                    subtasks: task.subtasks.filter((x) => x.id !== s.id),
+                  })
+                }
+              >
+                <X size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <form className="add-sub" onSubmit={addSub}>
+          <input
+            value={sub}
+            onChange={(e) => setSub(e.target.value)}
+            placeholder="하위 작업 추가"
+          />
+          <button type="submit">
+            <Plus size={18} />
+          </button>
+        </form>
+        <div className="edit-actions">
+          <button className="secondary" onClick={onFocus}>
+            <Timer size={17} /> 집중하기
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              if (confirm("이 할 일을 삭제할까?")) onDelete();
+            }}
+          >
+            <Trash2 size={17} /> 삭제
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
