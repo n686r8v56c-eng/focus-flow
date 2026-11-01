@@ -36,6 +36,9 @@ export function TimeLog({data,onDataChange,client,userId}){
   const [newActivity,setNewActivity]=useState('');
   const [editingActivity,setEditingActivity]=useState(null);
   const [activityDraft,setActivityDraft]=useState('');
+  const [editingEntry,setEditingEntry]=useState(null);
+  const [entryDraft,setEntryDraft]=useState({activity:'',start:'',end:''});
+  const [entryError,setEntryError]=useState('');
   const [month,setMonth]=useState(dateKey(new Date()).slice(0,7));
   const [selected,setSelected]=useState(dateKey(new Date()));
   const [period,setPeriod]=useState('7');
@@ -102,6 +105,36 @@ export function TimeLog({data,onDataChange,client,userId}){
   };
   useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return ()=>clearInterval(id)},[]);
   const save=fn=>onDataChange(d=>({...d,timeLog:fn(d.timeLog||{})}));
+  const toLocalInput=iso=>{
+    const d=new Date(iso);
+    if(Number.isNaN(d.getTime()))return '';
+    return `${dateKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const editEntry=entry=>{
+    if(entry.id==='currently-running')return;
+    setEditingEntry(entry);
+    setEntryDraft({activity:entry.activity,start:toLocalInput(entry.start),end:toLocalInput(entry.end)});
+    setEntryError('');
+  };
+  const saveEntry=async()=>{
+    if(busy||!editingEntry)return;
+    const start=new Date(entryDraft.start),end=new Date(entryDraft.end);
+    if(!entryDraft.activity.trim()){setEntryError('활동을 선택해 줘.');return;}
+    if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||end<=start){setEntryError('종료 시간이 시작 시간보다 늦어야 해.');return;}
+    if(end.getTime()>Date.now()+86400000){setEntryError('미래 날짜는 저장할 수 없어.');return;}
+    commandVersion.current+=1;
+    setBusy(true);setEntryError('');
+    try{
+      const {data:result,error}=await client.rpc('focus_timelog_edit_entry',{
+        p_entry_id:editingEntry.id,p_activity:entryDraft.activity.trim(),
+        p_started_at:start.toISOString(),p_ended_at:end.toISOString(),
+        p_expected_started_at:editingEntry.start,p_expected_ended_at:editingEntry.end
+      });
+      if(error)throw error;
+      setServer({...result,ready:true});setEditingEntry(null);setSyncError('');
+    }catch(e){setEntryError(e?.message||'수정 내용을 서버에 저장하지 못했어.');}
+    finally{setBusy(false);}
+  };
   const begin=name=>command('start',name);
   const stop=()=>command('stop');
   const activeMs=active?Math.max(0,now-Date.parse(active.start)):0;
@@ -147,7 +180,7 @@ export function TimeLog({data,onDataChange,client,userId}){
       </div>)}</div>
       <form className="timelog-add" onSubmit={e=>{e.preventDefault();const name=newActivity.trim().slice(0,40);if(!name||activities.includes(name))return;save(prev=>({...prev,activityList:[...activities,name]}));setNewActivity('')}}><input aria-label="새 활동 이름" placeholder="새 활동 추가" value={newActivity} onChange={e=>setNewActivity(e.target.value)}/><button type="submit" disabled={!newActivity.trim()}><Plus size={17}/> 추가</button></form>
     </>}
-    {section==='daily'&&<DailyTimeLine selected={dailyDate} onSelect={setDailyDate} entries={computed} colors={colors} now={now}/>}
+    {section==='daily'&&<DailyTimeLine selected={dailyDate} onSelect={setDailyDate} entries={computed} colors={colors} now={now} onEditEntry={editEntry}/>}
     {section==='stats'&&<>
       <div className="timelog-range">{[['1','1일'],['7','7일'],['30','30일'],['90','90일']].map(([v,label])=><button type="button" key={v} className={period===v?'chosen':''} onClick={()=>setPeriod(v)}>{label}</button>)}</div>
       <div className="timelog-kpis"><div><small>총 기록 시간</small><strong>{minutesText(periodData.total)}</strong></div><div><small>하루 평균</small><strong>{minutesText(periodData.total/Number(period))}</strong></div></div>
@@ -158,15 +191,33 @@ export function TimeLog({data,onDataChange,client,userId}){
       <div className="timelog-month"><button type="button" aria-label="이전 달" onClick={()=>moveMonth(-1)}><ChevronLeft/></button><strong>{month.replace('-','년 ')}월</strong><button type="button" aria-label="다음 달" onClick={()=>moveMonth(1)}><ChevronRight/></button></div>
       <div className="timelog-calendar">{['일','월','화','수','목','금','토'].map(d=><span className="timelog-weekday" key={d}>{d}</span>)}{Array.from({length:offset},(_,i)=><span key={`blank${i}`}/>)}{Array.from({length:count},(_,i)=>{const date=`${month}-${pad(i+1)}`;const day=dayInfo[date]||{};return <button type="button" key={date} className={selected===date?'selected':''} onClick={()=>setSelected(date)}><span>{i+1}</span><span className="timelog-dots">{Object.keys(day).slice(0,3).map(a=><i key={a} style={{background:colors[a]||'#A68CCF'}}/>)}</span></button>})}</div>
       <div className="timelog-selected"><strong>{selected} 기록</strong><span>총 {minutesText(selectedTotal)}</span></div>{Object.entries(selInfo).sort((a,b)=>b[1]-a[1]).map(([name,ms])=><div className="timelog-summary" key={name}><span><i style={{background:colors[name]||'#A68CCF'}}/>{name}</span><strong>{minutesText(ms)}</strong></div>)}{selectedTotal===0&&<p className="timelog-empty">이 날짜에는 기록이 없어.</p>}
-      <h2>상세 기록</h2>{computed.filter(x=>dailySegments(Date.parse(x.start),Date.parse(x.end)).some(v=>v.date===selected)).map(x=>{const startMs=Date.parse(x.start),endMs=Date.parse(x.end);const dayStart=new Date(selected+'T00:00:00').getTime();const part=Math.max(0,Math.min(endMs,dayStart+86400000)-Math.max(startMs,dayStart));return <div className="timelog-entry" key={x.id}><span>{x.activity}<small>{new Date(x.start).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}–{x.id==='currently-running'?'진행 중':new Date(x.end).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</small></span><strong>{minutesText(part)}</strong></div>})}
+      <h2>상세 기록</h2>{computed.filter(x=>dailySegments(Date.parse(x.start),Date.parse(x.end)).some(v=>v.date===selected)).map(x=>{const startMs=Date.parse(x.start),endMs=Date.parse(x.end);const dayStart=new Date(selected+'T00:00:00').getTime();const part=Math.max(0,Math.min(endMs,dayStart+86400000)-Math.max(startMs,dayStart));return <div className="timelog-entry" key={x.id}><span>{x.activity}<small>{new Date(x.start).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}–{x.id==='currently-running'?'진행 중':new Date(x.end).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</small></span><strong>{minutesText(part)}</strong>{x.id!=='currently-running'&&<button type="button" aria-label={`${x.activity} 기록 수정`} title="기록 수정" onClick={()=>editEntry(x)} style={{border:0,background:'transparent',color:'#947ac2',padding:7,flexShrink:0}}><Pencil size={17}/></button>}</div>})}
     </>}
+    {editingEntry&&<div role="presentation" onClick={()=>!busy&&setEditingEntry(null)} style={{position:'fixed',inset:0,zIndex:1200,background:'rgba(40,33,52,.42)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+      <form role="dialog" aria-modal="true" aria-label="타임로그 기록 수정" onClick={e=>e.stopPropagation()} onSubmit={e=>{e.preventDefault();saveEntry();}} style={{width:'100%',maxWidth:420,minWidth:0,boxSizing:'border-box',maxHeight:'calc(100dvh - 40px)',overflowY:'auto',background:'#fff',borderRadius:20,padding:20,display:'grid',gap:14,boxShadow:'0 16px 45px rgba(30,20,48,.16)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><h2 style={{margin:0,fontSize:20}}>기록 수정</h2><button type="button" aria-label="닫기" onClick={()=>setEditingEntry(null)} disabled={busy} style={{padding:6}}><X size={19}/></button></div>
+        <label style={{display:'grid',gap:5,fontSize:13,fontWeight:650,color:'#81728f'}}>활동
+          <select value={entryDraft.activity} onChange={e=>setEntryDraft(v=>({...v,activity:e.target.value}))} style={{width:'100%',minWidth:0,padding:11,border:'1px solid #ddd2e8',borderRadius:12,background:'#fff',fontSize:16}}>
+            {[...new Set([...activities,editingEntry.activity])].map(a=><option key={a} value={a}>{a}</option>)}
+          </select>
+        </label>
+        <label style={{display:'grid',gap:5,fontSize:13,fontWeight:650,color:'#81728f'}}>시작 날짜·시간
+          <input type="datetime-local" step="60" required value={entryDraft.start} onChange={e=>setEntryDraft(v=>({...v,start:e.target.value}))} style={{width:'100%',minWidth:0,boxSizing:'border-box',padding:11,border:'1px solid #ddd2e8',borderRadius:12,fontSize:16}}/>
+        </label>
+        <label style={{display:'grid',gap:5,fontSize:13,fontWeight:650,color:'#81728f'}}>종료 날짜·시간
+          <input type="datetime-local" step="60" required value={entryDraft.end} onChange={e=>setEntryDraft(v=>({...v,end:e.target.value}))} style={{width:'100%',minWidth:0,boxSizing:'border-box',padding:11,border:'1px solid #ddd2e8',borderRadius:12,fontSize:16}}/>
+        </label>
+        {entryError&&<p role="alert" style={{color:'#b44f68',fontSize:13,margin:0,overflowWrap:'anywhere'}}>{entryError}</p>}
+        <div style={{display:'flex',gap:8}}><button type="button" onClick={()=>setEditingEntry(null)} disabled={busy} style={{flex:1,padding:12,borderRadius:12}}>취소</button><button type="submit" disabled={busy} style={{flex:2,padding:12,borderRadius:12,background:'#a08acc',color:'#fff',fontWeight:700}}>{busy?'저장 중…':'수정 저장'}</button></div>
+      </form>
+    </div>}
   </section>;
 }
 
 
 // Visual day runs from 06:00 until 06:00 the following morning.
 // A session's exact start/end timestamps determine its position and height.
-function DailyTimeLine({selected,onSelect,entries,colors,now}){
+function DailyTimeLine({selected,onSelect,entries,colors,now,onEditEntry}){
   const [period,setPeriod]=useState('morning');
   const periods=[{id:'morning',label:'오전',start:6,hours:6},{id:'afternoon',label:'오후',start:12,hours:6},{id:'evening',label:'저녁',start:18,hours:12}];
   const currentPeriod=periods.find(p=>p.id===period)||periods[0];
@@ -205,7 +256,7 @@ function DailyTimeLine({selected,onSelect,entries,colors,now}){
           const top=(segment.from-periodStartMs)/3600000*hourHeight;
           const height=(segment.to-segment.from)/3600000*hourHeight;
           const color=colors[segment.activity]||'#A68CCF';
-          return <div key={`${segment.id}-${i}`} className="timelog-daily-block" title={`${segment.activity}: ${formatTime(segment.from)}–${formatTime(segment.to)}`} style={{top,height,minHeight:0,borderLeftColor:color,backgroundColor:`color-mix(in srgb, ${color} 22%, white)`}}>
+          return <div key={`${segment.id}-${i}`} className="timelog-daily-block" title={`${segment.activity}: ${formatTime(segment.from)}–${formatTime(segment.to)}${segment.live?'':' · 탭하여 수정'}`} onClick={()=>!segment.live&&onEditEntry(segment)} role={segment.live?undefined:'button'} tabIndex={segment.live?undefined:0} onKeyDown={e=>{if(!segment.live&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onEditEntry(segment);}}} style={{top,height,minHeight:0,borderLeftColor:color,backgroundColor:`color-mix(in srgb, ${color} 22%, white)`,cursor:segment.live?'default':'pointer'}}>
             {height>=18&&<div className="timelog-daily-block-content"><div className="timelog-daily-block-heading"><strong>{segment.activity}</strong><span>{formatTime(segment.from)}–{segment.live?'진행 중':formatTime(segment.to)}</span></div>{height>=60&&<small>{minutesText(segment.to-segment.from)}</small>}</div>}
           </div>;
         })}
