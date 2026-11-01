@@ -74,6 +74,7 @@ export function MemoPanel({ data, onDataChange }) {
             {expandedId===m.id?<ChevronDown size={16} color="#9c84c5"/>:<ChevronRight size={16} color="#9c84c5"/>}
             {m.favorite && <Star size={13} fill="#a18ad1" color="#a18ad1" style={{flexShrink:0}}/>}
             <span style={{fontSize:14,fontWeight:650,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{(m.text||'').split('\n')[0]}</span>
+            {m.archived && m.archivedAt && <time dateTime={m.archivedAt} aria-label="아카이브 날짜" style={{fontSize:11,color:'#9384a4',fontWeight:500,flexShrink:0,whiteSpace:'nowrap',fontVariantNumeric:'tabular-nums'}}>{new Date(m.archivedAt).toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})}</time>}
           </button>
           <button type="button" onClick={()=>copyMemo(m.text)} aria-label="메모 복사" title="메모 복사" style={{color:'#9476c5',padding:7,flexShrink:0}}><Copy size={18}/></button>
         </div>
