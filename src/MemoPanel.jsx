@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, Check, X, Star, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, Check, X, Star, Search, Archive, ArchiveRestore } from 'lucide-react';
 
 const categories = ['지침', '수정사항'];
 const displayCategory = value => value === 'Misc' || value === '지침' ? '지침' : '수정사항';
@@ -16,6 +16,7 @@ export function MemoPanel({ data, onDataChange }) {
   const [draft, setDraft] = useState('');
   const [search, setSearch] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [menuId, setMenuId] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -28,10 +29,12 @@ export function MemoPanel({ data, onDataChange }) {
   const all = Array.isArray(data.projectMemos) ? data.projectMemos : [];
   // Display all existing memos regardless of their former project assignment.
   // Legacy Misc -> 지침; legacy idea/research/action/reflection -> 수정사항.
-  const visible = all.filter(m => favoritesOnly ? Boolean(m.favorite) : displayCategory(m.category) === category)
+  const relevant = all.filter(m => favoritesOnly ? Boolean(m.favorite) : displayCategory(m.category) === category)
     .filter(m => !search.trim() || [m.text, projects.find(p=>p.id===m.projectId)?.name, displayCategory(m.category)]
       .some(v=>String(v||'').toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())))
     .slice().sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const visible = relevant.filter(m => !m.archived);
+  const archived = relevant.filter(m => Boolean(m.archived));
   const change = fn => onDataChange(d => ({ ...d, projectMemos: fn(Array.isArray(d.projectMemos) ? d.projectMemos : []) }));
   const save = e => {
     e.preventDefault();
@@ -53,10 +56,46 @@ export function MemoPanel({ data, onDataChange }) {
   const commitEdit = id => { clearTimeout(autoSaveTimer.current); persistText(id, editDraft); setEditingId(null); };
   const onEditChange = (id, value) => { setEditDraft(value); clearTimeout(autoSaveTimer.current); autoSaveTimer.current = setTimeout(() => persistText(id,value), 500); };
   const toggleFavorite = m => { change(list => list.map(item => item.id === m.id ? {...item, favorite:!item.favorite} : item)); setMenuId(null); };
+  const toggleArchive = m => {
+    if (editingId===m.id) { clearTimeout(autoSaveTimer.current); persistText(m.id,editDraft); setEditingId(null); }
+    change(list => list.map(item => item.id === m.id ? {...item, archived:!item.archived, archivedAt:item.archived?null:new Date().toISOString()} : item));
+    setMenuId(null); setExpandedId(null);
+  };
   const deleteMemo = id => { if (!window.confirm('이 메모를 삭제할까?')) return; change(list => list.filter(m => m.id !== id)); setMenuId(null); setEditingId(null); };
   const copyMemo = async text => {
     try { await navigator.clipboard.writeText(text || ''); }
     catch { window.prompt('메모를 복사해 줘', text || ''); }
+  };
+
+  const renderMemo = m => {
+    return <article key={m.id} style={{...ui.card,WebkitUserSelect:'none',userSelect:'none',WebkitTouchCallout:'none'}}>
+        <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
+          <button type="button" onPointerDown={e=>startPress(m.id,e)} onPointerUp={endPress} onPointerCancel={endPress} onPointerLeave={endPress} onContextMenu={e=>{e.preventDefault();endPress();setMenuId(m.id);}} onSelectStart={e=>e.preventDefault()} onDragStart={e=>e.preventDefault()} onClick={()=>{if(longPressed.current){longPressed.current=false;return;}setMenuId(null);setExpandedId(x=>x===m.id?null:m.id);}} style={{display:'flex',alignItems:'center',gap:7,flex:1,minWidth:0,textAlign:'left',padding:'5px 0',touchAction:'pan-y'}} title="터치해 펼치기 · 길게 눌러 관리">
+            {expandedId===m.id?<ChevronDown size={16} color="#9c84c5"/>:<ChevronRight size={16} color="#9c84c5"/>}
+            {m.favorite && <Star size={13} fill="#a18ad1" color="#a18ad1" style={{flexShrink:0}}/>}
+            <span style={{fontSize:14,fontWeight:650,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{(m.text||'').split('\n')[0]}</span>
+          </button>
+          <button type="button" onClick={()=>copyMemo(m.text)} aria-label="메모 복사" title="메모 복사" style={{color:'#9476c5',padding:7,flexShrink:0}}><Copy size={18}/></button>
+        </div>
+        {menuId===m.id && <div style={{display:'flex',gap:5,flexWrap:'wrap',marginTop:9,borderTop:'1px solid #f0eaf5',paddingTop:9}}>
+          <button type="button" onClick={()=>beginEdit(m)} style={{display:'flex',alignItems:'center',gap:5,color:'#8061b5',padding:7}}><Pencil size={16}/> 수정</button>
+          <button type="button" onClick={()=>toggleFavorite(m)} style={{display:'flex',alignItems:'center',gap:5,color:'#8061b5',padding:7}}><Star size={16} fill={m.favorite?'#a18ad1':'none'}/> {m.favorite?'즐겨찾기 해제':'즐겨찾기'}</button>
+          <button type="button" onClick={()=>toggleArchive(m)} style={{display:'flex',alignItems:'center',gap:5,color:'#8061b5',padding:7}}>{m.archived ? <ArchiveRestore size={16}/> : <Archive size={16}/>} {m.archived?'복원':'아카이브'}</button>
+          <button type="button" onClick={()=>deleteMemo(m.id)} style={{display:'flex',alignItems:'center',gap:5,color:'#b9677d',padding:7}}><Trash2 size={16}/> 삭제</button>
+          <button type="button" onClick={()=>setMenuId(null)} aria-label="메뉴 닫기" style={{marginLeft:'auto',padding:7}}><X size={16}/></button>
+        </div>}
+        {editingId===m.id ? <div style={{marginTop:10}}>
+          <textarea autoFocus rows={5} value={editDraft} onChange={e=>onEditChange(m.id,e.target.value)} onBlur={()=>commitEdit(m.id)} style={{...ui.field,resize:'vertical',fontSize:16,overflowWrap:'anywhere',wordBreak:'break-word'}} />
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:8}}>
+            <button type="button" onClick={()=>commitEdit(m.id)} style={{padding:9}}>닫기</button>
+            <button type="button" onClick={()=>commitEdit(m.id)} disabled={!editDraft.trim()} style={{padding:'9px 14px',borderRadius:9,background:'#a18ad1',color:'white',display:'flex',gap:4,alignItems:'center'}}><Check size={15}/> 저장</button>
+          </div>
+        </div> : expandedId===m.id && <div onClick={()=>beginEdit(m)} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')beginEdit(m)}} title="탭해서 수정" style={{borderTop:'1px solid #f0eaf5',paddingTop:10,marginTop:9,whiteSpace:'pre-wrap',overflowWrap:'anywhere',wordBreak:'break-word',maxWidth:'100%',minWidth:0,overflowX:'hidden',fontSize:14,lineHeight:1.6,cursor:'text'}}>
+          {m.text}
+          {favoritesOnly && <div style={{...ui.muted,marginTop:8}}>{m.projectId===UNASSIGNED ? '미지정' : (projects.find(p=>p.id===m.projectId)?.name || '프로젝트 없음')}</div>}
+        </div>}
+      </article>;
+
   };
 
   return <section className="memo-page" style={{paddingBottom:24, width:'100%', maxWidth:'100%', minWidth:0, boxSizing:'border-box', overflowX:'hidden'}}>
@@ -84,33 +123,19 @@ export function MemoPanel({ data, onDataChange }) {
     </form>
     <div style={{fontSize:15,fontWeight:750,marginBottom:11}}>메모 목록 <span style={ui.muted}>({visible.length})</span></div>
     <div style={{display:'grid',gap:8,minWidth:0,maxWidth:'100%'}}>
-      {visible.map(m => <article key={m.id} style={{...ui.card,WebkitUserSelect:'none',userSelect:'none',WebkitTouchCallout:'none'}}>
-        <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
-          <button type="button" onPointerDown={e=>startPress(m.id,e)} onPointerUp={endPress} onPointerCancel={endPress} onPointerLeave={endPress} onContextMenu={e=>{e.preventDefault();endPress();setMenuId(m.id);}} onSelectStart={e=>e.preventDefault()} onDragStart={e=>e.preventDefault()} onClick={()=>{if(longPressed.current){longPressed.current=false;return;}setMenuId(null);setExpandedId(x=>x===m.id?null:m.id);}} style={{display:'flex',alignItems:'center',gap:7,flex:1,minWidth:0,textAlign:'left',padding:'5px 0',touchAction:'pan-y'}} title="터치해 펼치기 · 길게 눌러 수정·삭제·즐겨찾기">
-            {expandedId===m.id?<ChevronDown size={16} color="#9c84c5"/>:<ChevronRight size={16} color="#9c84c5"/>}
-            {m.favorite && <Star size={13} fill="#a18ad1" color="#a18ad1" style={{flexShrink:0}}/>}
-            <span style={{fontSize:14,fontWeight:650,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{(m.text||'').split('\n')[0]}</span>
-          </button>
-          <button type="button" onClick={()=>copyMemo(m.text)} aria-label="메모 복사" title="메모 복사" style={{color:'#9476c5',padding:7,flexShrink:0}}><Copy size={18}/></button>
-        </div>
-        {menuId===m.id && <div style={{display:'flex',gap:5,flexWrap:'wrap',marginTop:9,borderTop:'1px solid #f0eaf5',paddingTop:9}}>
-          <button type="button" onClick={()=>beginEdit(m)} style={{display:'flex',alignItems:'center',gap:5,color:'#8061b5',padding:7}}><Pencil size={16}/> 수정</button>
-          <button type="button" onClick={()=>toggleFavorite(m)} style={{display:'flex',alignItems:'center',gap:5,color:'#8061b5',padding:7}}><Star size={16} fill={m.favorite?'#a18ad1':'none'}/> {m.favorite?'즐겨찾기 해제':'즐겨찾기'}</button>
-          <button type="button" onClick={()=>deleteMemo(m.id)} style={{display:'flex',alignItems:'center',gap:5,color:'#b9677d',padding:7}}><Trash2 size={16}/> 삭제</button>
-          <button type="button" onClick={()=>setMenuId(null)} aria-label="메뉴 닫기" style={{marginLeft:'auto',padding:7}}><X size={16}/></button>
-        </div>}
-        {editingId===m.id ? <div style={{marginTop:10}}>
-          <textarea autoFocus rows={5} value={editDraft} onChange={e=>onEditChange(m.id,e.target.value)} onBlur={()=>commitEdit(m.id)} style={{...ui.field,resize:'vertical',fontSize:16,overflowWrap:'anywhere',wordBreak:'break-word'}} />
-          <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:8}}>
-            <button type="button" onClick={()=>commitEdit(m.id)} style={{padding:9}}>닫기</button>
-            <button type="button" onClick={()=>commitEdit(m.id)} disabled={!editDraft.trim()} style={{padding:'9px 14px',borderRadius:9,background:'#a18ad1',color:'white',display:'flex',gap:4,alignItems:'center'}}><Check size={15}/> 저장</button>
-          </div>
-        </div> : expandedId===m.id && <div onClick={()=>beginEdit(m)} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')beginEdit(m)}} title="탭해서 수정" style={{borderTop:'1px solid #f0eaf5',paddingTop:10,marginTop:9,whiteSpace:'pre-wrap',overflowWrap:'anywhere',wordBreak:'break-word',maxWidth:'100%',minWidth:0,overflowX:'hidden',fontSize:14,lineHeight:1.6,cursor:'text'}}>
-          {m.text}
-          {favoritesOnly && <div style={{...ui.muted,marginTop:8}}>{m.projectId===UNASSIGNED ? '미지정' : (projects.find(p=>p.id===m.projectId)?.name || '프로젝트 없음')}</div>}
-        </div>}
-      </article>)}
+      {visible.map(renderMemo)}
       {!visible.length && <p className="hint">{favoritesOnly?'즐겨찾기한 메모가 없어.':search.trim()?'검색 결과가 없어.':'아직 메모가 없어. 첫 메모를 기록해 봐.'}</p>}
+    </div>
+    <div style={{marginTop:18,minWidth:0,maxWidth:'100%'}}>
+      <button type="button" aria-expanded={archiveOpen} onClick={()=>{setArchiveOpen(v=>!v);setMenuId(null);}}
+        style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',minWidth:0,padding:'12px 14px',borderRadius:12,border:0,background:'#f0ebf5',color:'#8874ad',fontWeight:750,fontSize:14,cursor:'pointer'}}>
+        <span style={{display:'inline-flex',alignItems:'center',gap:7}}><Archive size={16}/> 아카이브 ({archived.length})</span>
+        <ChevronDown size={17} style={{transform:archiveOpen?'rotate(180deg)':'none'}}/>
+      </button>
+      {archiveOpen && <div style={{display:'grid',gap:8,marginTop:10,minWidth:0,maxWidth:'100%'}}>
+        {archived.map(renderMemo)}
+        {!archived.length && <p className="hint">보관된 메모가 없어.</p>}
+      </div>}
     </div>
   </section>;
 }
