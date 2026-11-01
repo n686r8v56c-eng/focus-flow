@@ -1135,6 +1135,12 @@ export function App({
     const done = items.filter(t => t.status === "done");
     const renderGroups = (tasks, groupType) => {
       const sorted = [...tasks].sort(byDueThenTitle);
+      if (groupType === "todo") {
+        sorted.sort((a,b) => {
+          const rank = t => !t.due ? 3 : t.due === today ? 0 : t.due < today ? 2 : 1;
+          return rank(a)-rank(b) || byDueThenTitle(a,b);
+        });
+      }
       const groups = [];
       // The To Do section shows today's scheduled tasks first, without
       // duplicating them in their original week group.
@@ -1143,7 +1149,29 @@ export function App({
       }
       for (const task of sorted) {
         if (groupType === "todo" && task.due === today) continue;
-        const label = koreanWeekLabel(task.due);
+        let label;
+        if (groupType === "todo") {
+          if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(task.due || "")) {
+            label = "일정 없음";
+          } else if (task.due < today) {
+            label = "지난 할 일";
+          } else {
+            // Tomorrow through seven days later is the first date range.
+            const [y, m, d] = today.split("-").map(Number);
+            const [ty, tm, td] = task.due.split("-").map(Number);
+            const offset = Math.round((Date.UTC(ty, tm-1, td) - Date.UTC(y, m-1, d)) / 86400000);
+            const rangeIndex = Math.floor((offset - 1) / 7);
+            const start = dayAdd(today, rangeIndex * 7 + 1);
+            const end = dayAdd(today, rangeIndex * 7 + 7);
+            const shortDate = value => {
+              const [, mm, dd] = value.split("-").map(Number);
+              return `${mm}/${dd}`;
+            };
+            label = `${shortDate(start)}~${shortDate(end)}`;
+          }
+        } else {
+          label = koreanWeekLabel(task.due);
+        }
         if (!groups.length || groups[groups.length - 1].label !== label) groups.push({label, tasks: []});
         groups[groups.length - 1].tasks.push(task);
       }
