@@ -1136,7 +1136,13 @@ export function App({
     const renderGroups = (tasks, groupType) => {
       const sorted = [...tasks].sort(byDueThenTitle);
       const groups = [];
+      // The To Do section shows today's scheduled tasks first, without
+      // duplicating them in their original week group.
+      if (groupType === "todo") {
+        groups.push({label:"Today", tasks:sorted.filter(task=>task.due===today)});
+      }
       for (const task of sorted) {
+        if (groupType === "todo" && task.due === today) continue;
         const label = koreanWeekLabel(task.due);
         if (!groups.length || groups[groups.length - 1].label !== label) groups.push({label, tasks: []});
         groups[groups.length - 1].tasks.push(task);
@@ -1151,7 +1157,7 @@ export function App({
             <span>{group.label}</span>
             <ChevronDown size={17} style={{transform:isOpen ? "rotate(180deg)" : "none",transition:"transform .15s"}} />
           </button>
-          {isOpen && <div className="project-task-list">{group.tasks.map(renderItem)}</div>}
+          {isOpen && (group.tasks.length ? <div className="project-task-list">{group.tasks.map(renderItem)}</div> : <div className="empty-panel">오늘 예정된 할 일이 없어.</div>)}
         </section>;
       });
     };
@@ -1293,7 +1299,7 @@ export function App({
             </button>
             <button type="button" className="secondary add-only project-add-compact" aria-label="할 일 추가" onClick={()=>{setEditing(null);setModal("task");}} style={{marginLeft:"auto",flexShrink:0}}><Plus size={17}/></button>
           </div>
-          {showProjectTodo && (todo.length ? renderGroups(todo,"todo") : <div className="empty-panel">할 일이 없어.</div>)}
+          {showProjectTodo && renderGroups(todo,"todo")}
         </section>
         <section className="project-status-section">
           <h2>진행 중인 할 일 <span>({doing.length})</span></h2>
