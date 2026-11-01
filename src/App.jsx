@@ -19,6 +19,7 @@ import {
   Clock3,
   Heart,
   Blocks,
+  ClipboardCheck,
   LogOut,
 } from "lucide-react";
 import "./style.css";
@@ -30,6 +31,7 @@ import { CalendarExternal } from "./CalendarExternal.jsx";
 import { TimeLog } from "./TimeLog.jsx";
 import { MemoPanel } from "./MemoPanel.jsx";
 import { AppRegistry } from "./AppRegistry.jsx";
+import { ChecklistPanel } from "./ChecklistPanel.jsx";
 import {
   CLOCK_SOUNDS,
   clockType,
@@ -67,6 +69,7 @@ export function App({
   const data = initialData,
     setData = onDataChange;
   const [registryOpen, setRegistryOpen] = useState(false);
+  const [checklistOpen, setChecklistOpen] = useState(false);
   const [registryApps, setRegistryApps] = useState([]);
   const [registryError, setRegistryError] = useState("");
   const [appStatusFilter, setAppStatusFilter] = useState("전체");
@@ -1926,20 +1929,21 @@ export function App({
           type="button"
           className="brand"
           aria-label="Focus Flow · 오늘로 이동"
-          onClick={() => {setRegistryOpen(false);setTab("today");}}
+          onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("today");}}
           style={{ padding: 0, textAlign: "left" }}
         >
           Focus Flow
         </button>
         <div className="header-actions">
-          <button type="button" className={`header-timer ${tab === "timelog" ? "is-active" : ""}`} onClick={() => setTab("timelog")} aria-label="타임로그 열기" title="타임로그"><Clock3 size={18}/></button>
-          <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => setTab("pom")} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={18}/></button>
-          <button type="button" className={`header-timer ${registryOpen ? "is-active" : ""}`} onClick={() => setRegistryOpen(true)} aria-label="앱 관리 열기" title="앱 관리"><Blocks size={18}/></button>
+          <button type="button" className={`header-timer ${tab === "timelog" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}} aria-label="타임로그 열기" title="타임로그"><Clock3 size={18}/></button>
+          <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("pom");}} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={18}/></button>
+          <button type="button" className={`header-timer ${registryOpen ? "is-active" : ""}`} onClick={() => {setChecklistOpen(false);setRegistryOpen(true);}} aria-label="앱 관리 열기" title="앱 관리"><Blocks size={18}/></button>
+          <button type="button" className={`header-timer ${checklistOpen ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(true);}} aria-label="체크리스트 열기" title="체크리스트"><ClipboardCheck size={18}/></button>
           <button type="button" className="header-timer" onClick={onLogout} aria-label="로그아웃" title="로그아웃"><LogOut size={18}/></button>
         </div>
       </header>
       <main>
-        {registryOpen ? <AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={() => setRegistryOpen(false)} /> : tab === "today"
+        {checklistOpen ? <ChecklistPanel client={bridgeClient} userId={bridgeUserId} onClose={() => setChecklistOpen(false)} /> : registryOpen ? <AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={() => setRegistryOpen(false)} /> : tab === "today"
           ? Kanban()
           : tab === "timelog"
             ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
@@ -1953,7 +1957,7 @@ export function App({
                 ? <MemoPanel data={data} onDataChange={setData} />
                 : Projects()}
       </main>
-      {!registryOpen && <nav className="bottom-nav">
+      {!registryOpen && !checklistOpen && <nav className="bottom-nav">
         {[
           ["today", Columns3, "오늘"],
           ["projects", FolderKanban, "프로젝트"],
