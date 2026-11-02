@@ -87,8 +87,7 @@ export function TimeTable({data, onDataChange, client, userId, initialDate}){
     </div></div>;
   };
   return <section className="tt-page">
-    <header className="tt-heading"><h1>시간표</h1><div><button type="button" onClick={()=>setDate(addDays(date,-7))} aria-label="이전 주"><ChevronLeft size={18}/></button><span>{asDate(date).getFullYear()}년 {asDate(date).getMonth()+1}월</span><button type="button" onClick={()=>setDate(addDays(date,7))} aria-label="다음 주"><ChevronRight size={18}/></button></div></header>
-    <div className="tt-week" role="group" aria-label="주간 날짜 선택">{Array.from({length:7},(_,i)=>{const day=addDays(weekStart,i),d=asDate(day);return <button key={day} type="button" onClick={()=>{setDate(day);setEditing(null);setTitle('');}} className={day===date?'active':''}><small>{'일월화수목금토'[i]}</small><strong>{d.getDate()}</strong></button>;})}</div>
+    <header className="tt-heading"><h1>시간표</h1><div><button type="button" onClick={()=>setDate(addDays(date,-1))} aria-label="이전 날"><ChevronLeft size={18}/></button><span>{asDate(date).getFullYear()}년 {asDate(date).getMonth()+1}월</span><button type="button" onClick={()=>setDate(addDays(date,1))} aria-label="다음 날"><ChevronRight size={18}/></button></div></header>
     <div className="tt-selected">{Number(date.slice(5,7))}월 {Number(date.slice(8,10))}일 {'일월화수목금토'[asDate(date).getDay()]}요일</div>
     <div className="tt-subtabs" role="tablist" aria-label="시간표 종류"><button type="button" role="tab" aria-selected={mode==='plan'} className={mode==='plan'?'active':''} onClick={()=>setMode('plan')}>계획</button><button type="button" role="tab" aria-selected={mode==='actual'} className={mode==='actual'?'active':''} onClick={()=>setMode('actual')}>실제</button></div>
     {mode==='actual'&&<div className="tt-actual-hint"><span>타임로그 기록으로 자동 생성돼.</span><button type="button" onClick={()=>setLoadNonce(x=>x+1)} aria-label="타임로그 새로고침"><RefreshCw size={16}/></button>{syncError&&<p role="alert">{syncError}</p>}</div>}
