@@ -17,3 +17,16 @@
 .tt-time-part>span{display:block;text-align:center;font-size:10px;color:#92829e;font-weight:500}
 .tt-time-parts .tt-time-part select{box-sizing:border-box;width:100%;min-width:0;padding:9px 2px;margin-top:3px;font-size:14px;text-align:center;text-align-last:center}
 .tt-time-colon{align-self:end;padding-bottom:10px;color:#9382a5;font-weight:700}
+
+/* Compact add action and bounded, mobile-friendly editor dialog */
+.tt-circle-actions{display:flex;align-items:center;gap:9px;min-width:0}
+.tt-add-icon{display:grid;place-items:center;width:31px;height:31px;flex-shrink:0;border:1px solid #e2d8ee;border-radius:10px;background:#f4eefb;color:#9173be;cursor:pointer}
+.tt-modal-backdrop{position:fixed;inset:0;z-index:1200;padding:18px;display:flex;align-items:center;justify-content:center;background:rgba(39,29,53,.48)}
+.tt-modal{width:min(100%,440px);max-width:100%;max-height:calc(100dvh - 36px);overflow-y:auto;overflow-x:hidden;border-radius:20px;background:white;padding:18px;box-shadow:0 14px 45px rgba(36,27,48,.17);box-sizing:border-box}
+.tt-modal-header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:15px}
+.tt-modal-header strong{font-size:19px}
+.tt-modal-header button{border:0;background:transparent;color:#9278c0;padding:6px}
+.tt-modal .tt-editor{margin:0;padding:0;border:0;min-width:0}
+.tt-modal .tt-selects{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tt-modal input,.tt-modal select{font-size:16px!important}
+@media(max-width:360px){.tt-modal{padding:13px}.tt-modal .tt-selects{gap:5px}.tt-modal .tt-time-parts .tt-time-part select{padding:8px 0}}
