@@ -18,3 +18,19 @@
 .wp-modal-actions{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-top:18px}
 .wp-modal-actions button{border:1px solid #e5daef;border-radius:9px;padding:10px 12px;background:#f6f1fa;color:#8269b0}
 @media(max-width:460px){.wp-table{min-width:0;width:calc((100% - 54px) * 7 / 5 + 54px)}.wp-table thead th:first-child,.wp-table tbody th{width:54px}.wp-table tbody td,.wp-table tbody tr{height:150px;min-height:150px}}
+
+/* Mobile containment: page and form never widen the application viewport.
+   Only the calendar grid may scroll horizontally. */
+.wp-page{width:100%;max-width:100%;min-width:0;overflow-x:clip}
+.wp-page .wp-editor,.wp-page .wp-days,.wp-page .wp-input-row,.wp-page .wp-scroll{max-width:100%;min-width:0}
+.wp-page .wp-editor{width:100%;overflow:hidden}
+.wp-page .wp-input-row{grid-template-columns:minmax(0,105px) minmax(0,1fr)}
+.wp-page .wp-input-row input,.wp-page .wp-input-row select{min-width:0;max-width:100%;width:100%;box-sizing:border-box}
+.wp-scroll{display:block;max-width:100%;width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+/* Keep the time-label column visible while viewing Sat/Sun. */
+.wp-table{--wp-axis:54px;width:calc(var(--wp-axis) + (100% - var(--wp-axis))*7/5);min-width:0;max-width:none;table-layout:fixed}
+.wp-table thead th:first-child,.wp-table tbody th{width:var(--wp-axis);min-width:var(--wp-axis);position:sticky;left:0;z-index:2}
+.wp-table thead th:first-child{z-index:3}
+.wp-table thead th:not(:first-child){width:calc((100% - var(--wp-axis))/7)}
+.wp-table td{min-width:0;max-width:0;overflow-wrap:anywhere;word-break:break-word}
+@media(max-width:360px){.wp-table{--wp-axis:48px}.wp-page .wp-input-row{grid-template-columns:minmax(0,96px) minmax(0,1fr)}}
