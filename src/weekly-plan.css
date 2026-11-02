@@ -34,3 +34,14 @@
 .wp-table thead th:not(:first-child){width:calc((100% - var(--wp-axis))/7)}
 .wp-table td{min-width:0;max-width:0;overflow-wrap:anywhere;word-break:break-word}
 @media(max-width:360px){.wp-table{--wp-axis:48px}.wp-page .wp-input-row{grid-template-columns:minmax(0,96px) minmax(0,1fr)}}
+
+/* Inline activity input appears directly in the chosen weekly cell. */
+.wp-cell{position:relative;cursor:text}
+.wp-inline-editor{display:flex;flex-direction:column;gap:5px;width:100%;min-width:0;margin:2px 0 6px}
+.wp-inline-editor input{display:block;width:100%;min-width:0;max-width:100%;border:1px solid #ae96d3;border-radius:6px;background:#fff;padding:5px 3px;font-size:11px;color:#393343;box-sizing:border-box}
+.wp-inline-actions{display:flex;gap:3px;flex-wrap:wrap}
+.wp-inline-actions button{border:0;border-radius:6px;background:#a18bd1;color:white;font-size:10px;padding:4px 5px}
+.wp-inline-actions button[type=button]{background:#f1ecf8;color:#75628e}
+.wp-inline-actions button:disabled{opacity:.5}
+.wp-cell-add{display:block;width:100%;height:28px;margin-top:3px;background:transparent;border:0;color:#b19fcd;font-size:17px;text-align:center;opacity:.55;cursor:pointer}
+.wp-cell-add:focus-visible,.wp-cell-add:hover{opacity:1;background:#f3eff8;border-radius:6px}
