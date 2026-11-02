@@ -1939,7 +1939,7 @@ export function App({
           Focus Flow
         </button>
         <div className="header-actions">
-          <button type="button" className={`header-timer ${tab === "timelog" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}} aria-label="타임로그 열기" title="타임로그"><span style={{fontSize:19,fontWeight:850,lineHeight:1,fontFamily:"Arial, sans-serif"}}>T</span></button>
+          <button type="button" className={`header-timer ${tab === "projects" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("projects");}} aria-label="프로젝트 열기" title="프로젝트"><FolderKanban size={18}/></button>
           <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("pom");}} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={18}/></button>
           <button type="button" className={`header-timer ${tab === "calendar" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("calendar");}} aria-label="일정 열기" title="일정"><CalendarDays size={18}/></button>
 
@@ -1968,7 +1968,7 @@ export function App({
       {!registryOpen && !checklistOpen && <nav className="bottom-nav">
         {[
           ["today", Columns3, "오늘"],
-          ["projects", FolderKanban, "프로젝트"],
+          ["timelog", Clock3, "타임로그"],
           ["timeblocks", Clock3, "타임블록"],
           ["weekly", CalendarRange, "위클리"],
           ["memos", Heart, "메모"],
