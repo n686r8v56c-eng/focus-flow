@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {ChevronLeft, ChevronRight, Plus, Pencil, Trash2, RefreshCw} from 'lucide-react';
+import {ChevronLeft, ChevronRight, Plus, Pencil, Trash2, RefreshCw, X} from 'lucide-react';
 import './timetable.css';
 
 const pad = n => String(n).padStart(2,'0');
@@ -32,6 +32,7 @@ export function TimeTable({data, onDataChange, client, userId, initialDate}){
   const [end,setEnd]=useState('09:00');
   const [title,setTitle]=useState('');
   const [editing,setEditing]=useState(null);
+  const [editorOpen,setEditorOpen]=useState(false);
   const [error,setError]=useState('');
   const [server,setServer]=useState({entries:[],active:null});
   const [syncError,setSyncError]=useState('');
@@ -66,9 +67,9 @@ export function TimeTable({data, onDataChange, client, userId, initialDate}){
     const conflicts=segments.some(b=>b.id!==editing&&b.start<t&&s<b.end);
     if(conflicts&&!window.confirm('기존 계획과 시간이 겹쳐. 그래도 추가할까?'))return;
     onDataChange(d=>({...d,timeBlocks:[...(d.timeBlocks||[]).filter(b=>b.id!==editing),{id:editing||freshId(),date,mode:'plan',start:s/60,end:t/60,title:name}]}));
-    setEditing(null);setTitle('');setError('');
+    setEditing(null);setTitle('');setError('');setEditorOpen(false);
   };
-  const edit = b=>{setEditing(b.id);setStart(labelTime(Math.round(b.start/5)*5));setEnd(labelTime(Math.round(b.end/5)*5));setTitle(b.title);setError('');};
+  const edit = b=>{setEditing(b.id);setStart(labelTime(Math.round(b.start/5)*5));setEnd(labelTime(Math.round(b.end/5)*5));setTitle(b.title);setError('');setEditorOpen(true);};
   const remove = id=>{if(!window.confirm('이 계획 블록을 삭제할까?'))return;onDataChange(d=>({...d,timeBlocks:(d.timeBlocks||[]).filter(b=>b.id!==id)}));if(editing===id){setEditing(null);setTitle('');}};
   const changeTimePart = (which,part,value) => {
     const current = which==='start' ? start : end;
@@ -90,13 +91,16 @@ export function TimeTable({data, onDataChange, client, userId, initialDate}){
     <div className="tt-week" role="group" aria-label="주간 날짜 선택">{Array.from({length:7},(_,i)=>{const day=addDays(weekStart,i),d=asDate(day);return <button key={day} type="button" onClick={()=>{setDate(day);setEditing(null);setTitle('');}} className={day===date?'active':''}><small>{'일월화수목금토'[i]}</small><strong>{d.getDate()}</strong></button>;})}</div>
     <div className="tt-selected">{Number(date.slice(5,7))}월 {Number(date.slice(8,10))}일 {'일월화수목금토'[asDate(date).getDay()]}요일</div>
     <div className="tt-subtabs" role="tablist" aria-label="시간표 종류"><button type="button" role="tab" aria-selected={mode==='plan'} className={mode==='plan'?'active':''} onClick={()=>setMode('plan')}>계획</button><button type="button" role="tab" aria-selected={mode==='actual'} className={mode==='actual'?'active':''} onClick={()=>setMode('actual')}>실제</button></div>
-    {mode==='plan'?<form className="tt-editor" onSubmit={save}>
-      <div className="tt-selects">{timeField('start','시작',start)}{timeField('end','종료',end)}</div>
-      <div className="tt-addrow"><input aria-label="활동 이름" maxLength={120} placeholder="예: 식사, 공부, 앱 개발" value={title} onChange={e=>setTitle(e.target.value)}/><button type="submit"><Plus size={17}/>{editing?'저장':'추가'}</button></div>
-      {editing&&<button type="button" className="tt-cancel" onClick={()=>{setEditing(null);setTitle('');}}>수정 취소</button>}
-      {error&&<p role="alert" className="tt-error">{error}</p>}
-    </form>:<div className="tt-actual-hint"><span>타임로그 기록으로 자동 생성돼.</span><button type="button" onClick={()=>setLoadNonce(x=>x+1)} aria-label="타임로그 새로고침"><RefreshCw size={16}/></button>{syncError&&<p role="alert">{syncError}</p>}</div>}
-    <div className="tt-circle-title"><strong>{mode==='plan'?'계획':'실제'} · 24시간</strong><span>{segments.length}개 기록</span></div>
+    {mode==='actual'&&<div className="tt-actual-hint"><span>타임로그 기록으로 자동 생성돼.</span><button type="button" onClick={()=>setLoadNonce(x=>x+1)} aria-label="타임로그 새로고침"><RefreshCw size={16}/></button>{syncError&&<p role="alert">{syncError}</p>}</div>}
+    <div className="tt-circle-title"><strong>{mode==='plan'?'계획':'실제'} · 24시간</strong><div className="tt-circle-actions"><span>{segments.length}개 기록</span>{mode==='plan'&&<button type="button" className="tt-add-icon" aria-label="계획 추가" title="계획 추가" onClick={()=>{setEditing(null);setTitle('');setError('');setEditorOpen(true);}}><Plus size={18}/></button>}</div></div>
+    {editorOpen&&mode==='plan'&&<div className="tt-modal-backdrop" onClick={()=>setEditorOpen(false)}><div className="tt-modal" role="dialog" aria-modal="true" aria-label={editing?'계획 수정':'계획 추가'} onClick={e=>e.stopPropagation()}>
+      <div className="tt-modal-header"><strong>{editing?'계획 수정':'계획 추가'}</strong><button type="button" onClick={()=>setEditorOpen(false)} aria-label="닫기"><X size={20}/></button></div>
+      <form className="tt-editor" onSubmit={save}>
+        <div className="tt-selects">{timeField('start','시작',start)}{timeField('end','종료',end)}</div>
+        <div className="tt-addrow"><input aria-label="활동 이름" maxLength={120} placeholder="예: 식사, 공부, 앱 개발" value={title} onChange={e=>setTitle(e.target.value)}/><button type="submit"><Plus size={17}/>{editing?'저장':'추가'}</button></div>
+        {error&&<p role="alert" className="tt-error">{error}</p>}
+      </form>
+    </div></div>}
     <ClockChart segments={segments} date={date} mode={mode}/>
     <div className="tt-list">{segments.map(b=><div key={b.id} className="tt-entry"><span className="tt-dot" style={{background:colorFor(b.title)}}/><span className="tt-clock">{timeTitle(b)}</span><span className="tt-name">{b.title}</span>{mode==='plan'&&<><button type="button" onClick={()=>edit(b)} aria-label={`${b.title} 수정`}><Pencil size={15}/></button><button type="button" onClick={()=>remove(b.id)} aria-label={`${b.title} 삭제`}><Trash2 size={15}/></button></>}</div>)}{!segments.length&&<div className="tt-empty">{mode==='plan'?'등록된 계획이 없어.':'이날의 타임로그 기록이 없어.'}</div>}</div>
     {mode==='actual'&&<p className="tt-footnote">실제 기록 수정은 상단 타임로그의 기록 편집 기능에서 할 수 있어.</p>}
