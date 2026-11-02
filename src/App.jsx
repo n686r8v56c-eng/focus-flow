@@ -1943,6 +1943,7 @@ export function App({
           <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("pom");}} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={18}/></button>
           <button type="button" className={`header-timer ${tab === "calendar" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("calendar");}} aria-label="일정 열기" title="일정"><CalendarDays size={18}/></button>
 
+          <button type="button" className={`header-timer ${registryOpen ? "is-active" : ""}`} onClick={() => {setChecklistOpen(false);setRegistryOpen(true);}} aria-label="앱 관리 열기" title="앱 관리"><Blocks size={18}/></button>
           <button type="button" className={`header-timer ${checklistOpen ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(true);}} aria-label="체크리스트 열기" title="체크리스트"><ClipboardCheck size={18}/></button>
           <button type="button" className="header-timer" onClick={onLogout} aria-label="로그아웃" title="로그아웃"><LogOut size={18}/></button>
         </div>
