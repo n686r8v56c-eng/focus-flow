@@ -4,6 +4,7 @@ import './weekly-plan.css';
 
 const DAYS=['월','화','수','목','금','토','일'];
 const SLOTS=['오전 1','오전 2','오전 3','오후 1','오후 2','오후 3','저녁 1','저녁 2'];
+const SLOT_HOURS = Object.fromEntries(SLOTS.map((name,index) => { const start=6+index*2; const end=start+2; return [name, `${String(start).padStart(2,'0')}:00–${String(end).padStart(2,'0')}:00`]; }));
 const pad=n=>String(n).padStart(2,'0');
 const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const fromKey=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
@@ -41,6 +42,8 @@ export function WeeklyPlan({data,onDataChange}) {
   const saveQuickCell=ev=>{
     ev.preventDefault();ev.stopPropagation();
     const title=quickDraft.trim();if(!title||!quickCell)return;
+    // Release focused input before removing the inline editor (iOS Safari zoom guard).
+    if (ev.currentTarget?.elements?.[0]?.blur) ev.currentTarget.elements[0].blur();
     persist(items=>[...items,{id:uid(),date:quickCell.date,slot:quickCell.slot,title,createdAt:new Date().toISOString()}]);
     setQuickCell(null);setQuickDraft('');
   };
@@ -58,7 +61,7 @@ export function WeeklyPlan({data,onDataChange}) {
       <button className="wp-save" type="submit" disabled={!draft.trim()}>{editing?'수정 저장':'계획 추가'}</button>
     </form>
     <div className="wp-table-title"><strong>주간 계획표</strong><span>{visible.length}개 계획</span></div>
-    <div className="wp-scroll" aria-label="좌우로 스크롤하여 주말 보기"><table className="wp-table"><thead><tr><th scope="col">시간대</th>{dates.map((d,i)=><th key={d} scope="col">{DAYS[i]}<span>{formatShort(d)}</span></th>)}</tr></thead><tbody>{SLOTS.map(s=><tr key={s}><th scope="row">{s}</th>{dates.map(d=>{const cell=visible.filter(e=>e.date===d&&e.slot===s);return <td key={d} className="wp-cell" onClick={event=>{if(event.target===event.currentTarget)openQuickCell(d,s);}} title="빈 공간을 탭해서 활동 입력">
+    <div className="wp-scroll" aria-label="좌우로 스크롤하여 주말 보기"><table className="wp-table"><thead><tr><th scope="col">시간대</th>{dates.map((d,i)=><th key={d} scope="col">{DAYS[i]}<span>{formatShort(d)}</span></th>)}</tr></thead><tbody>{SLOTS.map(s=><tr key={s}><th scope="row"><span className="wp-slot-name">{s}</span><span className="wp-slot-hours">{SLOT_HOURS[s]}</span></th>{dates.map(d=>{const cell=visible.filter(e=>e.date===d&&e.slot===s);return <td key={d} className="wp-cell" onClick={event=>{if(event.target===event.currentTarget)openQuickCell(d,s);}} title="빈 공간을 탭해서 활동 입력">
       {quickCell?.date===d&&quickCell?.slot===s&&<form className="wp-inline-editor" onSubmit={saveQuickCell} onClick={ev=>ev.stopPropagation()}>
         <input autoFocus type="text" value={quickDraft} onChange={ev=>setQuickDraft(ev.target.value)} maxLength={300} placeholder="활동 입력" aria-label={`${formatShort(d)} ${s} 활동 입력`}/>
         <div className="wp-inline-actions"><button type="submit" disabled={!quickDraft.trim()}>추가</button><button type="button" onClick={()=>setQuickCell(null)}>취소</button></div>
