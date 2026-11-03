@@ -71,3 +71,64 @@
 .timeblock-page .timeblock-hour{min-height:43px}
 .timeblock-page .timeblock-content{padding:5px 12px;margin:2px 6px 2px 0;line-height:1.3;min-height:35px;box-sizing:border-box}
 .timeblock-page .timeblock-hourlabel{font-size:13px}
+
+
+/* Phone text minimums; existing larger type remains unchanged. */
+@media (max-width: 749px) {
+    .timeblock-date {
+        font-size: 17px !important
+    }
+    .timeblock-help {
+        font-size: 16px !important
+    }
+    .timeblock-hourlabel {
+        font-size: 16px !important
+    }
+    .timeblock-content {
+        font-size: 16px !important
+    }
+    .timeblock-selection {
+        font-size: 16px !important
+    }
+    .timeblock-dialog h3 {
+        font-size: 18px !important
+    }
+    .timeblock-dialog input {
+        font-size: 16px !important
+    }
+    .timeblock-switch button {
+        font-size: 15px !important
+    }
+    .timeblock-allocation {
+        font-size: 16px !important
+    }
+    .timeblock-sleep-help {
+        font-size: 16px !important
+    }
+    .timeblock-sleep-inputs label {
+        font-size: 16px !important
+    }
+    .timeblock-page>h1 {
+        font-size: 26px !important
+    }
+    .timeblock-week-navigation {
+        font-size: 16px !important
+    }
+    .timeblock-weekday {
+        font-size: 15px !important
+    }
+    .timeblock-weekday-number {
+        font-size: 17px !important
+    }
+    .timeblock-selected-date {
+        font-size: 17px !important
+    }
+    @media (max-width:370px) {
+        .timeblock-weekday-number {
+            font-size: 16px !important
+        }
+    }
+    .timeblock-page .timeblock-hourlabel {
+        font-size: 16px !important
+    }
+}

@@ -5,3 +5,101 @@ header .header-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}hea
 /* Compact header controls */
 header .header-actions .header-timer{width:30px;height:30px;padding:5px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%}
 @media(max-width:390px){header .header-actions{gap:3px}header .brand{font-size:clamp(15px,4.3vw,19px)}}
+
+
+/* Phone text minimums; existing larger type remains unchanged. */
+@media (max-width: 749px) {
+    .ar-heading h1 {
+        font-size: clamp(25px,5vw,33px) !important
+    }
+    .ar-tabs button {
+        font-size: 15px !important
+    }
+    .ar-filters button {
+        font-size: 15px !important
+    }
+    .ar-filters button {
+        font-size: max(15px, clamp(11px,2.9vw,14px)) !important
+    }
+    .ar-list-head h2 {
+        font-size: 21px !important
+    }
+    .ar-editor h2 {
+        font-size: 21px !important
+    }
+    .ar-import h2 {
+        font-size: 21px !important
+    }
+    .ar-add {
+        font-size: 15px !important
+    }
+    .ar-primary {
+        font-size: 15px !important
+    }
+    .ar-list-row {
+        font-size: 15px !important
+    }
+    .ar-list-row>small {
+        font-size: 15px !important
+    }
+    .ar-tools button {
+        font-size: 16px !important
+    }
+    .ar-back {
+        font-size: 16px !important
+    }
+    .ar-label {
+        font-size: 16px !important
+    }
+    .ar-label input {
+        font-size: 16px !important
+    }
+    .ar-label select {
+        font-size: 16px !important
+    }
+    .ar-label textarea {
+        font-size: 16px !important
+    }
+    .ar-import-item select {
+        font-size: 16px !important
+    }
+    .ar-detail h2 {
+        font-size: 22px !important
+    }
+    .ar-detail h3 {
+        font-size: 16px !important
+    }
+    .ar-info {
+        font-size: 16px !important
+    }
+    .ar-muted {
+        font-size: 16px !important
+    }
+    .ar-alert {
+        font-size: 16px !important
+    }
+    .ar-notice {
+        font-size: 16px !important
+    }
+    .ar-import-item label {
+        font-size: 16px !important
+    }
+    .ar-import-item select {
+        font-size: 16px !important
+    }
+    @media (max-width:430px) {
+        header .brand {
+            font-size: clamp(15px,4.5vw,21px) !important
+        }
+    }
+    @media (max-width:430px) {
+        header .brand-mark {
+            font-size: 22px !important
+        }
+    }
+    @media (max-width:390px) {
+        header .brand {
+            font-size: clamp(15px,4.3vw,19px) !important
+        }
+    }
+}

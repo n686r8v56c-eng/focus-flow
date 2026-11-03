@@ -66,3 +66,93 @@
 .timelog-daily-block-heading strong{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:12px}
 .timelog-daily-block-heading span{flex:0 0 auto;font-size:10px;font-weight:500;color:#6c6078;font-variant-numeric:tabular-nums}
 @media(max-width:380px){.timelog-daily-block-heading{gap:5px}.timelog-daily-block-heading strong{font-size:11px}.timelog-daily-block-heading span{font-size:9px}}
+
+
+/* Phone text minimums; existing larger type remains unchanged. */
+@media (max-width: 749px) {
+    .timelog-page h1 {
+        font-size: 30px !important
+    }
+    .timelog-page h2 {
+        font-size: 17px !important
+    }
+    .timelog-clock {
+        font-size: clamp(38px,9vw,65px) !important
+    }
+    .timelog-counter p {
+        font-size: 16px !important
+    }
+    .timelog-kpis strong {
+        font-size: 20px !important
+    }
+    .timelog-stat>div:first-child {
+        font-size: 16px !important
+    }
+    .timelog-bars small {
+        font-size: 13px !important
+    }
+    .timelog-weekday {
+        font-size: 15px !important
+    }
+    .timelog-empty {
+        font-size: 16px !important
+    }
+    .timelog-entry small {
+        font-size: 15px !important
+    }
+    .timelog-entry strong {
+        font-size: 16px !important
+    }
+    .timelog-page .timelog-add input {
+        font-size: 16px !important
+    }
+    .timelog-page .timelog-clock {
+        font-size: clamp(30px, 8.5vw, 65px) !important
+    }
+    .timelog-daily-week button small {
+        font-size: 14px !important
+    }
+    .timelog-daily-selected {
+        font-size: 16px !important
+    }
+    .timelog-daily-total {
+        font-size: 16px !important
+    }
+    .timelog-daily-total span {
+        font-size: 14px !important
+    }
+    .timelog-daily-hour span {
+        font-size: 15px !important
+    }
+    .timelog-daily-block-content {
+        font-size: 15px !important
+    }
+    .timelog-daily-block-content small {
+        font-size: 13px !important
+    }
+    .timelog-daily-periods button {
+        font-size: 15px !important
+    }
+    .timelog-daily-block-content {
+        font-size: 15px !important
+    }
+    .timelog-daily-block-content small {
+        font-size: 13px !important
+    }
+    .timelog-daily-block-heading strong {
+        font-size: 15px !important
+    }
+    .timelog-daily-block-heading span {
+        font-size: 13px !important
+    }
+    @media (max-width:380px) {
+        .timelog-daily-block-heading strong {
+            font-size: 14px !important
+        }
+    }
+    @media (max-width:380px) {
+        .timelog-daily-block-heading span {
+            font-size: 13px !important
+        }
+    }
+}

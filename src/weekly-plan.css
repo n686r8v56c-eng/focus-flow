@@ -71,3 +71,117 @@
 .wp-inline-editor,.wp-inline-editor input,.wp-inline-actions {max-width:100%;min-width:0}
 .wp-inline-actions button{min-width:0}
 .wp-entry,.wp-entry-text {max-width:100%;min-width:0;overflow-wrap:anywhere;word-break:break-word}
+
+
+/* Phone text minimums; existing larger type remains unchanged. */
+@media (max-width: 749px) {
+    .wp-title h1 {
+        font-size: 27px !important
+    }
+    .wp-days button small {
+        font-size: 14px !important
+    }
+    .wp-days button b {
+        font-size: 16px !important
+    }
+    .wp-input-row label span {
+        font-size: 15px !important
+    }
+    .wp-input-row input {
+        font-size: 16px !important
+    }
+    .wp-input-row select {
+        font-size: 16px !important
+    }
+    .wp-save {
+        font-size: 16px !important
+    }
+    .wp-error {
+        font-size: 15px !important
+    }
+    .wp-table-title span {
+        font-size: 15px !important
+    }
+    .wp-table thead th {
+        font-size: 15px !important
+    }
+    .wp-table thead span {
+        font-size: 13px !important
+    }
+    .wp-table tbody th {
+        font-size: 14px !important
+    }
+    .wp-table td {
+        font-size: 14px !important
+    }
+    .wp-entry-text {
+        font-size: 14px !important
+    }
+    .wp-hint {
+        font-size: 15px !important
+    }
+    @media (max-width:460px) {
+        .wp-table thead th {
+            font-size: 14px !important
+        }
+    }
+    @media (max-width:460px) {
+        .wp-table tbody th {
+            font-size: 13px !important
+        }
+    }
+    @media (max-width:460px) {
+        .wp-entry-text {
+            font-size: 13px !important
+        }
+    }
+    .bottom-nav-six button {
+        font-size: 13px !important
+    }
+    .bottom-nav-six button span {
+        font-size: 13px !important
+    }
+    @media (max-width:360px) {
+        .bottom-nav-six button span {
+            font-size: 13px !important
+        }
+    }
+    .wp-entry-text {
+        font-size: 14px !important
+    }
+    .wp-inline-editor input {
+        font-size: 16px !important
+    }
+    .wp-inline-actions button {
+        font-size: 13px !important
+    }
+    .wp-cell-add {
+        font-size: 17px !important
+    }
+    .wp-slot-hours {
+        font-size: 13px !important
+    }
+    @media (max-width:460px) {
+        .wp-slot-hours {
+            font-size: 13px !important
+        }
+    }
+    .wp-page input {
+        font-size: 16px !important
+    }
+    .wp-page select {
+        font-size: 16px !important
+    }
+    .wp-page textarea {
+        font-size: 16px !important
+    }
+    .wp-page .wp-input-row input {
+        font-size: 16px !important
+    }
+    .wp-page .wp-input-row select {
+        font-size: 16px !important
+    }
+    .wp-page .wp-inline-editor input {
+        font-size: 16px !important
+    }
+}

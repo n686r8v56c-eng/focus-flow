@@ -1474,3 +1474,307 @@ body,
 .project-status-button.status-doing { background: #a58fc6; }
 .project-status-button.status-done { background: #a58fc6; color: white; }
 .project-status-section .project-task-list { margin: 0; }
+
+
+/* Phone text minimums; existing larger type remains unchanged. */
+@media (max-width: 749px) {
+    body {
+        font-size: 16px !important
+    }
+    .brand {
+        font-size: 21px !important
+    }
+    .brand-mark {
+        font-size: 28px !important
+    }
+    .header-pill {
+        font-size: 14px !important
+    }
+    h1 {
+        font-size: 27px !important
+    }
+    h2 {
+        font-size: 17px !important
+    }
+    .eyebrow {
+        font-size: 15px !important
+    }
+    .primary.small {
+        font-size: 16px !important
+    }
+    .metrics span {
+        font-size: 15px !important
+    }
+    .metrics b {
+        font-size: 16px !important
+    }
+    .lane-head {
+        font-size: 15px !important
+    }
+    .lane-head small {
+        font-size: 14px !important
+    }
+    .task-project {
+        font-size: 13px !important
+    }
+    .carry {
+        font-size: 13px !important
+    }
+    .task-title {
+        font-size: 15px !important
+    }
+    .task-foot {
+        font-size: 13px !important
+    }
+    .empty-lane {
+        font-size: 13px !important
+    }
+    .hint {
+        font-size: 14px !important
+    }
+    .bottom-nav button {
+        font-size: 13px !important
+    }
+    .views button {
+        font-size: 15px !important
+    }
+    .calendar-nav strong {
+        font-size: 16px !important
+    }
+    .calendar-nav .today-btn {
+        font-size: 14px !important
+    }
+    .weekday > div {
+        font-size: 14px !important
+    }
+    .day-cell {
+        font-size: 14px !important
+    }
+    .tiny-tag {
+        font-size: 13px !important
+    }
+    .task-card.compact .task-title {
+        font-size: 16px !important
+    }
+    .empty-day {
+        font-size: 15px !important
+    }
+    .legend span {
+        font-size: 14px !important
+    }
+    .project-chips button {
+        font-size: 15px !important
+    }
+    .project-summary p {
+        font-size: 15px !important
+    }
+    .secondary {
+        font-size: 15px !important
+    }
+    .list-middle strong {
+        font-size: 16px !important
+    }
+    .list-middle small {
+        font-size: 14px !important
+    }
+    .pom-panel .label {
+        font-size: 15px !important
+    }
+    .mode-switch button {
+        font-size: 15px !important
+    }
+    .timer-mode {
+        font-size: 13px !important
+    }
+    .timer-digits {
+        font-size: 54px !important
+    }
+    .timer-round {
+        font-size: 14px !important
+    }
+    .timer-actions .start {
+        font-size: 16px !important
+    }
+    .session-summary b {
+        font-size: 24px !important
+    }
+    .session-summary p {
+        font-size: 15px !important
+    }
+    .sheet label {
+        font-size: 15px !important
+    }
+    .subtask-title {
+        font-size: 16px !important
+    }
+    .subtask span {
+        font-size: 16px !important
+    }
+    .danger {
+        font-size: 15px !important
+    }
+    .toast {
+        font-size: 15px !important
+    }
+    @media (min-width: 700px) {
+        .task-title {
+            font-size: 16px !important
+        }
+    }
+    @media (min-width: 700px) {
+        .task-project {
+            font-size: 14px !important
+        }
+    }
+    @media (min-width: 700px) {
+        .task-foot {
+            font-size: 14px !important
+        }
+    }
+    @media (max-width: 350px) {
+        .task-title {
+            font-size: 14px !important
+        }
+    }
+    @media (max-width: 350px) {
+        .task-foot {
+            font-size: 13px !important
+        }
+    }
+    .tick-option {
+        font-size: 16px !important
+    }
+    .tick-option small {
+        font-size: 13px !important
+    }
+    .auth-star {
+        font-size: 40px !important
+    }
+    .auth-card > p {
+        font-size: 16px !important
+    }
+    .auth-card label {
+        font-size: 16px !important
+    }
+    .auth-error {
+        font-size: 15px !important
+    }
+    .auth-card p.auth-error {
+        font-size: 15px !important
+    }
+    .sync-warning {
+        font-size: 15px !important
+    }
+    .task-card .task-title {
+        font-size: 16px !important
+    }
+    .task-card .task-foot {
+        font-size: 14px !important
+    }
+    .empty-lane {
+        font-size: 14px !important
+    }
+    .sheet input {
+        font-size: 16px !important
+    }
+    .sheet select {
+        font-size: 16px !important
+    }
+    .project-select-label {
+        font-size: 15px !important
+    }
+    .inline-subtask {
+        font-size: 15px !important
+    }
+    .selected-day-agenda p {
+        font-size: 15px !important
+    }
+    @media (max-width: 390px) {
+        .sheet .field-row input {
+            font-size: 16px !important
+        }
+    }
+    .card-subtasks label {
+        font-size: 15px !important
+    }
+    .pom-subnav button {
+        font-size: 16px !important
+    }
+    .stop-btn {
+        font-size: 15px !important
+    }
+    .stat-card h2 {
+        font-size: 16px !important
+    }
+    .stat-metrics b {
+        font-size: 27px !important
+    }
+    .stat-metrics small {
+        font-size: 13px !important
+    }
+    .stat-title small {
+        font-size: 14px !important
+    }
+    .stat-sub {
+        font-size: 14px !important
+    }
+    .stat-hour span {
+        font-size: 13px !important
+    }
+    .goal-button {
+        font-size: 14px !important
+    }
+    .stat-month-nav button {
+        font-size: 24px !important
+    }
+    .stat-month-nav strong {
+        font-size: 15px !important
+    }
+    .stat-calendar b {
+        font-size: 13px !important
+    }
+    .stat-calendar > div {
+        font-size: 15px !important
+    }
+    .stat-calendar span {
+        font-size: 13px !important
+    }
+    .stat-switch button {
+        font-size: 14px !important
+    }
+    .stat-col small {
+        font-size: 13px !important
+    }
+    .tick-type-row label {
+        font-size: 14px !important
+    }
+    .tick-type-row select {
+        font-size: 16px !important
+    }
+    .tick-type-row button {
+        font-size: 14px !important
+    }
+    .bottom-nav button {
+        font-size: 13px !important
+    }
+    @media (max-width: 380px) {
+        .bottom-nav button {
+            font-size: 13px !important
+        }
+    }
+    .month-grid.days .day-cell .calendar-extra-count {
+        font-size: 13px !important
+    }
+    .time-label-row button {
+        font-size: 16px !important
+    }
+    .project-status-section > h2 {
+        font-size: 18px !important
+    }
+    .project-status-section > h2 span {
+        font-size: 16px !important
+    }
+    .project-week-heading {
+        font-size: 16px !important
+    }
+}

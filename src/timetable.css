@@ -30,3 +30,87 @@
 .tt-modal .tt-selects{grid-template-columns:repeat(2,minmax(0,1fr))}
 .tt-modal input,.tt-modal select{font-size:16px!important}
 @media(max-width:360px){.tt-modal{padding:13px}.tt-modal .tt-selects{gap:5px}.tt-modal .tt-time-parts .tt-time-part select{padding:8px 0}}
+
+
+/* Phone text minimums; existing larger type remains unchanged. */
+@media (max-width: 749px) {
+    .tt-heading h1 {
+        font-size: 26px !important
+    }
+    .tt-heading>div {
+        font-size: 16px !important
+    }
+    .tt-week small {
+        font-size: 14px !important
+    }
+    .tt-week strong {
+        font-size: 15px !important
+    }
+    .tt-selected {
+        font-size: 16px !important
+    }
+    .tt-subtabs button {
+        font-size: 16px !important
+    }
+    .tt-selects label {
+        font-size: 15px !important
+    }
+    .tt-selects select {
+        font-size: 16px !important
+    }
+    .tt-addrow input {
+        font-size: 16px !important
+    }
+    .tt-addrow button {
+        font-size: 16px !important
+    }
+    .tt-error {
+        font-size: 15px !important
+    }
+    .tt-actual-hint {
+        font-size: 16px !important
+    }
+    .tt-circle-title strong {
+        font-size: 15px !important
+    }
+    .tt-circle-title span {
+        font-size: 15px !important
+    }
+    .tt-entry {
+        font-size: 16px !important
+    }
+    .tt-empty {
+        font-size: 16px !important
+    }
+    .tt-footnote {
+        font-size: 14px !important
+    }
+    @media (max-width:350px) {
+        .tt-entry {
+            font-size: 14px !important
+        }
+    }
+    @media (max-width:350px) {
+        .tt-heading h1 {
+            font-size: 23px !important
+        }
+    }
+    .tt-time-label {
+        font-size: 15px !important
+    }
+    .tt-time-part>span {
+        font-size: 13px !important
+    }
+    .tt-time-parts .tt-time-part select {
+        font-size: 16px !important
+    }
+    .tt-modal-header strong {
+        font-size: 19px !important
+    }
+    .tt-modal input {
+        font-size: 16px !important
+    }
+    .tt-modal select {
+        font-size: 16px !important
+    }
+}

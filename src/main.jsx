@@ -171,3 +171,5 @@ function AuthGate() {
 }
 if (document.getElementById("root"))
   createRoot(document.getElementById("root")).render(<AuthGate />);
+
+import './mobile-readability.css';

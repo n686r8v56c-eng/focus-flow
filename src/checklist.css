@@ -1,1 +1,53 @@
 .cl-page{padding:12px 0 110px;max-width:760px;margin:0 auto;color:#393343;font-family:inherit}.cl-page *{box-sizing:border-box}.cl-header{display:flex;align-items:center;gap:12px;margin:12px 0 24px}.cl-header h1{font-size:27px;margin:0;flex:1;font-weight:800}.cl-back,.cl-actions button,.cl-small{display:inline-grid;place-items:center;border:1px solid #e5daef;background:#fff;color:#9276c4;border-radius:12px;cursor:pointer}.cl-back{width:39px;height:39px}.cl-new,.cl-primary{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:0;background:#9c85cd;color:#fff;font-weight:750;border-radius:13px;padding:11px 15px;cursor:pointer}.cl-primary:disabled,.cl-new:disabled{opacity:.55}.cl-helper{color:#8d809a;font-size:13px;line-height:1.6;margin:0 0 16px}.cl-list{border:1px solid #e7dfee;border-radius:17px;overflow:hidden}.cl-list-row{width:100%;border:0;border-bottom:1px solid #eee9f2;background:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;color:#403848;text-align:left}.cl-list-row:last-child{border-bottom:0}.cl-list-row strong{display:block;font-weight:700;font-size:15px}.cl-list-row small{display:block;color:#9a8ba9;margin-top:5px;font-size:12px}.cl-empty{padding:25px 15px;text-align:center;color:#9487a1}.cl-card{border:1px solid #e7dfee;background:#fff;border-radius:18px;padding:14px;margin:12px 0}.cl-card h2{font-size:19px;margin:0 0 12px}.cl-import,.cl-editor textarea{width:100%;max-width:100%;font:inherit;line-height:1.6;border:1px solid #e0d5eb;border-radius:12px;padding:12px;font-size:14px;resize:vertical;overflow-wrap:anywhere;min-width:0}.cl-card>.cl-primary{width:100%;margin-top:13px}.cl-detail-head{display:flex;align-items:flex-start;gap:8px;justify-content:space-between}.cl-detail-head h2{font-size:20px;margin:0 0 6px;overflow-wrap:anywhere}.cl-muted{color:#988aa7;font-size:12px;margin:0;white-space:nowrap}.cl-actions{display:flex;gap:5px;flex-shrink:0}.cl-actions button{height:35px;width:35px}.cl-small{height:29px;width:27px;flex-shrink:0;border-color:transparent}.cl-group-head{display:flex;gap:6px;align-items:center}.cl-group-toggle{display:flex;gap:7px;align-items:center;border:0;background:transparent;color:inherit;text-align:left;min-width:0;flex:1;padding:5px 0;font-size:15px;cursor:pointer}.cl-group-toggle strong{overflow-wrap:anywhere}.cl-items{border-top:1px solid #f0eaf4;margin-top:10px;padding-top:6px}.cl-item{display:flex;align-items:center;gap:3px;padding:8px 0;min-height:39px}.cl-item label{display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0;font-size:14px;line-height:1.5;cursor:pointer}.cl-item input{appearance:auto;accent-color:#a48bd2;width:18px;height:18px;flex-shrink:0;margin:1px 0 0}.cl-item label span{overflow-wrap:anywhere}.cl-item .cl-done{color:#ada4b5;text-decoration:line-through}.cl-add{display:flex;align-items:center;gap:5px;border:0;background:transparent;color:#8b6dbf;padding:10px 0 2px;cursor:pointer;font-weight:650;font-size:13px}.cl-bottom-add{margin-top:15px}.cl-error,.cl-message{padding:11px 13px;border-radius:12px;font-size:13px;overflow-wrap:anywhere}.cl-error{background:#fff0f2;color:#b44766}.cl-message{background:#f0ebf8;color:#7755ac}.cl-editor-backdrop{position:fixed;inset:0;background:#30294375;z-index:1000;display:flex;justify-content:center;align-items:flex-end;padding:14px}.cl-editor{background:#fff;border-radius:20px;padding:18px;width:100%;max-width:450px;max-height:75dvh;overflow:auto}.cl-editor h3{margin:0 0 12px}.cl-editor-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:12px}.cl-editor-actions button:not(.cl-primary){background:#f0ebf5;border:0;border-radius:12px;padding:10px 15px;color:#6d597d}.cl-page button,.cl-page textarea{touch-action:manipulation}@media(min-width:650px){.cl-editor-backdrop{align-items:center}}@media(max-width:390px){.cl-page{padding-left:0;padding-right:0}.cl-card{padding:12px}.cl-detail-head h2{font-size:18px}}
+
+
+/* Phone text minimums; existing larger type remains unchanged. */
+@media (max-width: 749px) {
+    .cl-header h1 {
+        font-size: 27px !important
+    }
+    .cl-helper {
+        font-size: 16px !important
+    }
+    .cl-list-row strong {
+        font-size: 15px !important
+    }
+    .cl-list-row small {
+        font-size: 15px !important
+    }
+    .cl-card h2 {
+        font-size: 19px !important
+    }
+    .cl-import {
+        font-size: 16px !important
+    }
+    .cl-editor textarea {
+        font-size: 16px !important
+    }
+    .cl-detail-head h2 {
+        font-size: 20px !important
+    }
+    .cl-muted {
+        font-size: 15px !important
+    }
+    .cl-group-toggle {
+        font-size: 15px !important
+    }
+    .cl-item label {
+        font-size: 16px !important
+    }
+    .cl-add {
+        font-size: 16px !important
+    }
+    .cl-error {
+        font-size: 16px !important
+    }
+    .cl-message {
+        font-size: 16px !important
+    }
+    @media (max-width:390px) {
+        .cl-detail-head h2 {
+            font-size: 18px !important
+        }
+    }
+}
