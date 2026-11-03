@@ -96,6 +96,7 @@ export function App({
   }, [bridgeClient,bridgeUserId]);
   const [tab, setTab] = useState("today"),
     [selectedProject, setSelectedProject] = useState("p1"),
+    [projectScope, setProjectScope] = useState("project"),
     [blockDate, setBlockDate] = useState(localDate()),
     [blockMode, setBlockMode] = useState("plan"),
     [collapsedToday, setCollapsedToday] = useState({}),
@@ -1135,15 +1136,11 @@ export function App({
     );
   }
   function Projects() {
-    const selected = project(selectedProject);
-    const appMode = isAppDevelopment(selected);
-    const visibleApps = registryApps.filter(a => appStatusFilter === "전체" || a.status === appStatusFilter);
-    const appMatches = t => !appMode || (
-      appIdFilter === "미지정" ? !t.appRegistryId :
-      appIdFilter !== "전체" ? t.appRegistryId === appIdFilter :
-      appStatusFilter === "전체" || (t.appRegistryId && visibleApps.some(a => a.id === t.appRegistryId))
-    );
-    const items = data.tasks.filter(t => t.projectId === selectedProject && appMatches(t));
+    // UI scope only: existing project/task associations remain untouched.
+    const isPersonalScope = projectScope === "personal";
+    const items = data.tasks.filter(t => isPersonalScope
+      ? !t.projectId || !project(t.projectId)
+      : Boolean(t.projectId && project(t.projectId)));
     const todo = items.filter(t => t.status !== "done");
     const done = items.filter(t => t.status === "done");
     const renderGroups = (tasks, groupType) => {
@@ -1189,7 +1186,7 @@ export function App({
         groups[groups.length - 1].tasks.push(task);
       }
       return groups.map(group => {
-        const groupKey = `${selectedProject}:${groupType}:${group.label}`;
+        const groupKey = `${projectScope}:${groupType}:${group.label}`;
         const isOpen = !collapsedProjectWeeks[groupKey];
         return <section key={groupKey} className="project-week-group">
           <button type="button" className="project-week-heading" aria-expanded={isOpen}
@@ -1223,7 +1220,7 @@ export function App({
               {Number.isFinite(t.pinOrder) ? '⭐ ' : ''}{t.title}
             </strong>
             <small>
-              {appMode && <><span style={{color:"#9273c5",fontWeight:750}}>{registryApps.find(a=>a.id===t.appRegistryId)?.name || "미지정"}</span> · </>}{t.due
+              {!isPersonalScope && <><span style={{color:"#9273c5",fontWeight:750}}>{project(t.projectId)?.name || "프로젝트"}</span> · </>}{t.due
                 ? `${t.due}${t.time ? " · " + t.time : ""}`
                 : "날짜 미설정"}
             </small>
@@ -1270,67 +1267,22 @@ export function App({
     return (
       <>
         <div className="section-top">
-          <div>
-            <h1>프로젝트</h1>
-          </div>
-          <button type="button" className="secondary small" onClick={()=>{setChecklistOpen(false);setRegistryOpen(true);}} aria-label="앱 관리 열기" title="앱 관리"><Blocks size={16}/> 앱 관리</button>
-          <button className="primary small" onClick={() => setModal("project")}>
-            <Plus size={16} /> 목록
+          <h1>프로젝트</h1>
+          <button className="primary small" onClick={() => setModal("task")}>
+            <Plus size={16} /> 할 일
           </button>
         </div>
-        <label className="project-select-label">
-          프로젝트 목록
-          <select
-            className="select-full"
-            value={selected?.id || ""}
-            onChange={(e) => {setSelectedProject(e.target.value);setAppStatusFilter("전체");setAppIdFilter("전체");}}
-          >
-            {data.projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {selected && (
-          <div className="project-summary">
-            <div>
-              <h2>
-                <i
-                  className="project-color-swatch"
-                  style={{ background: selected.color }}
-                />
-                {selected.name}
-              </h2>
-              <p>
-                {done.length}/{items.length}개 완료
-              </p>
-            </div>
-            <button type="button" className="secondary" onClick={() => {
-              const next = isAppDevelopment(selected) ? "general" : "app-development";
-              if (window.confirm(`프로젝트 유형을 ${next === "general" ? "일반 프로젝트" : "앱 개발"}로 바꿀까? 기존 할 일은 유지돼.`)) {
-                update(d => ({...d, projects:d.projects.map(p=>p.id===selected.id?{...p,type:next}:p)}));
-                setAppStatusFilter("전체");setAppIdFilter("전체");
-              }
-            }} aria-label="프로젝트 유형 변경" title="프로젝트 유형 변경" style={{padding:"6px 9px",fontSize:12,whiteSpace:"nowrap"}}>{isAppDevelopment(selected) ? "앱 개발" : "일반"}</button>
-            <button type="button" className="secondary" onClick={renameSelectedProject} aria-label="선택 프로젝트 이름 수정" style={{marginLeft:"auto",padding:"6px",minWidth:34,minHeight:34,color:"#8d6dce"}}><Pencil size={16}/></button>
-            <button type="button" className="secondary" onClick={deleteSelectedProject} aria-label="선택 프로젝트 삭제" style={{padding:"6px",minWidth:34,minHeight:34,color:"#bf667c"}}><Trash2 size={16}/></button>
-          </div>
-        )}
-        {appMode && <div className="project-registry-filters" style={{display:"grid",gap:10,margin:"16px 0"}}>
-          <div style={{display:"grid",gridTemplateColumns:"0.8fr 1.65fr 0.8fr 1fr 1fr 0.78fr",gap:3,width:"100%"}} aria-label="개발 상태 필터">
-            {registryStatuses.map(st=><button type="button" key={st}
-              className={appStatusFilter===st ? "primary small" : "secondary small"}
-              style={{padding:"7px 1px",fontSize:"clamp(8px,2.35vw,11px)",minWidth:0,whiteSpace:"nowrap",borderRadius:9,letterSpacing:"-.35px",lineHeight:1.2}}
-              onClick={()=>{setAppStatusFilter(st);setAppIdFilter("전체");}}>{st} {st==="전체" ? registryApps.length : registryApps.filter(a=>a.status===st).length}</button>)}
-          </div>
-          <select aria-label="앱 선택" className="select-full" value={appIdFilter} onChange={e=>setAppIdFilter(e.target.value)}>
-            <option value="전체">전체 앱</option>
-            {appStatusFilter==="전체" && <option value="미지정">미지정</option>}
-            {visibleApps.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-          {registryError && <p role="alert" style={{color:"#bd5267",fontSize:12}}>{registryError}</p>}
-        </div>}
+        <div className="pom-subnav" role="tablist" aria-label="할 일 구분"
+          style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",marginBottom:18}}>
+          <button type="button" role="tab" aria-selected={isPersonalScope}
+            className={isPersonalScope?"active":""} onClick={()=>setProjectScope("personal")}>
+            개인
+          </button>
+          <button type="button" role="tab" aria-selected={!isPersonalScope}
+            className={!isPersonalScope?"active":""} onClick={()=>setProjectScope("project")}>
+            프로젝트
+          </button>
+        </div>
         <section className="project-status-section">
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
             <button type="button" aria-expanded={showProjectTodo} onClick={()=>setShowProjectTodo(v=>!v)}
@@ -1987,7 +1939,7 @@ export function App({
         <TaskModal
           projects={data.projects}
           registryApps={registryApps}
-          preProject={tab === "projects" ? selectedProject : ""}
+          preProject=""
           onClose={() => setModal(null)}
           onSave={addTask}
         />
