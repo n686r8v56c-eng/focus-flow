@@ -2278,32 +2278,23 @@ function EditTask({
         <label>
           프로젝트
           <select
-            value={task.projectId}
-            onChange={(e) => onChange({ projectId: e.target.value, appRegistryId: isAppDevelopment(projects.find(p=>p.id===e.target.value)) ? (task.appRegistryId || "") : "" })}
+            value={task.taskScope === "project" || Boolean(task.projectId) ? "project" : "personal"}
+            onChange={(e) => onChange(e.target.value === "project"
+              ? {taskScope:"project", projectId:task.projectId || "", appRegistryId:task.appRegistryId || ""}
+              : {taskScope:"personal", projectId:"", appRegistryId:""})}
           >
-            <option value="">개인 일정</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+            <option value="personal">개인 일정</option>
+            <option value="project">프로젝트</option>
           </select>
         </label>
-        {isAppDevelopment(projects.find(p=>p.id===task.projectId)) && <label>
-          앱 선택 (선택사항)
-          <select value={task.appRegistryId || ""} onChange={e=>onChange({appRegistryId:e.target.value})}>
-            <option value="">미지정</option>
-            {registryApps.map(a=><option key={a.id} value={a.id}>{a.name} · {a.status}</option>)}
-          </select>
-        </label>}
         <label>
           일정
           <select value={task.due ? "yes" : "no"} onChange={e => {
-            if (e.target.value === "yes") onChange({due: localDate()});
+            if (e.target.value === "yes") onChange({due: task.due || localDate()});
             else onChange({due:"", time:""});
           }}>
-            <option value="no">일정 없음</option>
             <option value="yes">일정 있음</option>
+            <option value="no">일정 없음</option>
           </select>
         </label>
         {!!task.due && <div className="field-row">
