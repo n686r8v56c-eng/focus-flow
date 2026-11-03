@@ -2134,10 +2134,10 @@ function PomEstimatePicker({ value, onChange }) {
 }
 function TaskModal({ projects, registryApps = [], preProject, onClose, onSave }) {
   const [title, setTitle] = useState(""),
-    [projectId, setProjectId] = useState(preProject || projects[0]?.id || ""),
+    [projectId, setProjectId] = useState(""),
     [appRegistryId, setAppRegistryId] = useState(""),
-    [due, setDue] = useState(""),
-    [hasSchedule, setHasSchedule] = useState(false),
+    [due, setDue] = useState(() => localDate()),
+    [hasSchedule, setHasSchedule] = useState(true),
     [time, setTime] = useState(""),
     [estimatedPomodoros] = useState(0);
   return (
