@@ -3,6 +3,8 @@ import { ArrowLeft, Plus, Pencil, Trash2, Copy, ExternalLink, Upload, Download, 
 import './app-registry.css';
 
 const STATUSES = ['배포 후 수정','배포','개발 중','기획 중','보류'];
+const FILTER_STATUSES = ['배포 후 수정','배포','개발 중','기획 중'];
+const FILTER_LABELS = {'배포 후 수정':'수정','배포':'배포','개발 중':'개발','기획 중':'기획'};
 const emptyApp = (status='배포') => ({ name:'',status,email_account_id:'',deployment_url:'',memo:'' });
 const emptyAccount = () => ({email:'',memo:''});
 const id = () => crypto.randomUUID();
@@ -110,7 +112,7 @@ export function AppRegistry({client,userId,onClose}){
   </>:fieldLabel('이메일 주소 *',<input type="email" value={draft.email||''} onChange={e=>setDraft({...draft,email:e.target.value})} autoCapitalize="none"/>)}
   {fieldLabel('메모',<textarea rows={5} value={draft.memo||''} onChange={e=>setDraft({...draft,memo:e.target.value})}/>)}
   <button className="ar-primary" disabled={busy} onClick={tab==='apps'?saveApp:saveAccount}>{busy?'저장 중…':'저장하기'}</button></div>}
-  {!loading&&!editing&&!preview&&!view&&<><div className="ar-row ar-list-head"><h2>{tab==='apps'?'앱 목록':'계정'}</h2><button className="ar-add" onClick={openNew}><Plus size={18}/> 추가</button></div>{tab==='apps'&&<div className="ar-filters">{STATUSES.map(s=><button key={s} className={s===status?'active':''} onClick={()=>setStatus(s)}>{s} {apps.filter(a=>a.status===s).length}</button>)}</div>}
+  {!loading&&!editing&&!preview&&!view&&<><div className="ar-row ar-list-head"><h2>{tab==='apps'?'앱 목록':'계정'}</h2><button className="ar-add" onClick={openNew}><Plus size={18}/> 추가</button></div>{tab==='apps'&&<div className="ar-filters">{FILTER_STATUSES.map(s=><button key={s} className={s===status?'active':''} onClick={()=>setStatus(s)}>{FILTER_LABELS[s]} {apps.filter(a=>a.status===s).length}</button>)}</div>}
    <div className="ar-list">{display.map(item=><button className="ar-list-row" key={item.id} onClick={()=>openItem(item)}><span>{tab==='apps'?item.name:item.email}</span>{tab==='accounts'&&<small>{apps.filter(a=>a.email_account_id===item.id).length}개 앱</small>}<ChevronRight size={18}/></button>)}{display.length===0&&<p className="ar-muted">등록된 {tab==='apps'?'앱':'계정'}이 없어.</p>}</div>
    <div className="ar-tools"><button onClick={exportJSON}><Download size={17}/> JSON 백업</button><button onClick={()=>{filePickerOpenRef.current=true;setError('');setNotice('가져올 파일을 선택해 줘.');inputRef.current?.click();}}><Upload size={17}/> {tab==='apps'?'엑셀·CSV·JSON 가져오기':'JSON 복원'}</button></div></>}
   <input ref={inputRef} type="file" style={{display:'none'}} accept=".xlsx,.csv,.json,application/json,text/csv" onChange={e=>importFile(e.target.files?.[0])} onCancel={()=>{filePickerOpenRef.current=false;setNotice('파일 선택이 취소되었어.');}}/>
