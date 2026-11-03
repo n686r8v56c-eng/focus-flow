@@ -180,7 +180,7 @@ export function App({
   const update = (fn) =>
     setData((old) => (typeof fn === "function" ? fn(old) : fn));
   const project = (id) => data.projects.find((p) => p.id === id);
-  const taskProject = (t) => project(t.projectId);
+  const taskProject = (t) => project(t.projectId) || (t.taskScope === "project" ? {name:"프로젝트", color:"#a897dd"} : null);
   const addTask = (t) => {
     let id = uid();
     update((d) => ({
@@ -191,6 +191,7 @@ export function App({
           id,
           title: t.title.trim(),
           projectId: t.projectId || "",
+          taskScope: t.taskScope === "project" ? "project" : "personal",
           appRegistryId: t.appRegistryId || "",
           due: t.due || "",
           time: t.time || "",
@@ -1139,8 +1140,8 @@ export function App({
     // UI scope only: existing project/task associations remain untouched.
     const isPersonalScope = projectScope === "personal";
     const items = data.tasks.filter(t => isPersonalScope
-      ? !t.projectId || !project(t.projectId)
-      : Boolean(t.projectId && project(t.projectId)));
+      ? !taskProject(t)
+      : Boolean(taskProject(t)));
     const todo = items.filter(t => t.status !== "done");
     const done = items.filter(t => t.status === "done");
     const renderGroups = (tasks, groupType) => {
@@ -2086,8 +2087,7 @@ function PomEstimatePicker({ value, onChange }) {
 }
 function TaskModal({ projects, registryApps = [], preProject, onClose, onSave }) {
   const [title, setTitle] = useState(""),
-    [projectId, setProjectId] = useState(""),
-    [appRegistryId, setAppRegistryId] = useState(""),
+    [taskScope, setTaskScope] = useState("personal"),
     [due, setDue] = useState(() => localDate()),
     [hasSchedule, setHasSchedule] = useState(true),
     [time, setTime] = useState(""),
@@ -2102,7 +2102,7 @@ function TaskModal({ projects, registryApps = [], preProject, onClose, onSave })
         onSubmit={(e) => {
           e.preventDefault();
           if (title.trim())
-            onSave({ title, projectId, appRegistryId: isAppDevelopment(projects.find(p=>p.id===projectId)) ? appRegistryId : "", due, time, estimatedPomodoros, tally:null,tallies:[] });
+            onSave({ title, projectId:"", taskScope, appRegistryId:"", due, time, estimatedPomodoros, tally:null,tallies:[] });
         }}
       >
         <div className="sheet-top">
@@ -2123,25 +2123,11 @@ function TaskModal({ projects, registryApps = [], preProject, onClose, onSave })
         </label>
         <label>
           프로젝트
-          <select
-            value={projectId}
-            onChange={(e) => {setProjectId(e.target.value);setAppRegistryId("");}}
-          >
-            <option value="">개인 일정 (프로젝트 없음)</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+          <select value={taskScope} onChange={(e)=>setTaskScope(e.target.value)}>
+            <option value="personal">개인 일정</option>
+            <option value="project">프로젝트</option>
           </select>
         </label>
-        {isAppDevelopment(projects.find(p=>p.id===projectId)) && <label>
-          앱 선택 (선택사항)
-          <select value={appRegistryId} onChange={e=>setAppRegistryId(e.target.value)}>
-            <option value="">미지정</option>
-            {registryApps.map(a=><option key={a.id} value={a.id}>{a.name} · {a.status}</option>)}
-          </select>
-        </label>}
         <label>
           일정
           <select value={hasSchedule ? "yes" : "no"} onChange={e => {
