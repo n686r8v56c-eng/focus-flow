@@ -99,7 +99,7 @@ export function AppRegistry({client,userId,onClose}){
  const display=tab==='apps'?apps.filter(a=>a.status===status):accounts;
  const activeView=view&&(tab==='apps'?apps:accounts).find(x=>x.id===view.id)||view;
  return <section className="ar-page">
-  <div className="ar-heading"><button className="ar-icon" onClick={onClose} aria-label="Focus Flow로 돌아가기"><ArrowLeft size={21}/></button><h1>앱 관리</h1><button className="ar-icon" onClick={load} title="새로고침"><RefreshCw size={18}/></button></div>
+  <div className="ar-heading focus-page-heading"><h1>앱관리</h1><button className="ar-icon" onClick={load} aria-label="앱 목록 새로고침" title="새로고침"><RefreshCw size={18}/></button></div>
   <div className="ar-tabs">{[['apps','앱 목록'],['accounts','계정']].map(([key,label])=><button key={key} className={tab===key?'active':''} onClick={()=>{setTab(key);setView(null);setEditing(false);setPreview(null);setError('');}}>{label}</button>)}</div>
   {error&&<div role="alert" className="ar-alert">{error}</div>}{notice&&!error&&<div className="ar-notice">{notice}</div>}
   {loading&&<p className="ar-muted">서버에서 불러오는 중…</p>}
