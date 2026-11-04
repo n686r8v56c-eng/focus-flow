@@ -1,0 +1,118 @@
+/* Care Log inspired diet history and analytics */
+.insightsStack{display:flex;flex-direction:column;gap:12px}
+.insightsPanel{padding:16px 14px}
+.insightsBody{display:flex;flex-direction:column;gap:13px;padding-top:16px;min-width:0}
+.insightsSegment{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;background:#f0edf3;padding:4px;border-radius:11px}
+.insightsSegment button{min-width:0;min-height:39px;padding:7px 1px;border:0;border-radius:9px;background:transparent;font-size:12px;font-weight:650;color:#968da1;white-space:nowrap}
+.insightsSegment button.selected{background:#fff;color:#6a538c;box-shadow:0 1px 2px #77618a14}
+.insightsHead{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:13px}
+.insightsHead b{font-size:14px}.insightsHead span,.insightsExplain,.insightsFoot{font-size:11px;color:#9a90a5;line-height:1.55}
+.insightsExplain{margin:0}.insightsFoot{margin:0}
+.insightsChart{width:100%;min-width:0;padding-top:6px}
+.insightsChart svg{display:block;width:100%;height:190px}
+.insightsAxis{display:flex;justify-content:space-between;font-size:10px;color:#a29aa9;padding:0 11px}
+.insightsLegend{display:flex;justify-content:center;gap:16px;margin-top:12px;font-size:11px;color:#8c8293}
+.insightsLegend span{display:flex;align-items:center;gap:6px}
+.insightsLegend i{display:inline-block;width:10px;height:10px;border-radius:3px}
+.insightsLegend i.goal{background:#dedee3}.insightsLegend i.actual{background:#9680d2}
+.insightsStat{align-self:flex-start;background:#f7f5f9;border-radius:12px;padding:13px 17px;min-width:145px;display:flex;flex-direction:column;gap:7px}
+.insightsStat small{font-size:11px;color:#a19aa8}.insightsStat strong{font-size:24px;color:#302b39;letter-spacing:-.5px}
+.insightsDonut{position:relative;width:min(100%,260px);margin:12px auto 10px}
+.insightsDonut svg{display:block;width:100%}
+.insightsDonut>div{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;pointer-events:none}
+.insightsDonut small{color:#948a9f;font-size:12px}.insightsDonut strong{font-size:20px;color:#2f2937;letter-spacing:-.4px}
+.insightsDonutLegend{display:flex;flex-direction:column;gap:11px}
+.insightsDonutLegend>div{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px}
+.insightsDonutLegend span{display:flex;align-items:center;gap:9px}.insightsDonutLegend span i{width:11px;height:11px;border-radius:50%}
+.insightsDonutLegend b{font-size:12px;font-weight:700}
+.insightsDayGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.insightsDayTile{background:#f8f7fa;border-radius:11px;padding:12px;min-width:0;display:flex;flex-direction:column;gap:9px}
+.insightsDayTile small{font-size:11px;color:#9c94a6}
+.insightsDayTile strong{font-size:16px;line-height:1.35;word-break:break-word}
+.insightsDayDetails{padding-top:13px}
+.insightsDayDetails h4{font-size:14px;margin:12px 0}
+.insightsDayDetails p{font-size:12px;color:#817889;line-height:1.6}
+.insightsFoodLogs{display:flex;flex-direction:column;gap:8px}
+.insightsFoodLogs>div{display:flex;align-items:center;gap:10px;background:#f8f7fa;border-radius:10px;padding:11px;min-width:0}
+.insightsFoodLogs small{font-size:11px;color:#988ea2;white-space:nowrap}
+.insightsFoodLogs span{font-size:13px;line-height:1.5;flex:1;min-width:0;overflow-wrap:anywhere}
+.insightsFoodLogs button{font-size:19px;color:#afa6b6;border:0;background:none;flex-shrink:0}
+@media(max-width:380px){.insightsSegment button{font-size:11px;min-height:34px}.insightsChart svg{height:165px}.insightsDayTile strong{font-size:14px}.insightsPanel{padding:12px}}
+
+
+/* Phone text minimums; existing larger type remains unchanged. */
+@media (max-width: 749px) {
+    .insightsSegment button {
+        font-size: 15px !important
+    }
+    .insightsHead {
+        font-size: 16px !important
+    }
+    .insightsHead b {
+        font-size: 16px !important
+    }
+    .insightsHead span {
+        font-size: 14px !important
+    }
+    .insightsExplain {
+        font-size: 14px !important
+    }
+    .insightsFoot {
+        font-size: 14px !important
+    }
+    .insightsAxis {
+        font-size: 13px !important
+    }
+    .insightsLegend {
+        font-size: 14px !important
+    }
+    .insightsStat small {
+        font-size: 14px !important
+    }
+    .insightsStat strong {
+        font-size: 24px !important
+    }
+    .insightsDonut small {
+        font-size: 15px !important
+    }
+    .insightsDonut strong {
+        font-size: 20px !important
+    }
+    .insightsDonutLegend>div {
+        font-size: 15px !important
+    }
+    .insightsDonutLegend b {
+        font-size: 15px !important
+    }
+    .insightsDayTile small {
+        font-size: 14px !important
+    }
+    .insightsDayTile strong {
+        font-size: 16px !important
+    }
+    .insightsDayDetails h4 {
+        font-size: 16px !important
+    }
+    .insightsDayDetails p {
+        font-size: 15px !important
+    }
+    .insightsFoodLogs small {
+        font-size: 14px !important
+    }
+    .insightsFoodLogs span {
+        font-size: 16px !important
+    }
+    .insightsFoodLogs button {
+        font-size: 19px !important
+    }
+    @media (max-width:380px) {
+        .insightsSegment button {
+            font-size: 14px !important
+        }
+    }
+    @media (max-width:380px) {
+        .insightsDayTile strong {
+            font-size: 16px !important
+        }
+    }
+}
