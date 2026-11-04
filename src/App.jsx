@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   CalendarDays,
+  Inbox,
+  Copy,
+  ExternalLink,
   Columns3,
   Timer,
   FolderKanban,
@@ -26,6 +29,8 @@ import {
   CalendarRange,
 } from "lucide-react";
 import "./style.css";
+import { InboxPanel, copyInboxText } from "./InboxPanel.jsx";
+import { youtubeId } from "./inbox-model.js";
 import "./timeblocks.css";
 import { TimeTable } from "./TimeTable.jsx";
 import { WeeklyPlan } from "./WeeklyPlan.jsx";
@@ -956,28 +961,27 @@ export function App({
       {mode==="todo"
         ? <input type="checkbox" aria-label={`${t.title} 완료`} checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/>
         : <CalendarDays size={17} color="#9077ba"/>}
+      {(t.videoId || youtubeId(t.url)) && <img className="inbox-task-thumb" src={`https://i.ytimg.com/vi/${t.videoId || youtubeId(t.url)}/hqdefault.jpg`} alt="영상 썸네일" loading="lazy"/>}
       <button type="button" className="focus-task-detail" onClick={()=>setEditing(t.id)}>
         <span style={{textDecoration:mode==="todo"&&t.status==="done"?"line-through":"none"}}>{t.title}</span>
         <small>{[t.time,taskProject(t)?.name||"개인",mode==="schedule"&&t.status==="done"?"완료":""].filter(Boolean).join(" · ")}</small>
       </button>
-      <button type="button" className="focus-move-kind" title={mode==="schedule"?"투두리스트로 이동":"일정으로 이동"}
-        aria-label={mode==="schedule"?"투두리스트로 이동":"일정으로 이동"}
-        onClick={()=>changeTask(t.id,{entryType:mode==="schedule"?"todo":"schedule",due:t.due||focusDate})}>{mode==="schedule"?"투두로":"일정으로"}</button>
+      {!!t.url && <button type="button" className="inbox-icon" aria-label="링크 복사" title="링크 복사" onClick={()=>copyInboxText(t.url,setToast)}><Copy size={16}/></button>}
+      <button type="button" className="focus-move-kind" title={mode==="schedule"?"할 일로 이동":"일정으로 이동"}
+        aria-label={mode==="schedule"?"할 일로 이동":"일정으로 이동"}
+        onClick={()=>changeTask(t.id,{entryType:mode==="schedule"?"todo":"schedule",due:t.due||focusDate})}>{mode==="schedule"?"할 일로":"일정으로"}</button>
     </div>)}</div>;
   }
   function TodoPanel() {
     const dated=data.tasks.filter(t=>!isScheduleEntry(t)&&(t.due===todoDate||(todoDate===today&&t.status!=="done"&&t.due&&t.due<today)));
-    const noDate=data.tasks.filter(t=>!isScheduleEntry(t)&&!t.due);
-    return <div className="focus-redesign">
-      <div className="section-top"><h1>투두리스트</h1><button className="primary small" onClick={()=>{setEditing(null);setModal("task");}}><Plus size={16}/> 추가</button></div>
+    return <InboxPanel data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><>
       <FocusDateStrip date={todoDate} onChange={setTodoDate}/>
       <div className="focus-kpis"><div><small>완료</small><strong>{dated.filter(x=>x.status==="done").length}/{dated.length}</strong></div><div><small>남은 할 일</small><strong>{dated.filter(x=>x.status!=="done").length}</strong></div></div>
-      <section className="focus-panel"><h2>{todoDate===today?"오늘의 할 일":todoDate+" 할 일"}</h2>
+      <section className="focus-panel"><div className="focus-day-title"><h2>{todoDate===today?"오늘의 할 일":todoDate+" 할 일"}</h2><button className="focus-move-kind" onClick={()=>{setEditing(null);setModal("task");}}><Plus size={14}/> 할 일</button></div>
         <FocusTaskRows items={dated} mode="todo"/>
       </section>
-      {!!noDate.length&&<section className="focus-panel"><h2>날짜 없는 할 일</h2><FocusTaskRows items={noDate} mode="todo"/></section>}
-      <p className="focus-help">날짜가 지난 미완료 할 일은 오늘에도 표시돼. 기존 기록과 프로젝트는 그대로 유지돼.</p>
-    </div>;
+      <p className="focus-help">오늘 할 일만 골라 실행해. 완료해도 인박스의 원본과 링크는 남아 있어.</p>
+    </>}/>;
   }
   function Calendar() {
     const base=new Date(focusDate+"T12:00:00");
@@ -991,7 +995,7 @@ export function App({
       <div className="section-top"><h1>일정</h1><button className="primary small" onClick={()=>{setEditing(null);setModal("task");}}><Plus size={16}/>{calendarMode==="schedule"?"일정":"할 일"} 추가</button></div>
       <div className="focus-segments" role="tablist" aria-label="캘린더 종류">
         <button role="tab" aria-selected={calendarMode==="schedule"} className={calendarMode==="schedule"?"selected":""} onClick={()=>setCalendarMode("schedule")}>일정</button>
-        <button role="tab" aria-selected={calendarMode==="todo"} className={calendarMode==="todo"?"selected":""} onClick={()=>setCalendarMode("todo")}>투두리스트</button>
+        <button role="tab" aria-selected={calendarMode==="todo"} className={calendarMode==="todo"?"selected":""} onClick={()=>setCalendarMode("todo")}>할 일</button>
       </div>
       <section className="focus-panel focus-calendar-panel">
         <FocusDateStrip date={focusDate} onChange={setFocusDate} month/>
@@ -1008,7 +1012,7 @@ export function App({
         })}</div>
       </section>
       <section className="focus-panel">
-        <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="schedule"?"일정":"투두리스트"}</h2><small>{selected.length}개</small></div>
+        <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
         <FocusTaskRows items={selected} mode={calendarMode}/>
       </section>
     </div>;
@@ -1776,7 +1780,7 @@ export function App({
         {[
           ["timelog",Clock3,"타임로그"],
           ["diet",Utensils,"식단"],
-          ["todo",ListTodo,"투두리스트"],
+          ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"],
           ["apps",Blocks,"앱관리"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>setTab(id)} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
@@ -1966,7 +1970,7 @@ function TaskModal({ projects, registryApps = [], preProject, onClose, onSave, i
         </label>
         <label>
           구분
-          <select value={entryType} onChange={e=>setEntryType(e.target.value)}><option value="schedule">일정</option><option value="todo">투두리스트</option></select>
+          <select value={entryType} onChange={e=>setEntryType(e.target.value)}><option value="schedule">일정</option><option value="todo">할 일</option></select>
         </label>
         <label>
           프로젝트
@@ -2114,6 +2118,11 @@ function EditTask({
             <X size={20} />
           </button>
         </div>
+        {(task.note || task.url) && <section className="focus-panel" style={{marginBottom:14}}>
+          {task.note && <p className="inbox-body">{task.note}</p>}
+          {task.url && <div className="inbox-tools"><a href={task.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> 원본 열기</a><button type="button" onClick={()=>copyInboxText(task.url,message=>window.alert(message))}><Copy size={16}/> 링크 복사</button></div>}
+          <small className="focus-help">원본 메모는 인박스·폴더에 보관돼.</small>
+        </section>}
         <label>
           제목
           <input
@@ -2153,7 +2162,7 @@ function EditTask({
         <label>
           구분
           <select value={task.entryType || (task.time?"schedule":"todo")} onChange={e=>onChange({entryType:e.target.value})}>
-            <option value="schedule">일정</option><option value="todo">투두리스트</option>
+            <option value="schedule">일정</option><option value="todo">할 일</option>
           </select>
         </label>
         <label>
