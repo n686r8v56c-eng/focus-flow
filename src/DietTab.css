@@ -206,3 +206,9 @@
         }
     }
 }
+
+/* Compact capture accepts multiline text without losing line breaks. */
+.dietInlineForm .dietQuickNote{flex:1;min-width:0;width:0;min-height:40px;height:40px;max-height:40px;margin:0;padding:9px 11px;border:1px solid #e7dfef;border-radius:10px;background:#fff;color:#40384a;font:inherit;font-size:16px;line-height:20px;resize:none;overflow-y:auto;white-space:pre-wrap}
+.dietLogList .dietSingleLog{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;font-size:15px;line-height:1.6}
+.dietLogList .dietSingleLog.expanded{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.dietLogItem:has(.dietSingleLog.expanded){align-items:flex-start}
