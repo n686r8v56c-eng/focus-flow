@@ -1827,8 +1827,8 @@ body,
 /* Shared four-tab page heading: align Todo, Calendar, TimeLog and Apps */
 .app>main{padding-top:27px}
 .focus-redesign>.section-top,.ar-page>.ar-heading,.timelog-page>.timelog-heading{
-  min-height:43px;
-  margin:0 0 14px;
+  min-height:38px;
+  margin:0 0 13px;
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -1840,8 +1840,8 @@ body,
   margin:0!important;
   padding:0;
   flex:1;
-  font-size:27px!important;
-  font-weight:750;
+  font-size:21px!important;
+  font-weight:700;
   line-height:1.2;
   letter-spacing:-.8px;
   color:#393343;
@@ -1851,5 +1851,5 @@ body,
 @media(max-width:749px){
   .focus-redesign>.section-top h1,
   .ar-page>.ar-heading h1,
-  .timelog-page>.timelog-heading h1{font-size:27px!important}
+  .timelog-page>.timelog-heading h1{font-size:21px!important}
 }
