@@ -1823,3 +1823,33 @@ body,
 .bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr))}
 .bottom-nav button{font-size:12px;min-width:0}
 @media(max-width:380px){.focus-panel{padding:10px}.focus-month-days{gap:3px}.focus-month-cell{min-height:46px}.focus-date-strip{padding:0 52px}.focus-date-center{gap:1px}.focus-date-center strong{min-width:77px;font-size:13px}.focus-today-button{right:4px}}
+
+/* Shared four-tab page heading: align Todo, Calendar, TimeLog and Apps */
+.app>main{padding-top:27px}
+.focus-redesign>.section-top,.ar-page>.ar-heading,.timelog-page>.timelog-heading{
+  min-height:43px;
+  margin:0 0 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.focus-redesign>.section-top h1,
+.ar-page>.ar-heading h1,
+.timelog-page>.timelog-heading h1{
+  margin:0!important;
+  padding:0;
+  flex:1;
+  font-size:27px!important;
+  font-weight:750;
+  line-height:1.2;
+  letter-spacing:-.8px;
+  color:#393343;
+}
+.ar-page{padding-top:0}
+.ar-page>.ar-heading .ar-icon{width:37px;height:37px}
+@media(max-width:749px){
+  .focus-redesign>.section-top h1,
+  .ar-page>.ar-heading h1,
+  .timelog-page>.timelog-heading h1{font-size:27px!important}
+}
