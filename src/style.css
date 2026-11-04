@@ -1853,3 +1853,13 @@ body,
   .ar-page>.ar-heading h1,
   .timelog-page>.timelog-heading h1{font-size:21px!important}
 }
+
+/* Focus Diet: fifth tab immediately after TimeLog, consistent Beauty Care styling */
+.bottom-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
+.bottom-nav button{min-width:0;gap:4px}
+.focus-diet-screen{min-width:0;display:flex;flex-direction:column;gap:14px;padding-bottom:10px}
+.focus-diet-screen>.focus-diet-heading{min-height:38px;display:flex;align-items:center;margin:0 0 0}
+.focus-diet-screen>.focus-diet-heading h1{margin:0!important;padding:0;font-size:21px!important;font-weight:700;line-height:1.2;letter-spacing:-.7px;color:#393343}
+.focus-diet-screen>.dietPage{width:100%;min-width:0}
+@media(max-width:749px){.focus-diet-screen>.focus-diet-heading h1{font-size:21px!important}.bottom-nav button{font-size:12px}}
+@media(max-width:365px){.bottom-nav{padding-left:3px;padding-right:3px}.bottom-nav button{font-size:11px}}
