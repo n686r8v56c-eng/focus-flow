@@ -107,7 +107,17 @@ export function AppRegistry({client,userId,onClose}){
   {!loading&&editing&&draft&&<div className="ar-editor"><div className="ar-row"><h2>{draft.id?'정보 수정':tab==='apps'?'앱 추가':'계정 추가'}</h2><button className="ar-icon" onClick={()=>{setEditing(false);setDraft(null);}} aria-label="닫기"><X size={20}/></button></div>{tab==='apps'?<>
   {fieldLabel('앱 이름 *',<input value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})} maxLength={150}/>)}
   {fieldLabel('개발 상태 *',<select value={draft.status} onChange={e=>setDraft({...draft,status:e.target.value})}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select>)}
-  {fieldLabel('가입 이메일',<input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" placeholder="이메일 주소 직접 입력 (선택)" value={draft.email_text ?? accounts.find(a=>a.id===draft.email_account_id)?.email ?? ''} onChange={e=>setDraft({...draft,email_text:e.target.value})}/>)}
+  {fieldLabel('가입 이메일',<div className="ar-email-picker">
+    <select aria-label="등록된 이메일 계정 선택 또는 직접 입력" value={draft.email_mode || (draft.email_account_id && accounts.some(a=>a.id===draft.email_account_id) ? draft.email_account_id : 'manual')} onChange={e=>{
+      const account=accounts.find(a=>a.id===e.target.value);
+      setDraft({...draft,email_mode:account?.id||'manual',email_account_id:account?.id||'',email_text:account?.email||''});
+    }}>
+      <option value="manual">+ 직접 입력 / 새 이메일</option>
+      {accounts.map(a=><option key={a.id} value={a.id}>{a.email}</option>)}
+    </select>
+    {(draft.email_mode || (draft.email_account_id && accounts.some(a=>a.id===draft.email_account_id) ? draft.email_account_id : 'manual')) === 'manual' &&
+      <input type="email" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" placeholder="새 이메일 주소 입력 (선택)" value={draft.email_text ?? ''} onChange={e=>setDraft({...draft,email_text:e.target.value,email_account_id:''})}/>}
+  </div>)}
   {fieldLabel('배포 URL',<input value={draft.deployment_url||''} onChange={e=>setDraft({...draft,deployment_url:e.target.value})} placeholder="https://..." inputMode="url"/>)}
   </>:fieldLabel('이메일 주소 *',<input type="email" value={draft.email||''} onChange={e=>setDraft({...draft,email:e.target.value})} autoCapitalize="none"/>)}
   {fieldLabel('메모',<textarea rows={5} value={draft.memo||''} onChange={e=>setDraft({...draft,memo:e.target.value})}/>)}
