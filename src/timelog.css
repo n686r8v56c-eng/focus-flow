@@ -222,3 +222,10 @@
 .timelog-goal-total{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#826f97}
 .timelog-goal-total strong{font-size:16px;color:#604384}
 @media(max-width:390px){.timelog-page{padding-left:11px;padding-right:11px}.timelog-page .timelog-three-kpis{gap:5px}.timelog-page .timelog-three-kpis>div{padding:10px 5px}.timelog-page .timelog-three-kpis strong{font-size:12px!important}}
+
+/* Same heading baseline and size as Todo/Calendar */
+.timelog-page{padding-top:0!important;padding-left:0!important;padding-right:0!important}
+.timelog-page>.timelog-heading{min-height:43px;display:flex;align-items:center;margin:0 0 14px!important;gap:12px}
+.timelog-page>.timelog-heading h1{font-size:27px!important;line-height:1.2!important;margin:0!important;padding:0!important;font-weight:750;letter-spacing:-.8px}
+.timelog-page>.timelog-heading>span{margin-left:auto;font-size:13px;white-space:nowrap}
+@media(max-width:749px){.timelog-page>.timelog-heading h1{font-size:27px!important}}
