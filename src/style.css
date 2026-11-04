@@ -1778,3 +1778,48 @@ body,
         font-size: 16px !important
     }
 }
+
+/* Focus Flow v6: Beauty Care-inspired compact four-tab experience */
+.focus-v6-header{background:#fff;border-bottom:1px solid #eae4f0;padding:0 18px}
+.focus-v6-header .brand{font-size:20px;font-weight:760;color:#50366f;letter-spacing:-.5px}
+.focus-autosave{font-size:12px;color:#988da8}
+.focus-redesign{display:flex;flex-direction:column;gap:14px;min-width:0;padding-bottom:8px}
+.focus-redesign .section-top{margin-bottom:0}
+.focus-redesign h1{font-size:23px;letter-spacing:-.7px;margin:2px 0}
+.focus-redesign .primary.small{background:#8b6dbb;border-radius:10px;padding:9px 12px}
+.focus-panel{background:#fff;border:1px solid #ece5f2;border-radius:16px;padding:14px;min-width:0}
+.focus-panel h2{font-size:15px;letter-spacing:-.2px;margin:0 0 12px}
+.focus-segments{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;background:#ede7f5;border-radius:13px;padding:4px}
+.focus-segments button{border:0;border-radius:10px;min-width:0;min-height:40px;font-size:14px;font-weight:650;color:#877898}
+.focus-segments button.selected{background:#fff;color:#684c9a;box-shadow:0 1px 4px #5b3c7620}
+.focus-date-strip{display:flex;align-items:center;justify-content:center;position:relative;min-height:42px;padding-right:62px;padding-left:62px;background:#f7f4fa;border-radius:11px}
+.focus-date-center{display:flex;align-items:center;justify-content:center;gap:9px;min-width:0}
+.focus-date-center strong{font-size:15px;white-space:nowrap;min-width:85px;text-align:center}
+.focus-date-center button{width:31px;height:31px;display:grid;place-items:center;border-radius:8px;color:#7b65a5}
+.focus-date-center button:active{background:#ebe3f3}
+.focus-today-button{position:absolute;right:7px;top:50%;transform:translateY(-50%);padding:7px 9px;border:1px solid #d9c9ec;border-radius:8px;background:#fff;font-size:12px;color:#805eb1}
+.focus-calendar-panel .focus-date-strip{background:transparent;margin:0 0 9px}
+.focus-month-days{gap:4px}
+.focus-month-cell{min-width:0;min-height:52px;padding:7px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:9px;background:#f8f6fb;position:relative;font-size:14px;color:#423a4b}
+.focus-month-cell.muted{color:#b3aab9;opacity:.55}
+.focus-month-cell.active{background:#eee5f8;outline:1.5px solid #a88acb}
+.focus-month-cell small{min-height:11px;font-size:10px;color:#9776c4}
+.focus-month-cell i{width:4px;height:4px;border-radius:50%;background:#9573bf}
+.focus-day-title{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.focus-day-title small{font-size:12px;color:#9389a1}
+.focus-task-list{display:flex;flex-direction:column;gap:7px}
+.focus-task-row{display:flex;align-items:center;gap:10px;padding:11px 9px;background:#f7f4fa;border-radius:10px;min-width:0}
+.focus-task-row>input[type="checkbox"]{width:18px;height:18px;accent-color:#896bb6;flex-shrink:0}
+.focus-task-detail{flex:1;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0;color:#42364f}
+.focus-task-detail span{font-size:14px;overflow-wrap:anywhere}
+.focus-task-detail small{font-size:11px;color:#968ba0}
+.focus-move-kind{font-size:11px;color:#74579d;border:1px solid #e1d7eb;border-radius:8px;padding:6px;white-space:nowrap;flex-shrink:0}
+.focus-empty{font-size:13px;color:#9e95a9;text-align:center;padding:22px 6px}
+.focus-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.focus-kpis>div{display:flex;flex-direction:column;gap:5px;padding:14px;background:#f3eff8;border-radius:11px}
+.focus-kpis small{font-size:12px;color:#887e97}
+.focus-kpis strong{font-size:22px;color:#593d84}
+.focus-help{font-size:11px;color:#968d9f;line-height:1.55;margin:0}
+.bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr))}
+.bottom-nav button{font-size:12px;min-width:0}
+@media(max-width:380px){.focus-panel{padding:10px}.focus-month-days{gap:3px}.focus-month-cell{min-height:46px}.focus-date-strip{padding:0 52px}.focus-date-center{gap:1px}.focus-date-center strong{min-width:77px;font-size:13px}.focus-today-button{right:4px}}
