@@ -56,7 +56,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
         <select aria-label="폴더 선택" value={folderId} onChange={e=>setFolderId(e.target.value)}><option value="">모든 폴더와 미분류</option>{folders.map(f=><option value={f.id} key={f.id}>{f.name}</option>)}</select>
         <button type="button" className="focus-move-kind" onClick={()=>setFolderDraft('')}><Plus size={15}/> 폴더</button>
       </div>}
-      <section className="focus-panel"><div className="focus-day-title"><h2>{view==='inbox'?'미분류':view==='archive'?'보관함':folders.find(f=>f.id===folderId)?.name || '모든 자료'}</h2><small>{shown.length}개</small></div>
+      <section className="focus-panel">{view==='archive'&&entries.some(n=>n.recoveredFrom)&&<p className="focus-help" style={{marginBottom:12}}>동기화 중 다른 수정 내용이 발견되면 복구본을 여기에 보관해. 내용을 확인하고 보관 해제로 다시 꺼낼 수 있어.</p>}<div className="focus-day-title"><h2>{view==='inbox'?'미분류':view==='archive'?'보관함':folders.find(f=>f.id===folderId)?.name || '모든 자료'}</h2><small>{shown.length}개</small></div>
         <div className="focus-task-list">{shown.map(item=>{
           const expandedHere=expanded===item.id;
           const planned=data.tasks.find(t=>t.sourceInboxId===item.id && t.due===today);
@@ -65,7 +65,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
             <div className="inbox-row">
               <button type="button" className="inbox-open" aria-expanded={expandedHere} onClick={()=>{setExpanded(expandedHere?null:item.id);setEdit(null);}}>
                 {videoId?<img className="inbox-thumbnail" src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`} alt="영상 썸네일" loading="lazy"/>:<span className="inbox-note-icon"><Pencil size={18}/></span>}
-                <span className="inbox-card-text"><b>{item.title || item.text?.split('\n')[0] || '메모'}</b><small>{[folders.find(f=>f.id===item.folderId)?.name || '미분류',item.legacyTask?'기존 할 일':videoId?'YouTube':item.url?'링크':'메모',planned ? planned.status==='done'?'오늘 완료':'오늘 할 일':'' ].filter(Boolean).join(' · ')}</small></span>
+                <span className="inbox-card-text"><b>{item.title || item.text?.split('\n')[0] || '메모'}</b><small>{[folders.find(f=>f.id===item.folderId)?.name || '미분류',item.legacyTask?'기존 할 일':videoId?'YouTube':item.url?'링크':'메모',item.recoveredFrom?'동기화 복구본':'',planned ? planned.status==='done'?'오늘 완료':'오늘 할 일':'' ].filter(Boolean).join(' · ')}</small></span>
                 {expandedHere?<ChevronDown size={15}/>:<ChevronRight size={15}/>}
               </button>
               <button type="button" className="inbox-icon" aria-label={item.url?'링크 복사':'메모 복사'} title={item.url?'링크 복사':'메모 복사'} onClick={()=>copyInboxText(copy,notify)}><Copy size={17}/></button>

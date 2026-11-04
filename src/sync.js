@@ -38,6 +38,37 @@ function mergeTimeLog(base, local, remote, path) {
   if (winner?.lastAction) result.lastAction = winner.lastAction;
   return result;
 }
+// Preserve an edited version when a record was deleted or changed on another
+// device. The deterministic ID makes retrying pending saves idempotent.
+function inboxRecoveryCopy(item) {
+  const canonical = value => object(value)
+    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]))
+    : Array.isArray(value) ? value.map(canonical) : value;
+  const text = JSON.stringify(canonical(item));
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619) >>> 0;
+  return {...item, id:`${item.id}~recovery-${hash.toString(16)}`, archived:true, recoveredFrom:item.id};
+}
+function mergeInbox(base, local, remote, path) {
+  const b = new Map((base || []).map(item => [item.id,item]));
+  const l = new Map((local || []).map(item => [item.id,item]));
+  const r = new Map((remote || []).map(item => [item.id,item]));
+  const result = new Map();
+  for (const id of new Set([...r.keys(),...l.keys()])) {
+    const before=b.get(id), left=l.get(id), right=r.get(id);
+    try {
+      const item=mergeState(before,left,right,`${path}.${id}`);
+      if(item!==undefined) result.set(item.id,item);
+    } catch (error) {
+      // A true concurrent edit keeps the server record plus a recoverable local
+      // version. Delete/edit conflicts keep only the recoverable edited version.
+      if (right && left) result.set(right.id,right);
+      const copy=inboxRecoveryCopy(left || right);
+      if(!l.has(copy.id) && !r.has(copy.id)) result.set(copy.id,copy);
+    }
+  }
+  return [...result.values()];
+}
 export function mergeState(base, local, remote, path = "data") {
   if (path === "data.timeLog" && object(local) && object(remote)) return mergeTimeLog(base, local, remote, path);
   if (path.startsWith("data.timeLog.entries.") && object(local) && object(remote)) {
@@ -47,6 +78,8 @@ export function mergeState(base, local, remote, path = "data") {
   }
   if (equal(local, base)) return remote;
   if (equal(remote, base) || equal(local, remote)) return local;
+  if (path === "data.inboxItems" && (local === undefined || Array.isArray(local)) && (remote === undefined || Array.isArray(remote)))
+    return mergeInbox(base,local,remote,path);
   if (
     Array.isArray(local) &&
     Array.isArray(remote) &&
