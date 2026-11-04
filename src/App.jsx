@@ -1051,7 +1051,10 @@ export function App({
               })}
             </div>
             <div className="selected-day-agenda">
-              <h2>{focusDate} 일정</h2>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                <h2>{focusDate} 일정</h2>
+                <button type="button" className="primary small" onClick={()=>{setEditing(null);setModal("task");}} aria-label="선택한 날짜 일정 추가"><Plus size={16}/> 일정 추가</button>
+              </div>
               {CalendarChecklist({date:focusDate})}
             </div>
           </>
@@ -1915,11 +1918,6 @@ export function App({
           onChange={(fields) => changeTask(editTask.id, fields)}
           onStatus={(s) => completeOrStatus(editTask, s)}
           onDelete={() => removeTask(editTask.id)}
-          onFocus={() => {
-            setPomTask(editTask.id);
-            setEditing(null);
-            setTab("today");
-          }}
         />
       )}
       {toast && <div className="toast">{toast}</div>}
@@ -2190,7 +2188,6 @@ function EditTask({
   onChange,
   onStatus,
   onDelete,
-  onFocus,
 }) {
   const [sub, setSub] = useState("");
   const addSub = (e) => {
@@ -2308,9 +2305,6 @@ function EditTask({
           </button>
         </form>
         <div className="edit-actions">
-          <button className="secondary" onClick={onFocus}>
-            <Timer size={17} /> 집중하기
-          </button>
           <button
             className="danger"
             onClick={() => {
