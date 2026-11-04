@@ -792,52 +792,6 @@ export function App({
   function Kanban() {
     return (
       <>
-        <div
-          aria-label="오늘의 시간"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-            gap: 10,
-            marginBottom: 24,
-          }}
-        >
-          {[
-            { label: "현재 시각", text: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`, progress: null },
-            { label: "오전 타이머", ...sessionTimer(6, 12) },
-            { label: "오후 타이머", ...sessionTimer(12, 18) },
-            { label: "저녁 타이머", ...sessionTimer(18, 22) },
-          ].map(({ label, text, progress }, i) => (
-            <div
-              key={label}
-              role="timer"
-              aria-label={`${label}: ${text}${progress === null ? "" : `, ${Math.round(progress * 100)}% 경과`}`}
-              style={{
-                padding: "15px 12px",
-                borderRadius: 15,
-                border: "1px solid #e9e1f0",
-                background: progress === null
-                  ? "#f3edf9"
-                  : `linear-gradient(to right, #e7d9f6 ${Math.round(progress * 100)}%, #ffffff ${Math.round(progress * 100)}%)`,
-                minWidth: 0,
-                transition: "background 0.5s ease",
-              }}
-            >
-              <div style={{ fontSize: 12, color: "#8b7b9c", marginBottom: 7, fontWeight: 650 }}>
-                {label}
-              </div>
-              <div style={{
-                fontSize: "clamp(21px,6vw,30px)",
-                fontWeight: 750,
-                fontVariantNumeric: "tabular-nums",
-                letterSpacing: "-.5px",
-                color: i === 0 ? "#7854ab" : "#53465f",
-                whiteSpace: "nowrap",
-              }}>
-                {text}
-              </div>
-            </div>
-          ))}
-        </div>
         <div className="today-heading-compact" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'nowrap',width:'100%',marginBottom:12}}>
           <div style={{minWidth:0,flex:'1 1 auto'}}>
             <div className="eyebrow" style={{fontSize:12,whiteSpace:'nowrap',color:'#957bb6',display:'flex',alignItems:'flex-end',minHeight:28,paddingBottom:1}}>
@@ -1016,7 +970,7 @@ export function App({
             <div className="eyebrow">프로젝트별 색상으로 일정 구분</div>
             <h1>캘린더</h1>
           </div>
-          <button className="primary small" onClick={() => setModal("task")}>
+          <button className="primary small" onClick={() => {setModal("task");setEditing(null);}}>
             <Plus size={16} /> 일정
           </button>
         </div>
@@ -1893,8 +1847,6 @@ export function App({
         </button>
         <div className="header-actions">
           <button type="button" className={`header-timer ${tab === "projects" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("projects");}} aria-label="프로젝트 열기" title="프로젝트"><FolderKanban size={18}/></button>
-          <button type="button" className={`header-timer ${tab === "pom" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("pom");}} aria-label="뽀모도로 열기" title="뽀모도로"><Timer size={18}/></button>
-          <button type="button" className={`header-timer ${tab === "calendar" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("calendar");}} aria-label="일정 열기" title="일정"><CalendarDays size={18}/></button>
 
           <button type="button" className={`header-timer ${registryOpen ? "is-active" : ""}`} onClick={() => {setChecklistOpen(false);setRegistryOpen(true);}} aria-label="앱 관리 열기" title="앱 관리"><Blocks size={18}/></button>
           <button type="button" className={`header-timer ${checklistOpen ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(true);}} aria-label="체크리스트 열기" title="체크리스트"><ClipboardCheck size={18}/></button>
@@ -1906,15 +1858,11 @@ export function App({
           ? Kanban()
           : tab === "timelog"
             ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
-          : tab === "timeblocks"
-            ? <TimeTable data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId} initialDate={blockDate} />
           : tab === "weekly"
             ? <WeeklyPlan data={data} onDataChange={setData} />
           : tab === "calendar"
             ? Calendar()
-            : tab === "pom"
-              ? Pomodoro()
-              : tab === "memos"
+                : tab === "memos"
                 ? <MemoPanel data={data} onDataChange={setData} />
                 : Projects()}
       </main>
@@ -1922,7 +1870,7 @@ export function App({
         {[
           ["today", Columns3, "오늘"],
           ["timelog", Clock3, "타임로그"],
-          ["timeblocks", Clock3, "타임블록"],
+          ["calendar", CalendarDays, "캘린더"],
           ["weekly", CalendarRange, "위클리"],
           ["memos", Heart, "메모"],
         ].map(([id, Icon, label]) => (
@@ -1943,6 +1891,7 @@ export function App({
           preProject=""
           onClose={() => setModal(null)}
           onSave={addTask}
+          initialDate={tab === "calendar" ? focusDate : today}
         />
       )}
       {modal === "project" && (
@@ -1969,7 +1918,7 @@ export function App({
           onFocus={() => {
             setPomTask(editTask.id);
             setEditing(null);
-            setTab("pom");
+            setTab("today");
           }}
         />
       )}
@@ -2085,10 +2034,10 @@ function PomEstimatePicker({ value, onChange }) {
     </fieldset>
   );
 }
-function TaskModal({ projects, registryApps = [], preProject, onClose, onSave }) {
+function TaskModal({ projects, registryApps = [], preProject, onClose, onSave, initialDate }) {
   const [title, setTitle] = useState(""),
     [taskScope, setTaskScope] = useState("personal"),
-    [due, setDue] = useState(() => localDate()),
+    [due, setDue] = useState(() => initialDate || localDate()),
     [hasSchedule, setHasSchedule] = useState(true),
     [time, setTime] = useState(""),
     [estimatedPomodoros] = useState(0);
