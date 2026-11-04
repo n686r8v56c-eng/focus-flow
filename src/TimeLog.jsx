@@ -31,6 +31,10 @@ const colorForActivity = name => {
 };
 export function TimeLog({data,onDataChange,client,userId}){
   const [section,setSection]=useState('record');
+  const [selectedActivity,setSelectedActivity]=useState('');
+  const [goalEditing,setGoalEditing]=useState(false);
+  const [goalDraft,setGoalDraft]=useState({});
+  const [chartActivity,setChartActivity]=useState('');
   const [dailyDate,setDailyDate]=useState(dateKey(new Date()));
   const [now,setNow]=useState(Date.now());
   const [newActivity,setNewActivity]=useState('');
@@ -94,7 +98,9 @@ export function TimeLog({data,onDataChange,client,userId}){
     const next=activityDraft.trim().slice(0,40);
     if(!next || (next!==editingActivity && activities.includes(next)))return;
     if(active?.activity===editingActivity){window.alert('기록 중인 활동은 먼저 종료한 뒤 수정해 줘.');return;}
-    save(prev=>({...prev,activityList:activities.map(a=>a===editingActivity?next:a)}));
+    save(prev=>({...prev,activityList:activities.map(a=>a===editingActivity?next:a),dailyGoals:Object.fromEntries(Object.entries(prev.dailyGoals||{}).map(([key,value])=>[key===editingActivity?next:key,value]))}));
+    if(selectedActivity===editingActivity)setSelectedActivity(next);
+    if(chartActivity===editingActivity)setChartActivity(next);
     setEditingActivity(null);setActivityDraft('');
   };
   const deleteActivity=name=>{
@@ -141,6 +147,19 @@ export function TimeLog({data,onDataChange,client,userId}){
   const computed=active?[...logs,{id:'currently-running',activity:active.activity,start:active.start,end:new Date(now).toISOString()}]:logs;
   const colors=Object.fromEntries(activities.map(a=>[a,colorForActivity(a)]));
   const today=dateKey(new Date());
+  const dailyGoals=record.dailyGoals||{};
+  const dailyTarget=activities.reduce((sum,name)=>sum+Math.max(0,Number(dailyGoals[name])||0),0)*60000;
+  const todaysByActivity=aggregate(computed,today,today).by[today]||{};
+  const goalDifference=aggregate(computed,today,today).total-dailyTarget;
+  const selectedTimerActivity=activities.includes(selectedActivity)?selectedActivity:(active?.activity||activities[0]||'');
+  const currentChartActivity=activities.includes(chartActivity)?chartActivity:(activities[0]||'');
+  const formatDelta=ms=>(ms>=0?'+':'−')+minutesText(Math.abs(ms));
+  const openGoals=()=>{setGoalDraft(Object.fromEntries(activities.map(name=>[name,Math.max(0,Math.round(Number(dailyGoals[name])||0))])));setGoalEditing(true);};
+  const saveGoals=()=>{save(prev=>({...prev,dailyGoals:Object.fromEntries(activities.map(name=>[name,Math.max(0,Math.min(1440,Math.round(Number(goalDraft[name])||0)))]))}));setGoalEditing(false);};
+  const updateGoalPart=(name,part,value)=>{
+    const n=Math.max(0,Math.floor(Number(value)||0));
+    setGoalDraft(old=>{const prev=Math.max(0,Math.round(Number(old[name])||0));return {...old,[name]:part==='hours'?Math.min(24,n)*60+(Math.min(prev%60,59)):Math.floor(prev/60)*60+Math.min(59,n)};});
+  };
   const todayTotal=aggregate(computed,today,today).total;
   const weekDate=startOfWeek(new Date());const weekStart=dateKey(weekDate);const sunday=new Date(weekDate);sunday.setDate(sunday.getDate()+6);const weekTotal=aggregate(computed,weekStart,dateKey(sunday)).total;
   const monthStart=new Date(`${month}-01T00:00:00`);const count=new Date(monthStart.getFullYear(),monthStart.getMonth()+1,0).getDate();
@@ -148,51 +167,120 @@ export function TimeLog({data,onDataChange,client,userId}){
   const dayInfo=aggregate(computed,`${month}-01`,`${month}-${pad(count)}`).by;
   const selInfo=dayInfo[selected]||aggregate(computed,selected,selected).by[selected]||{};
   const selectedTotal=Object.values(selInfo).reduce((a,b)=>a+b,0);
-  const start=new Date();start.setDate(start.getDate()-(Number(period)-1));start.setHours(0,0,0,0);
+  const firstLogMs=computed.reduce((earliest,entry)=>{const d=Date.parse(entry.start);return Number.isFinite(d)?Math.min(earliest,d):earliest;},Date.now());
+  const periodDays=period==='all'?Math.max(1,Math.round((new Date(today+'T12:00:00').getTime()-new Date(dateKey(new Date(firstLogMs))+'T12:00:00').getTime())/86400000)+1):Number(period);
+  const start=new Date();start.setDate(start.getDate()-(periodDays-1));start.setHours(0,0,0,0);
   const from=dateKey(start);const periodData=aggregate(computed,from,today);
   const totals={};for(const day of Object.values(periodData.by)){for(const [name,ms] of Object.entries(day)){totals[name]=(totals[name]||0)+ms;}}
-  const statsDays=Array.from({length:Number(period)},(_,i)=>{const d=new Date(start);d.setDate(d.getDate()+i);const k=dateKey(d);return {date:k,total:Object.values(periodData.by[k]||{}).reduce((a,b)=>a+b,0)}});
+  const statsDays=Array.from({length:periodDays},(_,i)=>{const d=new Date(start);d.setDate(d.getDate()+i);const k=dateKey(d);return {date:k,total:Object.values(periodData.by[k]||{}).reduce((a,b)=>a+b,0)}});
+
+  const activityTotals={...totals};
+  const statsAllActivities=[...new Set([...activities,...Object.keys(activityTotals)])];
+  const chartGroupKey=date=>period==='90'?(()=>{const d=new Date(date+'T12:00:00');const week=startOfWeek(d);return dateKey(week);})():period==='all'?date.slice(0,7):date;
+  const chartGroupLabel=key=>period==='all'?key.slice(2):period==='90'?key.slice(5):key.slice(5);
+  const chartGroups=[];
+  for(const day of statsDays){let group=chartGroups.at(-1);const key=chartGroupKey(day.date);if(!group||group.key!==key){group={key,date:day.date,days:0,actual:0,target:0};chartGroups.push(group);}group.days++;group.actual+=periodData.by[day.date]?.[currentChartActivity]||0;group.target+=Math.max(0,Number(dailyGoals[currentChartActivity])||0)*60000;}
+  const chartMax=Math.max(1,...chartGroups.flatMap(item=>[item.actual,item.target]));
+  const totalGoalForPeriod=periodDays*dailyTarget;
+  const overallAttainment=totalGoalForPeriod>0?Math.round(periodData.total/totalGoalForPeriod*100):null;
   const maxDay=Math.max(1,...statsDays.map(x=>x.total));
+
   const moveMonth=delta=>{const d=new Date(month+'-01T00:00:00');d.setMonth(d.getMonth()+delta);setMonth(dateKey(d).slice(0,7));setSelected(dateKey(d));};
   return <section className="timelog-page">
     {syncError&&<div role="alert" className="auth-error">{syncError} <button type="button" onClick={()=>setPollNonce(n=>n+1)}>재시도</button></div>}
     
     {!server.ready&&<p className="timelog-empty">타임로그 서버 기록 불러오는 중…</p>}
-    <h1>타임로그</h1>
-    <div className="timelog-tabs" role="tablist" aria-label="타임로그 메뉴">{[['record','기록'],['daily','데일리'],['stats','통계'],['calendar','캘린더']].map(([id,label])=><button key={id} type="button" role="tab" aria-selected={section===id} className={section===id?'chosen':''} onClick={()=>setSection(id)}>{label}</button>)}</div>
+    <div className="timelog-heading"><h1>타임로그</h1><span>{new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric'})}</span></div>
+    <div className="timelog-tabs" role="tablist" aria-label="타임로그 메뉴">{[['record','기록'],['stats','통계']].map(([id,label])=><button key={id} type="button" role="tab" aria-selected={section===id} className={section===id?'chosen':''} onClick={()=>setSection(id)}>{label}</button>)}</div>
     {section==='record'&&<>
-      <div className="timelog-counter"><div className="timelog-counter-label">{active?`${active.activity} · 기록 중`:'기록 대기'}</div><div className="timelog-clock">{elapsed(activeMs)}</div>{active?<button type="button" className="timelog-primary" disabled={busy||!server.ready} onClick={stop}>종료 및 저장</button>:<p>활동을 선택하면 측정이 시작돼.</p>}</div>
-      <div className="timelog-kpis"><div><small>오늘</small><strong>{minutesText(todayTotal)}</strong></div><div><small>이번 주 (월–일)</small><strong>{minutesText(weekTotal)}</strong></div></div>
-      <h2>활동 목록</h2><div className="timelog-activities">{activities.map(name=><div className="timelog-activity" key={name} style={{gap:7,minWidth:0}}>
-        {editingActivity===name
-          ? <form onSubmit={e=>{e.preventDefault();applyActivityEdit();}} style={{display:'flex',alignItems:'center',gap:5,flex:1,minWidth:0}}>
-              <input aria-label="활동 이름 수정" autoFocus maxLength={40} value={activityDraft} onChange={e=>setActivityDraft(e.target.value)}
-                style={{flex:1,minWidth:0,width:'100%',padding:'8px',borderRadius:9,border:'1px solid #d6c7e7',fontSize:14}}/>
-              <button type="submit" aria-label="활동 이름 저장" disabled={!activityDraft.trim() || (activityDraft.trim()!==name&&activities.includes(activityDraft.trim()))} style={{padding:'6px',flexShrink:0}}><Check size={16}/></button>
-              <button type="button" aria-label="수정 취소" onClick={()=>{setEditingActivity(null);setActivityDraft('');}} style={{padding:'6px',flexShrink:0}}><X size={16}/></button>
+      <div className="timelog-counter">
+        <div className="timelog-counter-head"><span>현재 활동</span><span>{active?'기록 중':'기록 대기'}</span></div>
+        <select className="timelog-activity-picker" aria-label="측정할 활동" value={selectedTimerActivity} disabled={!activities.length||busy||!server.ready} onChange={e=>setSelectedActivity(e.target.value)}>{activities.map(name=><option key={name} value={name}>{name}</option>)}</select>
+        <div className="timelog-clock">{elapsed(activeMs)}</div>
+        <button type="button" className="timelog-primary" disabled={busy||!server.ready||(!active&&!selectedTimerActivity)} onClick={()=>active?stop():begin(selectedTimerActivity)}>{active?'종료 및 저장':'▶ 시작'}</button>
+        {active&&selectedTimerActivity!==active.activity&&<button type="button" className="timelog-switch" disabled={busy} onClick={()=>begin(selectedTimerActivity)}>활동 전환 · {selectedTimerActivity}</button>}
+      </div>
+      <div className="timelog-kpis timelog-three-kpis">
+        <div><small>오늘 실제</small><strong>{minutesText(todayTotal)}</strong></div>
+        <div><small>오늘 목표</small><strong>{dailyTarget?minutesText(dailyTarget):'미설정'}</strong></div>
+        <div><small>목표 차이</small><strong>{dailyTarget?formatDelta(goalDifference):'—'}</strong></div>
+      </div>
+      <div className="timelog-section-head"><h2>오늘의 활동</h2><button type="button" onClick={openGoals}>목표 설정</button></div>
+      <div className="timelog-activity-progress">{activities.map(name=>{
+        const actual=todaysByActivity[name]||0,goal=Math.max(0,Number(dailyGoals[name])||0)*60000;
+        return <div className="timelog-goal-row" key={name}>
+          <div className="timelog-goal-head"><strong>{name}</strong><span>{goal?`${Math.round(actual/goal*100)}%`:'목표 없음'}</span></div>
+          <div className="timelog-track"><div style={{width:`${goal?Math.min(100,actual/goal*100):0}%`}}/></div>
+          <div className="timelog-goal-foot"><span>{minutesText(actual)} / {goal?minutesText(goal):'목표 미설정'}</span><span>{goal?formatDelta(actual-goal):''}</span></div>
+        </div>;
+      })}</div>
+      <details className="timelog-manage-activities"><summary>활동 관리 · 추가·수정·삭제</summary>
+        <div className="timelog-activities">{activities.map(name=><div className="timelog-activity" key={name} style={{gap:7,minWidth:0}}>
+          {editingActivity===name
+            ?<form onSubmit={e=>{e.preventDefault();applyActivityEdit();}} style={{display:'flex',alignItems:'center',gap:5,flex:1,minWidth:0}}>
+              <input autoFocus maxLength={40} aria-label="활동 이름 수정" value={activityDraft} onChange={e=>setActivityDraft(e.target.value)} style={{flex:1,minWidth:0,fontSize:16,padding:9}}/>
+              <button aria-label="저장" type="submit"><Check size={16}/></button>
+              <button aria-label="취소" type="button" onClick={()=>setEditingActivity(null)}><X size={16}/></button>
             </form>
-          : <>
-              <span style={{flex:1,minWidth:0,overflowWrap:'anywhere'}}><i style={{background:colors[name]}}/>{name}</span>
-              <button type="button" aria-label={`${name} 수정`} title="수정" onClick={()=>startEditActivity(name)} style={{padding:'6px',flexShrink:0,color:'#8b71b6'}}><Pencil size={15}/></button>
-              <button type="button" aria-label={`${name} 삭제`} title="삭제" onClick={()=>deleteActivity(name)} style={{padding:'6px',flexShrink:0,color:'#bd748b'}}><Trash2 size={15}/></button>
-              <button type="button" className={active?.activity===name?'recording':''} disabled={busy||!server.ready||active?.activity===name} onClick={()=>begin(name)}>{active?.activity===name?'기록 중':active?'전환':'시작'}</button>
-            </>}
-      </div>)}</div>
-      <form className="timelog-add" onSubmit={e=>{e.preventDefault();const name=newActivity.trim().slice(0,40);if(!name||activities.includes(name))return;save(prev=>({...prev,activityList:[...activities,name]}));setNewActivity('')}}><input aria-label="새 활동 이름" placeholder="새 활동 추가" value={newActivity} onChange={e=>setNewActivity(e.target.value)}/><button type="submit" disabled={!newActivity.trim()}><Plus size={17}/> 추가</button></form>
+            :<><span style={{flex:1,minWidth:0,overflowWrap:'anywhere'}}><i style={{background:colors[name]}}/>{name}</span>
+              <button type="button" aria-label={name+' 수정'} onClick={()=>startEditActivity(name)}><Pencil size={15}/></button>
+              <button type="button" aria-label={name+' 삭제'} onClick={()=>deleteActivity(name)}><Trash2 size={15}/></button></>}
+        </div>)}</div>
+        <form className="timelog-add" onSubmit={e=>{e.preventDefault();const name=newActivity.trim().slice(0,40);if(!name||activities.includes(name))return;save(prev=>({...prev,activityList:[...activities,name]}));setSelectedActivity(name);setNewActivity('');}}>
+          <input aria-label="새 활동 이름" placeholder="새 활동 추가" value={newActivity} onChange={e=>setNewActivity(e.target.value)}/><button type="submit" disabled={!newActivity.trim()}><Plus size={16}/> 추가</button>
+        </form>
+      </details>
+      <div className="timelog-section-head"><h2>오늘의 기록</h2><small>{computed.filter(x=>dailySegments(Date.parse(x.start),Date.parse(x.end)).some(v=>v.date===today)).length}개</small></div>
+      {computed.filter(x=>dailySegments(Date.parse(x.start),Date.parse(x.end)).some(v=>v.date===today)).slice().sort((a,b)=>Date.parse(b.start)-Date.parse(a.start)).map(x=><div className="timelog-entry" key={x.id}>
+        <span>{x.activity}<small>{new Date(x.start).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}–{x.id==='currently-running'?'진행 중':new Date(x.end).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</small></span>
+        <strong>{minutesText(Math.max(0,Math.min(Date.parse(x.end),new Date(today+'T23:59:59').getTime())-Math.max(Date.parse(x.start),new Date(today+'T00:00:00').getTime())))}</strong>
+        {x.id!=='currently-running'&&<button type="button" aria-label="기록 수정" onClick={()=>editEntry(x)}><Pencil size={16}/></button>}
+      </div>)}
+      {!computed.some(x=>dailySegments(Date.parse(x.start),Date.parse(x.end)).some(v=>v.date===today))&&<p className="timelog-empty">오늘의 기록이 아직 없어.</p>}
     </>}
-    {section==='daily'&&<DailyTimeLine selected={dailyDate} onSelect={setDailyDate} entries={computed} colors={colors} now={now} onEditEntry={editEntry}/>}
     {section==='stats'&&<>
-      <div className="timelog-range">{[['1','1일'],['7','7일'],['30','30일'],['90','90일']].map(([v,label])=><button type="button" key={v} className={period===v?'chosen':''} onClick={()=>setPeriod(v)}>{label}</button>)}</div>
-      <div className="timelog-kpis"><div><small>총 기록 시간</small><strong>{minutesText(periodData.total)}</strong></div><div><small>하루 평균</small><strong>{minutesText(periodData.total/Number(period))}</strong></div></div>
-      <h2>활동별 누적 시간</h2>{Object.entries(totals).sort((a,b)=>b[1]-a[1]).map(([name,ms])=><div className="timelog-stat" key={name}><div><span><i style={{background:colors[name]||'#A68CCF'}}/>{name}</span><strong>{minutesText(ms)} · {periodData.total?Math.round(ms/periodData.total*100):0}%</strong></div><div className="timelog-track"><div style={{width:`${periodData.total?ms/periodData.total*100:0}%`,background:colors[name]||'#A68CCF'}}/></div></div>)}{!periodData.total&&<p className="timelog-empty">아직 기록이 없어.</p>}
-      <h2>일별 기록</h2><div className="timelog-bars">{statsDays.map(d=><div key={d.date} title={`${d.date} · ${minutesText(d.total)}`}><div className="timelog-bar" style={{height:`${Math.max(d.total?3:0,d.total/maxDay*100)}%`}}/><small>{Number(d.date.slice(-2))}</small></div>)}</div>
+      <div className="timelog-range">{[['7','7일'],['30','30일'],['90','90일'],['all','전체']].map(([id,label])=><button type="button" key={id} className={period===id?'chosen':''} onClick={()=>setPeriod(id)}>{label}</button>)}</div>
+      <div className="timelog-section-head"><h2>활동별 목표 달성</h2><button type="button" onClick={openGoals}>목표 설정</button></div>
+      <div className="timelog-kpis timelog-three-kpis">
+        <div><small>실제 기록</small><strong>{minutesText(periodData.total)}</strong></div>
+        <div><small>기간 목표</small><strong>{totalGoalForPeriod?minutesText(totalGoalForPeriod):'미설정'}</strong></div>
+        <div><small>목표 대비</small><strong>{overallAttainment===null?'—':overallAttainment+'%'}</strong></div>
+      </div>
+      <div className="timelog-activity-progress">{statsAllActivities.map(name=>{
+        const actual=activityTotals[name]||0,goal=periodDays*Math.max(0,Number(dailyGoals[name])||0)*60000;
+        return <div className="timelog-goal-row" key={name}>
+          <div className="timelog-goal-head"><strong>{name}</strong><span>{goal?Math.round(actual/goal*100)+'%':'목표 없음'}</span></div>
+          <div className="timelog-track"><div style={{width:`${goal?Math.min(100,actual/goal*100):0}%`}}/></div>
+          <div className="timelog-goal-foot"><span>{minutesText(actual)} / {goal?minutesText(goal):'목표 미설정'}</span><span>{goal?formatDelta(actual-goal):''}</span></div>
+        </div>;
+      })}</div>
+      <div className="timelog-section-head"><h2>기간별 시간 비교</h2></div>
+      <select className="timelog-activity-picker timelog-stat-picker" aria-label="그래프로 볼 활동" value={currentChartActivity} onChange={e=>setChartActivity(e.target.value)}>{statsAllActivities.map(name=><option key={name} value={name}>{name}</option>)}</select>
+      <div className="timelog-chart-scroll" role="region" aria-label="목표와 실제 시간의 기간별 막대그래프" tabIndex={0}>
+        <div className="timelog-chart" style={{minWidth:Math.max(280,chartGroups.length*34)+'px'}}>
+          {chartGroups.map(group=><div className="timelog-chart-column" key={group.key} title={`${group.date} · 목표 ${minutesText(group.target)} · 실제 ${minutesText(group.actual)}`}>
+            <div className="timelog-chart-bars"><div className="timelog-chart-target" style={{height:`${group.target/chartMax*100}%`}}/><div className="timelog-chart-actual" style={{height:`${group.actual/chartMax*100}%`}}/></div>
+            <small>{chartGroupLabel(group.key)}</small>
+          </div>)}
+        </div>
+      </div>
+      <div className="timelog-chart-legend"><span><i/>목표</span><span><i/>실제</span></div>
+      <p className="timelog-hint">7·30일은 일별, 90일은 주별, 전체는 월별로 표시해. 변경한 목표는 현재 목표를 과거 기간에도 적용해서 비교해.</p>
     </>}
-    {section==='calendar'&&<>
-      <div className="timelog-month"><button type="button" aria-label="이전 달" onClick={()=>moveMonth(-1)}><ChevronLeft/></button><strong>{month.replace('-','년 ')}월</strong><button type="button" aria-label="다음 달" onClick={()=>moveMonth(1)}><ChevronRight/></button></div>
-      <div className="timelog-calendar">{['일','월','화','수','목','금','토'].map(d=><span className="timelog-weekday" key={d}>{d}</span>)}{Array.from({length:offset},(_,i)=><span key={`blank${i}`}/>)}{Array.from({length:count},(_,i)=>{const date=`${month}-${pad(i+1)}`;const day=dayInfo[date]||{};return <button type="button" key={date} className={selected===date?'selected':''} onClick={()=>setSelected(date)}><span>{i+1}</span><span className="timelog-dots">{Object.keys(day).slice(0,3).map(a=><i key={a} style={{background:colors[a]||'#A68CCF'}}/>)}</span></button>})}</div>
-      <div className="timelog-selected"><strong>{selected} 기록</strong><span>총 {minutesText(selectedTotal)}</span></div>{Object.entries(selInfo).sort((a,b)=>b[1]-a[1]).map(([name,ms])=><div className="timelog-summary" key={name}><span><i style={{background:colors[name]||'#A68CCF'}}/>{name}</span><strong>{minutesText(ms)}</strong></div>)}{selectedTotal===0&&<p className="timelog-empty">이 날짜에는 기록이 없어.</p>}
-      <h2>상세 기록</h2>{computed.filter(x=>dailySegments(Date.parse(x.start),Date.parse(x.end)).some(v=>v.date===selected)).map(x=>{const startMs=Date.parse(x.start),endMs=Date.parse(x.end);const dayStart=new Date(selected+'T00:00:00').getTime();const part=Math.max(0,Math.min(endMs,dayStart+86400000)-Math.max(startMs,dayStart));return <div className="timelog-entry" key={x.id}><span>{x.activity}<small>{new Date(x.start).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}–{x.id==='currently-running'?'진행 중':new Date(x.end).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</small></span><strong>{minutesText(part)}</strong>{x.id!=='currently-running'&&<button type="button" aria-label={`${x.activity} 기록 수정`} title="기록 수정" onClick={()=>editEntry(x)} style={{border:0,background:'transparent',color:'#947ac2',padding:7,flexShrink:0}}><Pencil size={17}/></button>}</div>})}
-    </>}
+    {goalEditing&&<div className="timelog-goal-overlay" role="presentation" onClick={()=>setGoalEditing(false)}>
+      <form className="timelog-goal-dialog" role="dialog" aria-modal="true" aria-label="활동별 일일 목표 설정" onClick={e=>e.stopPropagation()} onSubmit={e=>{e.preventDefault();saveGoals();}}>
+        <div className="timelog-goal-title"><h2>활동별 하루 목표</h2><button type="button" aria-label="닫기" onClick={()=>setGoalEditing(false)}><X size={18}/></button></div>
+        <p>목표가 없으면 0시간 0분으로 설정해 줘.</p>
+        {activities.map(name=><div className="timelog-goal-field" key={name}>
+          <label>{name}</label><div>
+            <input type="number" min="0" max="24" inputMode="numeric" aria-label={name+' 목표 시간'} value={Math.floor((Number(goalDraft[name])||0)/60)} onChange={e=>updateGoalPart(name,'hours',e.target.value)}/><span>시간</span>
+            <input type="number" min="0" max="59" inputMode="numeric" aria-label={name+' 목표 분'} value={(Number(goalDraft[name])||0)%60} onChange={e=>updateGoalPart(name,'minutes',e.target.value)}/><span>분</span>
+          </div>
+        </div>)}
+        <div className="timelog-goal-total">일일 목표 합계 <strong>{minutesText(activities.reduce((sum,name)=>sum+(Number(goalDraft[name])||0),0)*60000)}</strong></div>
+        <button className="timelog-primary" type="submit">저장</button>
+      </form>
+    </div>}
     {editingEntry&&<div role="presentation" onClick={()=>!busy&&setEditingEntry(null)} style={{position:'fixed',inset:0,zIndex:1200,background:'rgba(40,33,52,.42)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
       <form role="dialog" aria-modal="true" aria-label="타임로그 기록 수정" onClick={e=>e.stopPropagation()} onSubmit={e=>{e.preventDefault();saveEntry();}} style={{width:'100%',maxWidth:420,minWidth:0,boxSizing:'border-box',maxHeight:'calc(100dvh - 40px)',overflowY:'auto',background:'#fff',borderRadius:20,padding:20,display:'grid',gap:14,boxShadow:'0 16px 45px rgba(30,20,48,.16)'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><h2 style={{margin:0,fontSize:20}}>기록 수정</h2><button type="button" aria-label="닫기" onClick={()=>setEditingEntry(null)} disabled={busy} style={{padding:6}}><X size={19}/></button></div>
