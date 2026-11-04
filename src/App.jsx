@@ -17,6 +17,7 @@ import {
   Square,
   RotateCcw,
   Clock3,
+  ListTodo,
   Heart,
   Blocks,
   ClipboardCheck,
@@ -94,7 +95,9 @@ export function App({
       .on("postgres_changes", {event:"*",schema:"public",table:"app_registry_apps",filter:`user_id=eq.${bridgeUserId}`}, loadApps).subscribe();
     return () => {active=false;window.removeEventListener("focus",onFocus);bridgeClient.removeChannel(channel);};
   }, [bridgeClient,bridgeUserId]);
-  const [tab, setTab] = useState("today"),
+  const [tab, setTab] = useState("timelog"),
+    [calendarMode, setCalendarMode] = useState("schedule"),
+    [todoDate, setTodoDate] = useState(localDate()),
     [selectedProject, setSelectedProject] = useState("p1"),
     [projectScope, setProjectScope] = useState("project"),
     [blockDate, setBlockDate] = useState(localDate()),
@@ -195,6 +198,7 @@ export function App({
           appRegistryId: t.appRegistryId || "",
           due: t.due || "",
           time: t.time || "",
+          entryType: t.entryType === "schedule" ? "schedule" : "todo",
           status: t.status || "todo",
           subtasks: [],
           tally: t.tally || null,
@@ -924,174 +928,88 @@ export function App({
       </section>;
     })}</div>;
   }
-  function Calendar() {
-    const base = new Date(focusDate + "T12:00:00"),
-      day = base.getDay(),
-      first = localDate(new Date(base.getFullYear(), base.getMonth(), 1));
-    const start =
-      calendarView === "month"
-        ? dayAdd(first, -new Date(first + "T12:00:00").getDay())
-        : calendarView === "week"
-          ? dayAdd(focusDate, -day)
-          : focusDate;
-    const length =
-      calendarView === "month"
-        ? 42
-        : calendarView === "week"
-          ? 7
-          : calendarView === "three"
-            ? 3
-            : 1;
-    const days = Array.from({ length }, (_, i) => dayAdd(start, i));
-    const jump = (n) =>
-      setFocusDate(
-        calendarView === "month"
-          ? localDate(
-              new Date(
-                base.getFullYear(),
-                base.getMonth() + n,
-                Math.min(base.getDate(), 28),
-              ),
-            )
-          : dayAdd(
-              focusDate,
-              n *
-                (calendarView === "week"
-                  ? 7
-                  : calendarView === "three"
-                    ? 3
-                    : 1),
-            ),
-      );
-    return (
-      <>
-        <div className="section-top">
-          <div>
-            <div className="eyebrow">프로젝트별 색상으로 일정 구분</div>
-            <h1>캘린더</h1>
-          </div>
-          <button className="primary small" onClick={() => {setModal("task");setEditing(null);}}>
-            <Plus size={16} /> 일정
-          </button>
-        </div>
-        <div className="views">
-          {[
-            ["month", "월간"],
-            ["week", "주간"],
-            ["three", "3일"],
-            ["day", "1일"],
-          ].map(([id, name]) => (
-            <button
-              key={id}
-              className={calendarView === id ? "selected" : ""}
-              onClick={() => setCalendarView(id)}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-        <div className="calendar-nav">
-          <button onClick={() => jump(-1)}>
-            <ChevronLeft size={19} />
-          </button>
-          <strong>
-            {calendarView === "month"
-              ? `${base.getFullYear()}년 ${base.getMonth() + 1}월`
-              : `${focusDate.replaceAll("-", ".")}부터`}
-          </strong>
-          <button onClick={() => jump(1)}>
-            <ChevronRight size={19} />
-          </button>
-          <button className="today-btn" onClick={() => setFocusDate(today)}>
-            오늘
-          </button>
-        </div>
-        {calendarView === "month" ? (
-          <>
-            <div className="month-grid weekday">
-              {"일월화수목금토".split("").map((x) => (
-                <div key={x}>{x}</div>
-              ))}
-            </div>
-            <div className="month-grid days">
-              {days.map((date) => {
-                let items = dateItems(date);
-                return (
-                  <button
-                    key={date}
-                    className={
-                      "day-cell " +
-                      (date.slice(0, 7) !== focusDate.slice(0, 7)
-                        ? "muted "
-                        : "") +
-                      (date === focusDate ? "active" : "")
-                    }
-                    onClick={() => setFocusDate(date)}
-                  >
-                    <span className={date === today ? "today-round" : ""}>
-                      {Number(date.slice(8))}
-                    </span>
-                    <div className="dots">
-                      {items.slice(0, 5).map((t) => (
-                        <i
-                          key={t.id}
-                          style={{
-                            background: taskProject(t)?.color || "#aaa",
-                          }}
-                        />
-                      ))}
-                      {items.length > 5 && (
-                        <span className="calendar-extra-count" aria-label={`추가 일정 ${items.length - 5}개`}>
-                          +{items.length - 5}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="selected-day-agenda">
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-                <h2>{focusDate} 일정</h2>
-                <button type="button" className="primary small" onClick={()=>{setEditing(null);setModal("task");}} aria-label="선택한 날짜 일정 추가"><Plus size={16}/> 일정 추가</button>
-              </div>
-              {CalendarChecklist({date:focusDate})}
-            </div>
-          </>
-        ) : (
-          <div className="agenda">
-            {days.map((date) => (
-              <div className="agenda-day" key={date}>
-                <div className="agenda-day-head">
-                  {new Date(date + "T12:00:00").toLocaleDateString("ko-KR", {
-                    month: "short",
-                    day: "numeric",
-                    weekday: "short",
-                  })}{" "}
-                  {date === today && <span className="tiny-tag">오늘</span>}
-                </div>
-                <div className="agenda-items">
-                  {CalendarChecklist({date})}
 
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="legend">
-          {data.projects.map((p) => (
-            <span key={p.id}>
-              <i style={{ background: p.color }} />
-              {p.name}
-            </span>
-          ))}
-          <span>
-            <i style={{ background: "#b8b3bf" }} />
-            개인 일정
-          </span>
-        </div>
-      </>
-    );
+  // Legacy entries without a kind keep their original data: timed records
+  // appear under 일정; other dated records appear under 투두리스트.
+  const isScheduleEntry = (task) => task.entryType === "schedule" ||
+    (!task.entryType && Boolean(task.time));
+  function FocusDateStrip({date, onChange, month=false}) {
+    const base=new Date(date+"T12:00:00");
+    const shift=(delta)=>month
+      ?localDate(new Date(base.getFullYear(),base.getMonth()+delta,Math.min(base.getDate(),28)))
+      :dayAdd(date,delta);
+    return <div className="focus-date-strip">
+      <div className="focus-date-center">
+        <button type="button" onClick={()=>onChange(shift(-1))} aria-label={month?"이전 달":"이전 날짜"}><ChevronLeft size={19}/></button>
+        <strong>{month?`${base.getFullYear()}년 ${base.getMonth()+1}월`:`${base.getMonth()+1}월 ${base.getDate()}일`}</strong>
+        <button type="button" onClick={()=>onChange(shift(1))} aria-label={month?"다음 달":"다음 날짜"}><ChevronRight size={19}/></button>
+      </div>
+      <button type="button" className="focus-today-button" onClick={()=>onChange(today)}>오늘</button>
+    </div>;
+  }
+  function FocusTaskRows({items, mode, compact=false}) {
+    const ordered=[...items].sort(byDueThenTitle);
+    if(!ordered.length)return <div className="focus-empty">{mode==="schedule"?"등록된 일정이 없어.":"등록된 할 일이 없어."}</div>;
+    return <div className="focus-task-list">{ordered.map(t=><div key={t.id} className="focus-task-row">
+      {mode==="todo"
+        ? <input type="checkbox" aria-label={`${t.title} 완료`} checked={t.status==="done"} onChange={e=>completeOrStatus(t,e.target.checked?"done":"todo")}/>
+        : <CalendarDays size={17} color="#9077ba"/>}
+      <button type="button" className="focus-task-detail" onClick={()=>setEditing(t.id)}>
+        <span style={{textDecoration:mode==="todo"&&t.status==="done"?"line-through":"none"}}>{t.title}</span>
+        <small>{[t.time,taskProject(t)?.name||"개인",mode==="schedule"&&t.status==="done"?"완료":""].filter(Boolean).join(" · ")}</small>
+      </button>
+      <button type="button" className="focus-move-kind" title={mode==="schedule"?"투두리스트로 이동":"일정으로 이동"}
+        aria-label={mode==="schedule"?"투두리스트로 이동":"일정으로 이동"}
+        onClick={()=>changeTask(t.id,{entryType:mode==="schedule"?"todo":"schedule",due:t.due||focusDate})}>{mode==="schedule"?"투두로":"일정으로"}</button>
+    </div>)}</div>;
+  }
+  function TodoPanel() {
+    const dated=data.tasks.filter(t=>!isScheduleEntry(t)&&(t.due===todoDate||(todoDate===today&&t.status!=="done"&&t.due&&t.due<today)));
+    const noDate=data.tasks.filter(t=>!isScheduleEntry(t)&&!t.due);
+    return <div className="focus-redesign">
+      <div className="section-top"><h1>투두리스트</h1><button className="primary small" onClick={()=>{setEditing(null);setModal("task");}}><Plus size={16}/> 추가</button></div>
+      <FocusDateStrip date={todoDate} onChange={setTodoDate}/>
+      <div className="focus-kpis"><div><small>완료</small><strong>{dated.filter(x=>x.status==="done").length}/{dated.length}</strong></div><div><small>남은 할 일</small><strong>{dated.filter(x=>x.status!=="done").length}</strong></div></div>
+      <section className="focus-panel"><h2>{todoDate===today?"오늘의 할 일":todoDate+" 할 일"}</h2>
+        <FocusTaskRows items={dated} mode="todo"/>
+      </section>
+      {!!noDate.length&&<section className="focus-panel"><h2>날짜 없는 할 일</h2><FocusTaskRows items={noDate} mode="todo"/></section>}
+      <p className="focus-help">날짜가 지난 미완료 할 일은 오늘에도 표시돼. 기존 기록과 프로젝트는 그대로 유지돼.</p>
+    </div>;
+  }
+  function Calendar() {
+    const base=new Date(focusDate+"T12:00:00");
+    const monthStart=localDate(new Date(base.getFullYear(),base.getMonth(),1));
+    const monthFirstDay=new Date(monthStart+"T12:00:00").getDay();
+    const startDay=dayAdd(monthStart,-monthFirstDay);
+    const days=Array.from({length:42},(_,i)=>dayAdd(startDay,i));
+    const isMatch=t=>calendarMode==="schedule"?isScheduleEntry(t):!isScheduleEntry(t);
+    const selected=data.tasks.filter(t=>t.due===focusDate&&isMatch(t));
+    return <div className="focus-redesign">
+      <div className="section-top"><h1>일정</h1><button className="primary small" onClick={()=>{setEditing(null);setModal("task");}}><Plus size={16}/>{calendarMode==="schedule"?"일정":"할 일"} 추가</button></div>
+      <div className="focus-segments" role="tablist" aria-label="캘린더 종류">
+        <button role="tab" aria-selected={calendarMode==="schedule"} className={calendarMode==="schedule"?"selected":""} onClick={()=>setCalendarMode("schedule")}>일정</button>
+        <button role="tab" aria-selected={calendarMode==="todo"} className={calendarMode==="todo"?"selected":""} onClick={()=>setCalendarMode("todo")}>투두리스트</button>
+      </div>
+      <section className="focus-panel focus-calendar-panel">
+        <FocusDateStrip date={focusDate} onChange={setFocusDate} month/>
+        <div className="month-grid weekday">{"일월화수목금토".split("").map((x,i)=><div key={i}>{x}</div>)}</div>
+        <div className="month-grid focus-month-days">{days.map(date=>{
+          const visible=data.tasks.filter(t=>t.due===date&&isMatch(t));
+          return <button key={date} type="button"
+            className={"focus-month-cell "+(date.slice(0,7)!==focusDate.slice(0,7)?"muted ":"")+(date===focusDate?"active":"")}
+            onClick={()=>setFocusDate(date)} aria-pressed={date===focusDate}>
+            <span>{Number(date.slice(8))}</span>
+            <small>{visible.length ?`${visible.length}개`:""}</small>
+            {visible.length>0&&<i aria-hidden="true"/>}
+          </button>;
+        })}</div>
+      </section>
+      <section className="focus-panel">
+        <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="schedule"?"일정":"투두리스트"}</h2><small>{selected.length}개</small></div>
+        <FocusTaskRows items={selected} mode={calendarMode}/>
+      </section>
+    </div>;
   }
   function Projects() {
     // UI scope only: existing project/task associations remain untouched.
@@ -1838,55 +1756,27 @@ export function App({
   const editTask = data.tasks.find((t) => t.id === editing);
   return (
     <div className="app">
-      <header>
-        <button
-          type="button"
-          className="brand"
-          aria-label="Focus Flow · 오늘로 이동"
-          onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("today");}}
-          style={{ padding: 0, textAlign: "left" }}
-        >
-          Focus Flow
-        </button>
+      <header className="focus-v6-header">
+        <button type="button" className="brand" onClick={()=>{setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}}>Focus Flow</button>
         <div className="header-actions">
-          <button type="button" className={`header-timer ${tab === "projects" ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(false);setTab("projects");}} aria-label="프로젝트 열기" title="프로젝트"><FolderKanban size={18}/></button>
-
-          <button type="button" className={`header-timer ${registryOpen ? "is-active" : ""}`} onClick={() => {setChecklistOpen(false);setRegistryOpen(true);}} aria-label="앱 관리 열기" title="앱 관리"><Blocks size={18}/></button>
-          <button type="button" className={`header-timer ${checklistOpen ? "is-active" : ""}`} onClick={() => {setRegistryOpen(false);setChecklistOpen(true);}} aria-label="체크리스트 열기" title="체크리스트"><ClipboardCheck size={18}/></button>
-          <button type="button" className="header-timer" onClick={onLogout} aria-label="로그아웃" title="로그아웃"><LogOut size={18}/></button>
+          <span className="focus-autosave">자동 저장</span>
+          <button type="button" className="header-timer" aria-label="로그아웃" title="로그아웃" onClick={onLogout}><LogOut size={18}/></button>
         </div>
       </header>
       <main>
-        {checklistOpen ? <ChecklistPanel client={bridgeClient} userId={bridgeUserId} onClose={() => setChecklistOpen(false)} /> : registryOpen ? <AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={() => setRegistryOpen(false)} /> : tab === "today"
-          ? Kanban()
-          : tab === "timelog"
-            ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
-          : tab === "weekly"
-            ? <WeeklyPlan data={data} onDataChange={setData} />
-          : tab === "calendar"
-            ? Calendar()
-                : tab === "memos"
-                ? <MemoPanel data={data} onDataChange={setData} />
-                : Projects()}
+        {tab === "timelog" ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
+          :tab === "todo" ? TodoPanel()
+          :tab === "calendar" ? Calendar()
+          :<AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={()=>setTab("timelog")}/>}
       </main>
-      {!registryOpen && !checklistOpen && <nav className="bottom-nav">
+      <nav className="bottom-nav" aria-label="메인 메뉴">
         {[
-          ["today", Columns3, "오늘"],
-          ["timelog", Clock3, "타임로그"],
-          ["calendar", CalendarDays, "캘린더"],
-          ["weekly", CalendarRange, "위클리"],
-          ["memos", Heart, "메모"],
-        ].map(([id, Icon, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={tab === id ? "nav-active" : ""}
-          >
-            <Icon size={21} strokeWidth={tab === id ? 2.6 : 1.8} />
-            <span>{label}</span>
-          </button>
-        ))}
-      </nav>}
+          ["timelog",Clock3,"타임로그"],
+          ["todo",ListTodo,"투두리스트"],
+          ["calendar",CalendarDays,"일정"],
+          ["apps",Blocks,"앱관리"]
+        ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>setTab(id)} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
+      </nav>
       {modal === "task" && (
         <TaskModal
           projects={data.projects}
@@ -1894,7 +1784,8 @@ export function App({
           preProject=""
           onClose={() => setModal(null)}
           onSave={addTask}
-          initialDate={tab === "calendar" ? focusDate : today}
+          initialDate={tab === "calendar" ? focusDate : tab === "todo" ? todoDate : today}
+          initialType={tab === "calendar" ? calendarMode : "todo"}
         />
       )}
       {modal === "project" && (
@@ -2032,9 +1923,10 @@ function PomEstimatePicker({ value, onChange }) {
     </fieldset>
   );
 }
-function TaskModal({ projects, registryApps = [], preProject, onClose, onSave, initialDate }) {
+function TaskModal({ projects, registryApps = [], preProject, onClose, onSave, initialDate, initialType = "todo" }) {
   const [title, setTitle] = useState(""),
     [taskScope, setTaskScope] = useState("personal"),
+    [entryType, setEntryType] = useState(initialType),
     [due, setDue] = useState(() => initialDate || localDate()),
     [hasSchedule, setHasSchedule] = useState(true),
     [time, setTime] = useState(""),
@@ -2049,11 +1941,11 @@ function TaskModal({ projects, registryApps = [], preProject, onClose, onSave, i
         onSubmit={(e) => {
           e.preventDefault();
           if (title.trim())
-            onSave({ title, projectId:"", taskScope, appRegistryId:"", due, time, estimatedPomodoros, tally:null,tallies:[] });
+            onSave({ title, projectId:"", taskScope, entryType, appRegistryId:"", due:hasSchedule?due:"", time:hasSchedule?time:"", estimatedPomodoros, tally:null,tallies:[] });
         }}
       >
         <div className="sheet-top">
-          <h2>새 할 일</h2>
+          <h2>{entryType==="schedule"?"새 일정":"새 할 일"}</h2>
           <button type="button" onClick={onClose}>
             <X size={20} />
           </button>
@@ -2067,6 +1959,10 @@ function TaskModal({ projects, registryApps = [], preProject, onClose, onSave, i
             onChange={(e) => setTitle(e.target.value)}
             placeholder="무엇을 할까?"
           />
+        </label>
+        <label>
+          구분
+          <select value={entryType} onChange={e=>setEntryType(e.target.value)}><option value="schedule">일정</option><option value="todo">투두리스트</option></select>
         </label>
         <label>
           프로젝트
@@ -2250,6 +2146,12 @@ function EditTask({
             <input type="time" value={task.time || ""} onChange={e => onChange({time:e.target.value})} />
           </label>
         </div>}
+        <label>
+          구분
+          <select value={task.entryType || (task.time?"schedule":"todo")} onChange={e=>onChange({entryType:e.target.value})}>
+            <option value="schedule">일정</option><option value="todo">투두리스트</option>
+          </select>
+        </label>
         <label>
           진행 상태
           <select
