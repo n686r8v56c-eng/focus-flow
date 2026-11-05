@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Plus, Pencil, Trash2, Copy, ExternalLink, Upload, Download, ChevronRight, X, Check, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Copy, ExternalLink, Upload, Download, ChevronRight, X, Check, RefreshCw, Pin } from 'lucide-react';
 import './app-registry.css';
 
 const STATUSES = ['배포 후 수정','배포','개발 중','기획 중','보류'];
@@ -51,6 +51,19 @@ const fieldLabel=(label,child)=><label className="ar-label">{label}{child}</labe
 
 export function AppRegistry({client,userId,onClose}){
  const [tab,setTab]=useState('apps'),[status,setStatus]=useState('배포'),[apps,setApps]=useState([]),[accounts,setAccounts]=useState([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[view,setView]=useState(null),[editing,setEditing]=useState(false),[draft,setDraft]=useState(null),[preview,setPreview]=useState(null),[importAccounts,setImportAccounts]=useState([]);const inputRef=useRef(null),filePickerOpenRef=useRef(false);
+ const pinKey = `focus-flow-app-pins-${userId || 'anonymous'}`;
+ const [pinnedIds,setPinnedIds] = useState(()=>{
+   try { const ids=JSON.parse(localStorage.getItem(`focus-flow-app-pins-${userId || 'anonymous'}`)||'[]');return Array.isArray(ids)?ids:[]; }
+   catch { return []; }
+ });
+ useEffect(()=>{try { const ids=JSON.parse(localStorage.getItem(pinKey)||'[]');setPinnedIds(Array.isArray(ids)?ids:[]); }catch {setPinnedIds([]);}},[pinKey]);
+ const togglePin=(appId)=>{
+   setPinnedIds(current=>{
+     const next=current.includes(appId)?current.filter(x=>x!==appId):[...current,appId];
+     try { localStorage.setItem(pinKey,JSON.stringify(next)); }catch {}
+     return next;
+   });
+ };
  const load=useCallback(async()=>{if(!client||!userId)return;setLoading(true);setError('');try{const [a,b]=await Promise.all([client.from('app_registry_apps').select('*').eq('user_id',userId).order('name'),client.from('app_registry_accounts').select('*').eq('user_id',userId).order('email')]);if(a.error)throw a.error;if(b.error)throw b.error;setApps(a.data||[]);setAccounts(b.data||[]);}catch(e){setError(`서버 데이터를 불러오지 못했어. SQL과 연결 상태를 확인해 줘. (${e.message})`);}finally{setLoading(false);}},[client,userId]);
  useEffect(()=>{load();},[load]);
  useEffect(()=>{const refresh=()=>{if(document.visibilityState==='visible'&&!filePickerOpenRef.current)load();};document.addEventListener('visibilitychange',refresh);window.addEventListener('focus',refresh);return()=>{document.removeEventListener('visibilitychange',refresh);window.removeEventListener('focus',refresh);};},[load]);
@@ -96,7 +109,7 @@ export function AppRegistry({client,userId,onClose}){
  }catch(e){fail(e);await load();}finally{setBusy(false);}};
  const exportJSON=()=>{const data={version:1,exportedAt:new Date().toISOString(),accounts:accounts.map(a=>({email:a.email,memo:a.memo})),apps:apps.map(a=>({name:a.name,status:a.status,email:accounts.find(c=>c.id===a.email_account_id)?.email||'',deployment_url:a.deployment_url,memo:a.memo}))};download('FocusFlow_AppRegistry_Backup.json',JSON.stringify(data,null,2));};
  const accountFor=a=>accounts.find(c=>c.id===a.email_account_id);
- const display=tab==='apps'?apps.filter(a=>a.status===status):accounts;
+ const display=tab==='apps'?apps.filter(a=>a.status===status).sort((a,b)=>Number(pinnedIds.includes(b.id))-Number(pinnedIds.includes(a.id))||a.name.localeCompare(b.name,'ko')):accounts;
  const activeView=view&&(tab==='apps'?apps:accounts).find(x=>x.id===view.id)||view;
  return <section className="ar-page">
   <div className="ar-heading focus-page-heading"><h1>앱관리</h1><button className="ar-icon" onClick={load} aria-label="앱 목록 새로고침" title="새로고침"><RefreshCw size={18}/></button></div>
@@ -123,7 +136,7 @@ export function AppRegistry({client,userId,onClose}){
   {fieldLabel('메모',<textarea rows={5} value={draft.memo||''} onChange={e=>setDraft({...draft,memo:e.target.value})}/>)}
   <button className="ar-primary" disabled={busy} onClick={tab==='apps'?saveApp:saveAccount}>{busy?'저장 중…':'저장하기'}</button></div>}
   {!loading&&!editing&&!preview&&!view&&<><div className="ar-row ar-list-head"><h2>{tab==='apps'?'앱 목록':'계정'}</h2><button className="ar-add" onClick={openNew}><Plus size={18}/> 추가</button></div>{tab==='apps'&&<div className="ar-filters">{FILTER_STATUSES.map(s=><button key={s} className={s===status?'active':''} onClick={()=>setStatus(s)}>{FILTER_LABELS[s]} {apps.filter(a=>a.status===s).length}</button>)}</div>}
-   <div className="ar-list">{display.map(item=><button className="ar-list-row" key={item.id} onClick={()=>openItem(item)}><span>{tab==='apps'?item.name:item.email}</span>{tab==='accounts'&&<small>{apps.filter(a=>a.email_account_id===item.id).length}개 앱</small>}<ChevronRight size={18}/></button>)}{display.length===0&&<p className="ar-muted">등록된 {tab==='apps'?'앱':'계정'}이 없어.</p>}</div>
+   <div className="ar-list">{display.map(item=><div className="ar-list-row ar-pin-row" key={item.id}><button className="ar-row-main" onClick={()=>openItem(item)}><span>{tab==='apps'?item.name:item.email}</span>{tab==='accounts'&&<small>{apps.filter(a=>a.email_account_id===item.id).length}개 앱</small>}</button>{tab==='apps'&&<button className={`ar-pin-toggle ${pinnedIds.includes(item.id)?'is-pinned':''}`} onClick={()=>togglePin(item.id)} title={pinnedIds.includes(item.id)?'핀 해제':'상단에 고정'} aria-label={`${item.name} ${pinnedIds.includes(item.id)?'핀 해제':'핀 고정'}`} aria-pressed={pinnedIds.includes(item.id)}><Pin size={19} fill={pinnedIds.includes(item.id)?'currentColor':'none'}/></button>}<button className="ar-chevron" onClick={()=>openItem(item)} aria-label={`${item.name||item.email} 상세보기`}><ChevronRight size={18}/></button></div>)}{display.length===0&&<p className="ar-muted">등록된 {tab==='apps'?'앱':'계정'}이 없어.</p>}</div>
    <div className="ar-tools"><button onClick={exportJSON}><Download size={17}/> JSON 백업</button><button onClick={()=>{filePickerOpenRef.current=true;setError('');setNotice('가져올 파일을 선택해 줘.');inputRef.current?.click();}}><Upload size={17}/> {tab==='apps'?'엑셀·CSV·JSON 가져오기':'JSON 복원'}</button></div></>}
   <input ref={inputRef} type="file" style={{display:'none'}} accept=".xlsx,.csv,.json,application/json,text/csv" onChange={e=>importFile(e.target.files?.[0])} onCancel={()=>{filePickerOpenRef.current=false;setNotice('파일 선택이 취소되었어.');}}/>
   {!loading&&preview&&<div className="ar-import"><div className="ar-row"><h2>가져오기 미리보기</h2><button className="ar-icon" onClick={()=>setPreview(null)}><X size={19}/></button></div><p className="ar-muted">신규 등록·기존 업데이트·건너뛰기를 선택해 줘. 기존 앱은 자동으로 건너뛰어.</p><div className="ar-import-list">{preview.map((a,i)=><div key={i} className="ar-import-item"><label><input type="checkbox" checked={a.selected} onChange={e=>setPreview(p=>p.map((x,j)=>j===i?{...x,selected:e.target.checked}:x))}/><strong>{a.name}</strong></label><select value={a.action} onChange={e=>setPreview(p=>p.map((x,j)=>j===i?{...x,action:e.target.value}:x))}><option value="new">신규 등록</option>{apps.some(x=>low(x.name)===low(a.name))&&<option value="update">기존 업데이트</option>}<option value="skip">건너뛰기</option></select><select value={a.status} onChange={e=>setPreview(p=>p.map((x,j)=>j===i?{...x,status:e.target.value}:x))}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select><small>{a.email||'이메일 없음'} · {a.deployment_url||'배포 URL 없음'}</small></div>)}</div><button className="ar-primary" onClick={commitImport} disabled={busy}>{busy?'가져오는 중…':'확인 후 가져오기'}</button></div>}
