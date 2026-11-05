@@ -43,6 +43,7 @@ import DietTab from "./DietTab.jsx";
 import { MemoPanel } from "./MemoPanel.jsx";
 import { AppRegistry } from "./AppRegistry.jsx";
 import { ChecklistPanel } from "./ChecklistPanel.jsx";
+import { ApiChecklist } from "./ApiChecklist.jsx";
 import {
   CLOCK_SOUNDS,
   clockType,
@@ -1765,6 +1766,7 @@ export function App({
       <header className="focus-v6-header">
         <button type="button" className="brand" onClick={()=>{setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}}>Focus Flow</button>
         <div className="header-actions">
+          <button type="button" className="api-top-button" style={{border:"1px solid #e3d9ee",background:tab === "api" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9,padding:"7px 11px",fontSize:14,fontWeight:650,minHeight:36}} onClick={()=>setTab("api")} aria-current={tab === "api" ? "page" : undefined}>API</button>
           <span className="focus-autosave">자동 저장</span>
           <button type="button" className="header-timer" aria-label="로그아웃" title="로그아웃" onClick={onLogout}><LogOut size={18}/></button>
         </div>
@@ -1774,6 +1776,7 @@ export function App({
           :tab === "diet" ? <section className="focus-diet-screen"><div className="section-top focus-diet-heading"><h1>식단</h1></div><DietTab db={bridgeClient} user={bridgeUserId?{id:bridgeUserId}:null}/></section>
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
+          :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
           :<AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={()=>setTab("timelog")}/>}
       </main>
       <nav className="bottom-nav" aria-label="메인 메뉴">
