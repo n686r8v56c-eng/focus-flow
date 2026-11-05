@@ -12,3 +12,13 @@
 .inbox-open>svg{color:#ac9abc;flex:none}.inbox-icon{display:grid;place-items:center;padding:8px;color:#9074b5;flex:none}.inbox-plan{display:flex;align-items:center;gap:3px;min-height:32px;font-size:12px;padding:5px}
 .inbox-expanded{border-top:1px solid #eae1f1;padding:12px}.inbox-body{margin:0 0 12px;font-size:15px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;color:#61526e}.inbox-tools{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.inbox-tools select{max-width:175px;min-width:0;flex:1;font-size:14px}.inbox-tools button,.inbox-tools a{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:7px;color:#9074b5;border-radius:7px}.inbox-edit{display:grid;gap:10px;margin-bottom:12px}.inbox-edit label{display:grid;gap:5px;font-size:13px;color:#968ba0}.inbox-edit input,.inbox-edit textarea{width:100%;color:#42364f}.inbox-edit>div{display:flex;gap:8px;justify-content:flex-end}.inbox-task-thumb{width:50px;height:33px;border-radius:5px;object-fit:cover;flex:none}.inbox-task-actions{display:flex;gap:3px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:100px}.inbox-task-actions button{padding:5px;color:#9074b5}.inbox-source{font-size:12px!important}
 @media(max-width:749px){.inbox-segments button{font-size:14px}.inbox-card-text b{font-size:16px}.inbox-card-text small{font-size:13px}.inbox-thumbnail{width:60px;height:40px}.inbox-open{gap:7px}.inbox-row{gap:1px}.inbox-capture-actions>span{font-size:13px}.inbox-note-icon{width:24px}.inbox-task-actions{max-width:72px}}
+
+.inbox-pending-images{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.inbox-pending-images>span{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:8px;background:#f3edf9;color:#745b91;font-size:13px;max-width:100%;overflow-wrap:anywhere}
+.inbox-pending-images button{display:grid;place-items:center;color:#8368a1}
+.inbox-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px;margin:0 0 12px}
+.inbox-photo-item{position:relative;min-width:0}
+.inbox-photo{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:9px;cursor:zoom-in}
+.inbox-photo-item>button{position:absolute;top:3px;right:3px;border-radius:50%;background:#fff;color:#795c99;padding:5px;display:grid;place-items:center}
+.inbox-add-photo{display:inline-flex;align-items:center;gap:5px;cursor:pointer;color:#9074b5;font-size:14px;padding:7px}
+.inbox-photo-error{color:#a33250;font-size:13px;padding:5px 12px}
