@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const equal = (a, b) => {const order=x=>Array.isArray(x)?x.map(order):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(k=>[k,order(x[k])])):x;return JSON.stringify(order(a))===JSON.stringify(order(b))};
 const object = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 // Three-way merge: preserve independent edits; never silently pick a winner.
 // Resolve concurrent running-timer edits by event time, while preserving both
