@@ -103,3 +103,14 @@ header .header-actions .header-timer{width:30px;height:30px;padding:5px;display:
         }
     }
 }
+
+/* App registry pin controls: keep the row tappable while separating pin action. */
+.ar-pin-row{padding:0;gap:0;min-height:48px}
+.ar-row-main{border:0;background:transparent;color:inherit;text-align:left;font:inherit;display:flex;align-items:center;gap:8px;flex:1;min-width:0;min-height:48px;padding:12px 8px 12px 14px;cursor:pointer}
+.ar-row-main>span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar-row-main>small{color:#9585a2}
+.ar-pin-toggle,.ar-chevron{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:43px;height:46px;border:0;background:transparent;color:#b6a8c6;cursor:pointer}
+.ar-pin-toggle.is-pinned{color:#8d70c8}
+.ar-chevron{width:35px;color:#a898b4}
+.ar-pin-toggle:focus-visible,.ar-chevron:focus-visible,.ar-row-main:focus-visible{outline:2px solid #8d70c8;outline-offset:-2px;border-radius:9px}
+@media(max-width:749px){.ar-row-main{font-size:15px}.ar-pin-toggle{width:45px}}
