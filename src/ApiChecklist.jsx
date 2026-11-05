@@ -16,6 +16,12 @@ const groups = [
     ['hiking','산림청 등산로정보','산별 등산로 자료·등산 안내','공공데이터포털','https://www.data.go.kr/data/15002734/openapi.do'],
     ['seoul-trails','서울시 둘레길 선형 위치정보','지도 경로 좌표 · 현행화 중단 자료로 최신 코스 대조 필요','서울 열린데이터광장','https://data.seoul.go.kr/dataList/OA-11986/S/1/datasetView.do'],
   ]},
+  {name:'Home Flow · 서울·경기 아파트', items:[
+    ['home-apt-list','공동주택 단지 목록제공 서비스','서울·경기 아파트 단지 목록·단지코드 조회','공공데이터포털','https://www.data.go.kr/data/15057332/openapi.do'],
+    ['home-apt-basic','공동주택 기본 정보제공 서비스','주소·세대수·난방 등 단지 기본정보','공공데이터포털','https://www.data.go.kr/data/15058453/openapi.do'],
+    ['home-apt-trade','아파트 매매 실거래가 자료','지역·계약월별 신고된 아파트 매매 거래','공공데이터포털','https://www.data.go.kr/data/15126469/openapi.do'],
+    ['home-apt-rent','아파트 전월세 실거래가 자료','지역·계약월별 전세·월세 실거래 내역','공공데이터포털','https://www.data.go.kr/data/15126474/openapi.do'],
+  ]},
 ];
 
 export function ApiChecklist({data,onDataChange}) {
