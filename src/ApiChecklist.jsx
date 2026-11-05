@@ -19,7 +19,11 @@ const groups = [
 ];
 
 export function ApiChecklist({data,onDataChange}) {
-  const [keys,setKeys]=useState({});
+  const keys=data.settings?.apiKeys || {};
+  const setKeys=change=>onDataChange(d=>{
+    const previous=d.settings?.apiKeys || {};
+    return {...d,settings:{...d.settings,apiKeys:typeof change==='function'?change(previous):change}};
+  });
   const [visible,setVisible]=useState({});
   const [notice,setNotice]=useState('');
   const copyKey=async(id)=>{
@@ -56,7 +60,9 @@ export function ApiChecklist({data,onDataChange}) {
     `}</style>
     <h1>API 준비</h1>
     <p className="api-intro">필요한 API를 열어 신청하고, 준비가 끝나면 체크해 두세요.<br/>완료 표시는 신청·인증키 준비에 대한 메모이며, 앱 연동 완료를 뜻하지 않아요.</p>
-    <p className="api-intro">인증키 입력란은 임시 보관용이에요. API 탭을 나가거나 새로고침하면 지워지며, 서버·백업에는 저장되지 않아요.</p>\n    {notice&&<p className="api-key-notice" role="status">{notice}</p>}\n    <div className="api-summary"><strong>준비 완료 {completed} / {total}</strong><span>체크 상태 자동 저장</span></div>
+    <p className="api-intro">인증키는 포커스 플로우 계정 데이터에 자동 저장돼요. 탭 이동·새로고침 후에도 유지되고, 같은 계정의 기기에서 동기화돼요.</p>
+    {notice&&<p className="api-key-notice" role="status">{notice}</p>}
+    <div className="api-summary"><strong>준비 완료 {completed} / {total}</strong><span>체크·인증키 자동 저장</span></div>
     {groups.map(group=><section className="api-group" key={group.name} aria-label={group.name}>
       <h2>{group.name}<span>{group.items.filter(([id])=>checks[id]===true).length} / {group.items.length}</span></h2>
       <div className="api-items">{group.items.map(([id,name,purpose,provider,url])=>{
@@ -71,11 +77,11 @@ export function ApiChecklist({data,onDataChange}) {
               <button type="button" disabled={!keys[id]} onClick={()=>copyKey(id)}>복사</button>
               <button type="button" disabled={!keys[id]} onClick={()=>{setKeys(v=>({...v,[id]:''}));setVisible(v=>({...v,[id]:false}));setNotice('입력한 인증키를 지웠어요.');}}>지우기</button>
             </div>
-            <small className="api-key-note">임시 입력 · API 자동 연결 기능은 아니에요.</small>
+            <small className="api-key-note">자동 저장 · 보기·복사 가능 · 각 앱의 API 연결은 별도로 진행해요.</small>
           </div>
         </div>;
       })}</div>
     </section>)}
-    <div className="api-guide"><strong>인증키 준비 방법</strong><p>서울 열린데이터광장: 로그인 → 인증키 신청. <a href="https://data.seoul.go.kr/together/guide/useGuide.do" target="_blank" rel="noopener noreferrer">이용 안내 ↗</a></p><p>공공데이터포털: 로그인 → 사용할 데이터별 활용신청 → 승인·인증키 확인.</p><p>문화포털은 안내 페이지에서 사용할 API의 신청 경로를 확인하세요. 발급받은 인증키는 위 입력란에 임시로 붙여넣고 복사할 수 있어요.</p></div>
+    <div className="api-guide"><strong>인증키 준비 방법</strong><p>서울 열린데이터광장: 로그인 → 인증키 신청. <a href="https://data.seoul.go.kr/together/guide/useGuide.do" target="_blank" rel="noopener noreferrer">이용 안내 ↗</a></p><p>공공데이터포털: 로그인 → 사용할 데이터별 활용신청 → 승인·인증키 확인.</p><p>문화포털은 안내 페이지에서 사용할 API의 신청 경로를 확인하세요. 발급받은 인증키는 위 입력란에 붙여넣으면 자동 저장돼요.</p></div>
   </section>;
 }
