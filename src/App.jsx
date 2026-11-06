@@ -21,7 +21,6 @@ import {
   RotateCcw,
   Clock3,
   ListTodo,
-  Utensils,
   Heart,
   Blocks,
   ClipboardCheck,
@@ -39,7 +38,6 @@ import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
 import { CalendarExternal } from "./CalendarExternal.jsx";
 import { TimeLog } from "./TimeLog.jsx";
-import DietTab from "./DietTab.jsx";
 import { MemoPanel } from "./MemoPanel.jsx";
 import { AppRegistry } from "./AppRegistry.jsx";
 import { ChecklistPanel } from "./ChecklistPanel.jsx";
@@ -1773,7 +1771,6 @@ export function App({
       </header>
       <main>
         {tab === "timelog" ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
-          :tab === "diet" ? <section className="focus-diet-screen"><div className="section-top focus-diet-heading"><h1>식단</h1></div><DietTab db={bridgeClient} user={bridgeUserId?{id:bridgeUserId}:null}/></section>
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
           :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
@@ -1782,7 +1779,6 @@ export function App({
       <nav className="bottom-nav" aria-label="메인 메뉴">
         {[
           ["timelog",Clock3,"타임로그"],
-          ["diet",Utensils,"식단"],
           ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"],
           ["apps",Blocks,"앱관리"]
