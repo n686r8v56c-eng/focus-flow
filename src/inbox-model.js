@@ -11,6 +11,24 @@ export function youtubeId(value) {
 export function linksIn(text) {
   return [...new Set((text.match(/https?:\/\/[^\s<>"']+/g) || []).map(s => s.replace(/[),.;!?]+$/, '')))];
 }
+// Keep completion in the original text so editing, copying, backup and sync agree.
+export function inboxTextLines(text = '') {
+  return text.split(/\r?\n/).map((raw, index) => {
+    const match = raw.match(/^(\s*)-(?:[ \t]+(.*)|[ \t]*)$/);
+    if (!match) return {index, text:raw, checklist:false};
+    const content = match[2] || '';
+    const marker = content.match(/^\[([ xX])\](?:[ \t]+(.*)|$)/);
+    return {index, text:marker ? marker[2] || '' : content, checklist:true, checked:!!marker && marker[1].toLowerCase() === 'x'};
+  });
+}
+export function toggleInboxTextLine(text, index) {
+  const line = inboxTextLines(text)[index];
+  if (!line?.checklist) return text;
+  const lines = text.split(/\r?\n/);
+  const indent = lines[index].match(/^\s*/)[0];
+  lines[index] = `${indent}- [${line.checked ? ' ' : 'x'}]${line.text ? ' ' + line.text : ''}`;
+  return lines.join(text.includes('\r\n') ? '\r\n' : '\n');
+}
 export function makeInboxItems(text, makeId, now = new Date().toISOString()) {
   const trimmed = text.trim();
   if (!trimmed) return [];

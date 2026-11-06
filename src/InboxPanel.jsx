@@ -1,6 +1,6 @@
 import React, {useRef, useState} from 'react';
 import {Plus, Search, Copy, ClipboardPaste, ChevronRight, ChevronDown, Archive, ArchiveRestore, Sun, Folder, X, Pencil, Trash2, ExternalLink, ImagePlus} from 'lucide-react';
-import {inboxEntries, linksIn, makeInboxItems, planInboxItem, youtubeId} from './inbox-model.js';
+import {inboxEntries, inboxTextLines, toggleInboxTextLine, linksIn, makeInboxItems, planInboxItem, youtubeId} from './inbox-model.js';
 import './inbox.css';
 const newId = () => globalThis.crypto?.randomUUID?.() || `inbox_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 export async function copyInboxText(text, notify) {
@@ -90,6 +90,9 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
   }
   const folders=data.inboxFolders || [], entries=inboxEntries(data);
   const changeEntry=(item,patch)=>onDataChange(d=>item.legacyTask ? {...d,tasks:d.tasks.map(t=>t.id===item.id?{...t,...patch,...(patch.archived!==undefined?{inboxArchived:patch.archived}:{}),...(patch.text!==undefined?{title:patch.text}: {})}:t)} : {...d,inboxItems:(d.inboxItems || []).map(n=>n.id===item.id?{...n,...patch}:n)});
+  const toggleLine=(item,index)=>onDataChange(d=>item.legacyTask
+    ? {...d,tasks:d.tasks.map(t=>t.id===item.id?{...t,title:toggleInboxTextLine(t.title || '',index)}:t)}
+    : {...d,inboxItems:(d.inboxItems || []).map(n=>n.id===item.id?{...n,text:toggleInboxTextLine(n.text || '',index)}:n)});
   async function capture(text) {
     if(uploading) return;
     const added=makeInboxItems(text,newId);
@@ -135,7 +138,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
       }}/>
       {pendingPhotos.length>0&&<div className="inbox-pending-images">{pendingPhotos.map((file,i)=><span key={i}><ImagePlus size={15}/>{file.name}<button type="button" aria-label="선택한 사진 제거" onClick={()=>setPendingPhotos(old=>old.filter((_,n)=>n!==i))}><X size={14}/></button></span>)}</div>}
       <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={e=>{addPending(e.target.files);e.target.value='';}}/>
-      <div className="inbox-capture-actions"><span>분류는 나중에 해도 괜찮아.</span><button type="button" onClick={()=>photoInput.current?.click()} aria-label="사진 첨부" title="사진 첨부"><ImagePlus size={19}/></button><button type="button" onClick={paste} aria-label="클립보드 붙여넣기" title="붙여넣어 바로 저장"><ClipboardPaste size={18}/></button><button type="submit" className="primary small" disabled={uploading||(!draft.trim()&&!pendingPhotos.length)}>{uploading?'저장 중…':'담기'}</button></div>
+      <div className="inbox-capture-actions"><span>- 항목으로 적으면 체크리스트가 돼.</span><button type="button" onClick={()=>photoInput.current?.click()} aria-label="사진 첨부" title="사진 첨부"><ImagePlus size={19}/></button><button type="button" onClick={paste} aria-label="클립보드 붙여넣기" title="붙여넣어 바로 저장"><ClipboardPaste size={18}/></button><button type="submit" className="primary small" disabled={uploading||(!draft.trim()&&!pendingPhotos.length)}>{uploading?'저장 중…':'담기'}</button></div>
     </form>
     {photoError&&<p className="inbox-photo-error" role="alert">{photoError}</p>}
     {view==='today' ? renderToday() : <>
@@ -148,7 +151,8 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
         <div className="focus-task-list">{shown.map(item=>{
           const expandedHere=expanded===item.id;
           const planned=data.tasks.find(t=>t.sourceInboxId===item.id && t.due===today);
-          const videoId=item.videoId || youtubeId(item.url),copy=item.url || item.text;
+          const lines=inboxTextLines(item.text || ''),hasChecklist=lines.some(line=>line.checklist);
+          const videoId=item.videoId || youtubeId(item.url),copy=hasChecklist?item.text:item.url || item.text;
           return <article className="inbox-card" key={item.id}>
             <div className="inbox-row">
               <button type="button" className="inbox-open" aria-expanded={expandedHere} onClick={()=>{setExpanded(expandedHere?null:item.id);setEdit(null);}}>
@@ -160,7 +164,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
               {!item.archived&&<button type="button" className="focus-move-kind inbox-plan" disabled={!!planned} onClick={()=>plan(item)} aria-label="오늘 할 일에 담기"><Sun size={14}/><span>{planned?'담김':'오늘'}</span></button>}
             </div>
             {expandedHere&&<div className="inbox-expanded">
-              {edit?.id===item.id?<form className="inbox-edit" onSubmit={e=>{e.preventDefault();saveEdit(item);}}><label>제목<input autoFocus value={edit.title} onChange={e=>setEdit({...edit,title:e.target.value})}/></label><label>내용<textarea rows={5} value={edit.text} onChange={e=>setEdit({...edit,text:e.target.value})}/></label><div><button type="button" onClick={()=>setEdit(null)}>취소</button><button type="submit" className="primary small" disabled={!edit.text.trim()&&!edit.title.trim()&&!(item.images||[]).length}>저장</button></div></form>:<p className="inbox-body">{item.text}</p>}
+              {edit?.id===item.id?<form className="inbox-edit" onSubmit={e=>{e.preventDefault();saveEdit(item);}}><label>제목<input autoFocus value={edit.title} onChange={e=>setEdit({...edit,title:e.target.value})}/></label><label>내용<textarea rows={5} value={edit.text} onChange={e=>setEdit({...edit,text:e.target.value})}/></label><div><button type="button" onClick={()=>setEdit(null)}>취소</button><button type="submit" className="primary small" disabled={!edit.text.trim()&&!edit.title.trim()&&!(item.images||[]).length}>저장</button></div></form>:hasChecklist?<div className="inbox-body inbox-checklist">{lines.map(line=>line.checklist?<label className="inbox-checklist-row" key={line.index}><input type="checkbox" checked={line.checked} aria-label={line.text || "빈 항목"} onChange={()=>toggleLine(item,line.index)}/><span className={line.checked?"is-checked":""}>{line.text || "\u00a0"}</span></label>:<div className="inbox-text-line" key={line.index}>{line.text || "\u00a0"}</div>)}</div>:<p className="inbox-body">{item.text}</p>}
               {!!item.images?.length&&<div className="inbox-photo-grid">{item.images.map(path=><div key={path} className="inbox-photo-item"><InboxPhoto client={storageClient} path={path}/><button type="button" aria-label="첨부 사진 제거" onClick={()=>removePhoto(item,path)}><X size={16}/></button></div>)}</div>}
               <div className="inbox-tools">
                 {!item.legacyTask&&<label className="inbox-add-photo"><ImagePlus size={17}/> {uploadTarget===item.id?'업로드 중…':'사진 추가'}<input type="file" accept="image/*" multiple disabled={uploadTarget===item.id} onChange={e=>{addToEntry(item,e.target.files);e.target.value='';}} hidden/></label>}

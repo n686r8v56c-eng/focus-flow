@@ -30,3 +30,30 @@ test('inbox and folders survive normalization and merge independent device captu
   const c={...b,inboxItems:[makeInboxItems('두 번째 생각',id)[0]],inboxFolders:[{id:'folder-b',name:'생활'}]};
   const merged=normalizeState(mergeState(b,a,c));assert.equal(merged.inboxItems.length,2);assert.equal(merged.inboxFolders.length,2);assert.deepEqual(merged.tasks,[]);
 });
+
+test('dash lists preserve headings, blank lines, links and completion through save and sync', async()=>{
+  const {inboxTextLines,toggleInboxTextLine}=await import('../src/inbox-model.js');
+  const text='시험 준비\n- 신분증\n- 수험표\n\n안내 https://example.com\n---';
+  const item=makeInboxItems(text,id)[0];
+  assert.equal(item.title,'시험 준비');
+  assert.equal(inboxTextLines(item.text).filter(l=>l.checklist).length,2);
+  const checked={...item,text:toggleInboxTextLine(item.text,1)};
+  const merged=normalizeState(mergeState({...base(),inboxItems:[item]}, {...base(),inboxItems:[checked]}, {...base(),inboxItems:[item]}));
+  const restored=JSON.parse(JSON.stringify(merged)).inboxItems[0];
+  assert.equal(inboxTextLines(restored.text)[1].checked,true);
+  assert.equal(inboxTextLines(restored.text)[2].checked,false);
+  assert.equal(restored.title,'시험 준비');
+  assert.ok(restored.text.includes('안내 https://example.com\n---'));
+  assert.equal(inboxTextLines(toggleInboxTextLine(restored.text,1))[1].checked,false);
+  assert.equal(toggleInboxTextLine(text,0),text);
+  assert.equal(toggleInboxTextLine(text,6),text);
+});
+test('checkbox syntax and Windows line endings round-trip without treating prose as lists',async()=>{
+  const {inboxTextLines,toggleInboxTextLine}=await import('../src/inbox-model.js');
+  const text='제목\r\n- [X] 완료\r\n- [ ] 준비\r\n-\r\nhttps://example.com/a-b\r\n일반 - 문장';
+  const lines=inboxTextLines(text);
+  assert.equal(lines[1].checked,true);assert.equal(lines[1].text,'완료');
+  assert.equal(lines[2].checked,false);assert.equal(lines[3].checklist,true);
+  assert.equal(lines[4].checklist,false);assert.equal(lines[5].checklist,false);
+  assert.equal(toggleInboxTextLine(text,2),'제목\r\n- [X] 완료\r\n- [x] 준비\r\n-\r\nhttps://example.com/a-b\r\n일반 - 문장');
+});

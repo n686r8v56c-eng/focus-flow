@@ -22,3 +22,10 @@
 .inbox-photo-item>button{position:absolute;top:3px;right:3px;border-radius:50%;background:#fff;color:#795c99;padding:5px;display:grid;place-items:center}
 .inbox-add-photo{display:inline-flex;align-items:center;gap:5px;cursor:pointer;color:#9074b5;font-size:14px;padding:7px}
 .inbox-photo-error{color:#a33250;font-size:13px;padding:5px 12px}
+
+.inbox-checklist{display:grid;gap:3px}
+.inbox-checklist-row{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding:7px 0;cursor:pointer}
+.inbox-checklist-row input[type="checkbox"]{appearance:auto;flex:none;width:20px;height:20px;margin:3px 0 0;accent-color:#896bb6;cursor:pointer}
+.inbox-checklist-row span{min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.inbox-checklist-row .is-checked{color:#968ba0;text-decoration:line-through}
+.inbox-text-line{white-space:pre-wrap;min-height:1.7em}
