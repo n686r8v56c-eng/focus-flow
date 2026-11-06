@@ -37,7 +37,7 @@ test('dash lists preserve headings, blank lines, links and completion through sa
   const item=makeInboxItems(text,id)[0];
   assert.equal(item.title,'시험 준비');
   assert.equal(inboxTextLines(item.text).filter(l=>l.checklist).length,2);
-  const checked={...item,text:toggleInboxTextLine(item.text,1)};
+  const checked={...item,text:toggleInboxTextLine(toggleInboxTextLine(item.text,1),1)};
   const merged=normalizeState(mergeState({...base(),inboxItems:[item]}, {...base(),inboxItems:[checked]}, {...base(),inboxItems:[item]}));
   const restored=JSON.parse(JSON.stringify(merged)).inboxItems[0];
   assert.equal(inboxTextLines(restored.text)[1].checked,true);
@@ -55,5 +55,23 @@ test('checkbox syntax and Windows line endings round-trip without treating prose
   assert.equal(lines[1].checked,true);assert.equal(lines[1].text,'완료');
   assert.equal(lines[2].checked,false);assert.equal(lines[3].checklist,true);
   assert.equal(lines[4].checklist,false);assert.equal(lines[5].checklist,false);
-  assert.equal(toggleInboxTextLine(text,2),'제목\r\n- [X] 완료\r\n- [x] 준비\r\n-\r\nhttps://example.com/a-b\r\n일반 - 문장');
+  assert.equal(toggleInboxTextLine(text,2),'제목\r\n- [X] 완료\r\n- [~] 준비\r\n-\r\nhttps://example.com/a-b\r\n일반 - 문장');
+});
+
+ test('three clicks cycle plain, purple and checked with durable state',async()=>{
+  const {inboxTextLines,toggleInboxTextLine}=await import('../src/inbox-model.js');
+  const original='제목\n- 신분증\n- 수험표';
+  const active=toggleInboxTextLine(original,1);
+  assert.equal(inboxTextLines(active)[1].active,true);
+  assert.equal(inboxTextLines(active)[1].checked,false);
+  const restored=JSON.parse(JSON.stringify(makeInboxItems(active,id)[0]));
+  assert.equal(inboxTextLines(restored.text)[1].active,true);
+  const done=toggleInboxTextLine(restored.text,1);
+  assert.equal(inboxTextLines(done)[1].checked,true);
+  assert.equal(inboxTextLines(done)[1].active,false);
+  const reset=toggleInboxTextLine(done,1);
+  assert.equal(inboxTextLines(reset)[1].checked,false);
+  assert.equal(inboxTextLines(reset)[1].active,false);
+  assert.equal(inboxTextLines(reset)[1].text,'신분증');
+  assert.equal(inboxTextLines(reset)[2].text,'수험표');
 });

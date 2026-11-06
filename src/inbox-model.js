@@ -17,8 +17,8 @@ export function inboxTextLines(text = '') {
     const match = raw.match(/^(\s*)-(?:[ \t]+(.*)|[ \t]*)$/);
     if (!match) return {index, text:raw, checklist:false};
     const content = match[2] || '';
-    const marker = content.match(/^\[([ xX])\](?:[ \t]+(.*)|$)/);
-    return {index, text:marker ? marker[2] || '' : content, checklist:true, checked:!!marker && marker[1].toLowerCase() === 'x'};
+    const marker = content.match(/^\[([ xX~])\](?:[ \t]+(.*)|$)/);
+    return {index, text:marker ? marker[2] || '' : content, checklist:true, active:!!marker && marker[1] === '~', checked:!!marker && marker[1].toLowerCase() === 'x'};
   });
 }
 export function toggleInboxTextLine(text, index) {
@@ -26,7 +26,7 @@ export function toggleInboxTextLine(text, index) {
   if (!line?.checklist) return text;
   const lines = text.split(/\r?\n/);
   const indent = lines[index].match(/^\s*/)[0];
-  lines[index] = `${indent}- [${line.checked ? ' ' : 'x'}]${line.text ? ' ' + line.text : ''}`;
+  lines[index] = `${indent}- [${line.checked ? ' ' : line.active ? 'x' : '~'}]${line.text ? ' ' + line.text : ''}`;
   return lines.join(text.includes('\r\n') ? '\r\n' : '\n');
 }
 export function makeInboxItems(text, makeId, now = new Date().toISOString()) {
