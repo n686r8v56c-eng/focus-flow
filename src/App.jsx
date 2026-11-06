@@ -21,6 +21,7 @@ import {
   RotateCcw,
   Clock3,
   ListTodo,
+  ListMusic,
   Heart,
   Blocks,
   ClipboardCheck,
@@ -89,7 +90,7 @@ export function App({
     let active = true;
     const loadApps = async () => {
       const {data: rows, error} = await bridgeClient.from("app_registry_apps")
-        .select("id,name,status").eq("user_id", bridgeUserId).order("name");
+        .select("id,name,status,deployment_url").eq("user_id", bridgeUserId).order("name");
       if (!active) return;
       if (error) setRegistryError("앱 목록을 불러오지 못했어. 잠시 후 다시 확인해 줘.");
       else { setRegistryApps(rows || []); setRegistryError(""); }
@@ -101,6 +102,7 @@ export function App({
       .on("postgres_changes", {event:"*",schema:"public",table:"app_registry_apps",filter:`user_id=eq.${bridgeUserId}`}, loadApps).subscribe();
     return () => {active=false;window.removeEventListener("focus",onFocus);bridgeClient.removeChannel(channel);};
   }, [bridgeClient,bridgeUserId]);
+  const [playlistOpened, setPlaylistOpened] = useState(false);
   const [tab, setTab] = useState("timelog"),
     [calendarMode, setCalendarMode] = useState("schedule"),
     [todoDate, setTodoDate] = useState(localDate()),
@@ -1759,6 +1761,12 @@ export function App({
     </section>;
   }
   const editTask = data.tasks.find((t) => t.id === editing);
+  // Use the existing Playlist Flow app so its original interface, sign-in,
+  // saved playlists and subsequent updates stay in one place.
+  const registeredPlaylistUrl = registryApps.find(app => /playlist|플레이리스트/i.test(app.name || ""))?.deployment_url;
+  const playlistUrl = typeof registeredPlaylistUrl === "string" && /^https:\/\/[^\s]+$/i.test(registeredPlaylistUrl.trim())
+    ? registeredPlaylistUrl.trim()
+    : "https://playlist-flow.pages.dev/";
   return (
     <div className="app">
       <header className="focus-v6-header">
@@ -1769,20 +1777,35 @@ export function App({
           <button type="button" className="header-timer" aria-label="로그아웃" title="로그아웃" onClick={onLogout}><LogOut size={18}/></button>
         </div>
       </header>
-      <main>
+      <main className={tab === "playlist" ? "focus-playlist-main" : undefined}>
         {tab === "timelog" ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
+          :tab === "playlist" ? null
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
           :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
           :<AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={()=>setTab("timelog")}/>}
+        {playlistOpened && <section className="focus-playlist-screen" style={{display: tab === "playlist" ? "flex" : "none"}} aria-label="플레이리스트 플로우">
+          <div className="focus-playlist-toolbar">
+            <strong>플레이리스트</strong>
+            <a href={playlistUrl} target="_blank" rel="noopener noreferrer" title="플레이리스트 플로우 원본 열기"><ExternalLink size={15}/> 원본 열기</a>
+          </div>
+          <iframe
+            title="Playlist Flow - 원본 앱"
+            src={playlistUrl}
+            loading="lazy"
+            allow="autoplay; encrypted-media; clipboard-write; picture-in-picture; fullscreen"
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        </section>}
       </main>
       <nav className="bottom-nav" aria-label="메인 메뉴">
         {[
           ["timelog",Clock3,"타임로그"],
+          ["playlist",ListMusic,"플레이리스트"],
           ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"],
           ["apps",Blocks,"앱관리"]
-        ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>setTab(id)} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
+        ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
       </nav>
       {modal === "task" && (
         <TaskModal
