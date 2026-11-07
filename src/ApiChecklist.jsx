@@ -57,6 +57,13 @@ const groups = [
     ['namdaemun-source','남대문시장 상가 정보','시장 앱: 상가별 공개정보 수집·공식 사용조건 검토','시장·상인회 공식자료','https://www.data.go.kr/','source'],
     ['catholic-source','가톨릭 전례·본당·성가 자료','가톨릭 앱: 공식 전례 및 미사시간·성가 활용 허락 확인','한국천주교주교회의','https://www.cbck.or.kr/','source'],
   ]},
+  {name:'Saving Flow · 저축·금융', items:[
+    ['finlife-deposit','금융상품 한눈에 · 정기예금','Saving Flow: 은행·저축은행 정기예금 상품, 기간별 금리·조건 비교','금융감독원','https://finlife.fss.or.kr/'],
+    ['finlife-savings','금융상품 한눈에 · 적금','Saving Flow: 적립식 적금, 기본·우대금리 및 만기 비교','금융감독원','https://finlife.fss.or.kr/'],
+    ['bok-ecos','한국은행 ECOS 경제통계','Saving Flow: 기준금리와 시장금리 변화 추적','한국은행','https://ecos.bok.or.kr/api/'],
+    ['fsc-finance-data','금융 공공데이터','Saving Flow: 금융기관·상품 기초정보 및 공개 데이터 조사','공공데이터포털','https://www.data.go.kr/','source'],
+    ['kftc-openbanking','오픈뱅킹 계좌 조회','Saving Flow: 실제 계좌 잔액·거래내역 연동. 이용기관 승인·사용자 동의 필요','금융결제원','https://openapi.kftc.or.kr/service/openBanking','source'],
+  ]},
 ];
 
 const STATUS_OPTIONS = [
