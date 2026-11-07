@@ -57,6 +57,14 @@ const groups = [
     ['namdaemun-source','남대문시장 상가 정보','시장 앱: 상가별 공개정보 수집·공식 사용조건 검토','시장·상인회 공식자료','https://www.data.go.kr/','source'],
     ['catholic-source','가톨릭 전례·본당·성가 자료','가톨릭 앱: 공식 전례 및 미사시간·성가 활용 허락 확인','한국천주교주교회의','https://www.cbck.or.kr/','source'],
   ]},
+  {name:'Insurance Flow · 보험', items:[
+    ['insurance-fsc-medical','금융위원회 실손보험정보','Insurance Flow: 실손보험 유형·담보 및 연령대별 보험료 통계 비교','금융위원회','https://www.data.go.kr/data/15094797/openapi.do'],
+    ['insurance-epost-product','우체국 보험상품정보','Insurance Flow: 우체국 보험상품명·상품 종류 등 조회','우정사업본부','https://www.epostlife.go.kr/IPUIOP0000.do'],
+    ['insurance-epost-rate','우체국 보험공시이율','Insurance Flow: 우체국 보험 공시이율 비교·추적','우정사업본부','https://www.epostlife.go.kr/IPUIOP0000.do'],
+    ['insurance-epost-premium','우체국 보험료 조회','Insurance Flow: 우체국 보험 조건별 1회 보험료 조회','우정사업본부','https://www.epostlife.go.kr/IPUIOP0000.do'],
+    ['insurance-policy-lookup','내 보험 가입내역 조회 연동 검토','Insurance Flow: 보험 가입내역·보장·납부정보 조회. 민간 서비스 계약과 본인 인증 필요','민간 보험정보 API','https://www.hyphen.im/product/view?seq=5','source'],
+    ['insurance-silson24','실손24 보험금 청구','Insurance Flow: 공식 청구 서비스 이동 및 청구 상태 수동 관리. 일반 공개 청구 API 미확인','보험개발원','https://www.silson24.or.kr/','source'],
+  ]},
   {name:'Saving Flow · 저축·금융', items:[
     ['finlife-deposit','금융상품 한눈에 · 정기예금','Saving Flow: 은행·저축은행 정기예금 상품, 기간별 금리·조건 비교','금융감독원','https://finlife.fss.or.kr/'],
     ['finlife-savings','금융상품 한눈에 · 적금','Saving Flow: 적립식 적금, 기본·우대금리 및 만기 비교','금융감독원','https://finlife.fss.or.kr/'],
