@@ -232,6 +232,17 @@ export function App({
     setFocusDate(date);
   };
   const removeFamilyRecord=id=>update(d=>({...d,familyLogs:(d.familyLogs||[]).filter(item=>item.id!==id)}));
+  const changeFamilyDate=(item)=>{
+    const next=window.prompt("기록 날짜 수정 (YYYY-MM-DD)",item.date);
+    if(next===null)return;
+    const value=next.trim();
+    const parsed=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if(!parsed||localDate(new Date(Number(parsed[1]),Number(parsed[2])-1,Number(parsed[3])))!==value){
+      window.alert("날짜를 YYYY-MM-DD 형식으로 정확하게 입력해 줘.");return;
+    }
+    update(d=>({...d,familyLogs:(d.familyLogs||[]).map(record=>record.id===item.id?{...record,date:value}:record)}));
+    setFocusDate(value);
+  };
   const changeTask = (id, fields) =>
     update((d) => ({
       ...d,
@@ -1029,7 +1040,7 @@ export function App({
       </section>
       <section className="focus-panel">
         <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="family"?"가족":calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
-        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div className="focus-task-row" key={item.id}><span style={{flex:1}}>🐾 {item.title}</span><small>{item.createdAt?new Date(item.createdAt).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}):""}</small><button type="button" className="inbox-icon" aria-label={item.title+" 기록 삭제"} onClick={()=>removeFamilyRecord(item.id)}><Trash2 size={16}/></button></div>):<div className="focus-empty">이날의 가족 기록이 없어.</div>}</div>:<FocusTaskRows items={selected} mode={calendarMode}/>}
+        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div className="focus-task-row" key={item.id}><span style={{flex:1}}>🐾 {item.title}</span><small>{item.createdAt?new Date(item.createdAt).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}):""}</small><button type="button" className="inbox-icon" aria-label={item.title+" 날짜 수정"} title="날짜 수정" onClick={()=>changeFamilyDate(item)}><Pencil size={16}/></button><button type="button" className="inbox-icon" aria-label={item.title+" 기록 삭제"} onClick={()=>removeFamilyRecord(item.id)}><Trash2 size={16}/></button></div>):<div className="focus-empty">이날의 가족 기록이 없어.</div>}</div>:<FocusTaskRows items={selected} mode={calendarMode}/>}
       </section>
     </div>;
   }
