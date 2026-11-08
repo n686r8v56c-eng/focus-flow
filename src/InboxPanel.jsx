@@ -43,7 +43,7 @@ function InboxPhoto({client, path, thumbnail=false}) {
   }, [client,path]);
   return url ? <img className={thumbnail?'inbox-thumbnail':'inbox-photo'} src={url} alt="첨부 사진" loading="lazy" onClick={thumbnail?undefined:()=>window.open(url,'_blank','noopener,noreferrer')}/> : <span className="inbox-note-icon"><ImagePlus size={18}/></span>;
 }
-export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, notify, storageClient, userId, kind = 'inbox'}) {
+export function InboxPanel({data, onDataChange, today, renderToday, renderDate, onOpenTask, notify, storageClient, userId, kind = 'inbox'}) {
   const [view,setView]=useState(kind === 'inbox' ? 'today' : 'inbox'), [draft,setDraft]=useState(''), [query,setQuery]=useState(''), [folderId,setFolderId]=useState(''), [folderDraft,setFolderDraft]=useState(null), [expanded,setExpanded]=useState(null), [edit,setEdit]=useState(null);
   const draftRef=useRef(null);
   const photoInput=useRef(null);
@@ -133,6 +133,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
     .filter(n=>`${n.title || ''} ${n.text || ''} ${n.url || ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     .sort((a,b)=>(b.createdAt || '').localeCompare(a.createdAt || ''));
   return <section className="focus-redesign inbox-page">
+    {view==='today' && renderDate?.()}
     <nav className="focus-segments inbox-segments" aria-label={`${label} 분류`}>{[['inbox',label],['today','오늘'],['folders','폴더'],['archive','보관함']].map(([id,label])=><button type="button" key={id} className={view===id?'selected':''} onClick={()=>setView(id)} aria-pressed={view===id}>{label}</button>)}</nav>
     <form className="focus-panel inbox-capture" onSubmit={e=>{e.preventDefault();capture(draft);}}>
       <textarea ref={draftRef} rows={2} value={draft} onChange={e=>setDraft(e.target.value)} aria-label={`${label}에 담을 내용`} placeholder={isOpportunity ? '모집·공모·제안·협업 기회와 링크를 담기' : '메모·할 일·링크, 일단 여기에 담기'} onPaste={e=>{
