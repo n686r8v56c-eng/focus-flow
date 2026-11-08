@@ -31,3 +31,22 @@
 .macro-palette{padding-top:23px}
 @media(max-width:390px){.macro-board-body{padding-left:33px}.macro-palette{padding-top:23px}}
 @media(min-width:700px){.macro-board-body{padding-left:48px}.macro-palette{padding-top:23px}}
+
+/* Compact, balanced five-column 52-week board on phones */
+@media(max-width:699px){
+ .macro-board-body{width:96%;margin:0 auto;padding-left:42px;grid-template-columns:minmax(0,4fr) minmax(0,1fr);gap:5px}
+ .macro-week-grid,.macro-week-row,.macro-palette{gap:5px}
+ .macro-row-date{right:calc(100% + 7px);font-size:9px;letter-spacing:-.02em}
+ .macro-week-tile{aspect-ratio:1.05;border-radius:8px}
+ .macro-palette-choice,.macro-palette-add{aspect-ratio:1.05;border-radius:8px}
+ .macro-palette-choice{padding:5px 14px 5px 3px;font-size:10px}
+ .macro-palette-edit{right:0;top:0;width:19px;height:20px}
+ .macro-palette-eraser{gap:2px;white-space:nowrap;word-break:keep-all;padding:3px 1px;min-height:32px;font-size:10px}
+ .macro-palette-eraser svg{width:13px;height:13px;flex-shrink:0}
+ .macro-week-column-label{padding-left:0}
+}
+@media(max-width:390px){
+ .macro-board-body{padding-left:40px;gap:4px}
+ .macro-week-grid,.macro-week-row,.macro-palette{gap:4px}
+ .macro-row-date{right:calc(100% + 5px);font-size:8.5px}
+}
