@@ -106,7 +106,7 @@ export function App({
     return () => {active=false;window.removeEventListener("focus",onFocus);bridgeClient.removeChannel(channel);};
   }, [bridgeClient,bridgeUserId]);
   const [playlistOpened, setPlaylistOpened] = useState(false);
-  const [tab, setTab] = useState("timelog"),
+  const [tab, setTab] = useState("weeklyfocus"),
     [calendarMode, setCalendarMode] = useState("schedule"),
     [todoDate, setTodoDate] = useState(localDate()),
     [selectedProject, setSelectedProject] = useState("p1"),
@@ -1773,7 +1773,7 @@ export function App({
   return (
     <div className="app">
       <header className="focus-v6-header">
-        <button type="button" className="brand" onClick={()=>{setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}}>Focus Flow</button>
+        <button type="button" className="brand" onClick={()=>{setRegistryOpen(false);setChecklistOpen(false);setTab("weeklyfocus");}}>Focus Flow</button>
         <div className="header-actions">
           <button type="button" className="api-top-button focus-header-icon-button" title="플레이리스트" aria-label="플레이리스트" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><Music2 size={20}/></button>
           <button type="button" className="api-top-button focus-header-timelog" style={{border:"1px solid #e3d9ee",background:tab === "timelog" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("timelog")} aria-current={tab === "timelog" ? "page" : undefined}><Clock3 size={16}/> 타임로그</button>
