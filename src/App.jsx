@@ -36,7 +36,7 @@ import { youtubeId } from "./inbox-model.js";
 import "./timeblocks.css";
 import { TimeTable } from "./TimeTable.jsx";
 import { WeeklyPlan } from "./WeeklyPlan.jsx";
-import { WeeklyFocus } from "./WeeklyFocus.jsx";
+import { MacroPlan } from "./MacroPlan.jsx";
 import { DailyPlan } from "./DailyPlan.jsx";
 import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
@@ -1791,7 +1791,7 @@ export function App({
           :tab === "opportunity" ? <InboxPanel key="opportunity" kind="opportunity" storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><><div className="section-top"><h1>오늘의 할 일</h1></div><FocusTaskRows items={data.tasks.filter(t=>!isScheduleEntry(t)&&t.due===today)} mode="todo"/></>}/>
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
-          :tab === "weeklyfocus" ? <WeeklyFocus data={data} onDataChange={setData}/>
+          :tab === "weeklyfocus" ? <MacroPlan data={data} onDataChange={setData}/>
           :tab === "daily" ? <DailyPlan data={data} onDataChange={setData}/>
           :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
           :<AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={()=>setTab("timelog")}/>}
