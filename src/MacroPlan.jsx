@@ -100,7 +100,7 @@ export function MacroPlan({data,onDataChange}){
      <button type="button" className="macro-palette-edit" title={c.name+" 편집"} aria-label={c.name+" 편집"} onClick={()=>openEdit(c)}><Pencil size={13}/></button>
     </div>)}
     <button type="button" className="macro-palette-add" onClick={openNew} aria-label="컬러 항목 추가"><Plus size={25}/></button>
-    <button type="button" className={`macro-palette-eraser ${erase?"selected":""}`} onClick={()=>{setErase(true);setSelected(null)}} aria-pressed={erase}><Eraser size={16}/><span>지우기</span></button>
+    <button type="button" className={`macro-palette-eraser ${erase?"selected":""}`} onClick={()=>{setErase(true);setSelected(null)}} aria-pressed={erase}><Eraser size={19}/></button>
    </aside>
   </div>
   <div className="macro-board-footer"><span>{Object.keys(assignments).filter(k=>categories.some(c=>c.id===assignments[k])).length} / 52주 배정</span><span>{erase?"지울 주차를 눌러줘":chosen?`${chosen.name} 선택 중 · 주차를 눌러 배정`:"오른쪽에서 항목을 선택해 줘"}</span></div>
