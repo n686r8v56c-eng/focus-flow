@@ -42,6 +42,8 @@ export function DailyPlan({data,onDataChange}){
  const [noteDraft,setNoteDraft]=useState("");
  const cellHoldTimer=useRef(null);
  const cellHoldTriggered=useRef(false);
+ const pendingTap=useRef(null);
+ useEffect(()=>()=>{if(pendingTap.current)clearTimeout(pendingTap.current.timer);},[]);
  useEffect(()=>()=>clearTimeout(cellHoldTimer.current),[]);
  const cancelCellHold=()=>clearTimeout(cellHoldTimer.current);
  const longPressTimer=useRef(null);
@@ -75,7 +77,31 @@ export function DailyPlan({data,onDataChange}){
   cancelCellHold();cellHoldTriggered.current=false;
   cellHoldTimer.current=setTimeout(()=>{cellHoldTriggered.current=true;openCellNote(i);},550);
  };
- const clickCell=i=>{if(cellHoldTriggered.current){cellHoldTriggered.current=false;return;}paint(i);};
+ const clearCell=i=>update(m=>{
+  const all={...(m.assignments||{})};
+  const next={...(all[day]||{})};
+  delete next[i];
+  all[day]=next;
+  return {...m,assignments:all};
+ });
+ const clickCell=i=>{
+  if(cellHoldTriggered.current){cellHoldTriggered.current=false;return;}
+  const key=`${day}:${i}`;
+  if(pendingTap.current?.key===key){
+   clearTimeout(pendingTap.current.timer);pendingTap.current=null;
+   clearCell(i);
+   return;
+  }
+  if(pendingTap.current){
+   clearTimeout(pendingTap.current.timer);
+   pendingTap.current.action();
+  }
+  const action=()=>paint(i);
+  const timer=setTimeout(()=>{
+   if(pendingTap.current?.key===key){pendingTap.current=null;action();}
+  },300);
+  pendingTap.current={key,timer,action};
+ };
  const deleteCellNote=()=>{
   update(m=>{
    const all={...(m.notes||{})};
