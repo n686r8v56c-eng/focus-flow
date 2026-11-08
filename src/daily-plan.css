@@ -15,3 +15,9 @@
  .daily-board .macro-row-date{left:-58px;width:55px;font-size:13px}
  .daily-board .macro-week-name{font-size:15px}
 }
+
+/* Align the time gutter with Macro's adjusted spacing. */
+.daily-board .macro-row-date{left:-53px}
+@media(max-width:699px){.daily-board .macro-row-date{left:-53px}}
+@media(max-width:390px){.daily-board .macro-row-date{left:-50px}}
+@media(min-width:700px){.daily-board .macro-row-date{left:-64px}}
