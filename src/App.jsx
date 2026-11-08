@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   CalendarDays,
   Inbox,
+  Lightbulb,
   Copy,
   ExternalLink,
   Columns3,
@@ -1772,6 +1773,7 @@ export function App({
       <header className="focus-v6-header">
         <button type="button" className="brand" onClick={()=>{setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}}>Focus Flow</button>
         <div className="header-actions">
+          <button type="button" className="api-top-button" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9,padding:"7px 11px",fontSize:14,fontWeight:650,minHeight:36}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><ListMusic size={15}/> 플레이리스트</button>
           <button type="button" className="api-top-button" style={{border:"1px solid #e3d9ee",background:tab === "api" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9,padding:"7px 11px",fontSize:14,fontWeight:650,minHeight:36}} onClick={()=>setTab("api")} aria-current={tab === "api" ? "page" : undefined}>API</button>
           <span className="focus-autosave">자동 저장</span>
           <button type="button" className="header-timer" aria-label="로그아웃" title="로그아웃" onClick={onLogout}><LogOut size={18}/></button>
@@ -1780,6 +1782,7 @@ export function App({
       <main className={tab === "playlist" ? "focus-playlist-main" : undefined}>
         {tab === "timelog" ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
           :tab === "playlist" ? null
+          :tab === "opportunity" ? <InboxPanel key="opportunity" kind="opportunity" storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><><div className="section-top"><h1>오늘의 할 일</h1></div><FocusTaskRows items={data.tasks.filter(t=>!isScheduleEntry(t)&&t.due===today)} mode="todo"/></>}/>
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
           :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
@@ -1801,7 +1804,7 @@ export function App({
       <nav className="bottom-nav" aria-label="메인 메뉴">
         {[
           ["timelog",Clock3,"타임로그"],
-          ["playlist",ListMusic,"플레이리스트"],
+          ["opportunity",Lightbulb,"기회"],
           ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"],
           ["apps",Blocks,"앱관리"]
