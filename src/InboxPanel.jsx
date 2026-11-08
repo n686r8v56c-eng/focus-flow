@@ -21,14 +21,32 @@ async function prepareImage(file) {
     const img = new Image();
     img.src = source;
     await img.decode();
-    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const maxSide = 1600;
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', .8));
-    if (!blob) throw new Error('사진 변환에 실패했어.');
-    return blob;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('사진 압축을 지원하지 않는 브라우저야.');
+    context.fillStyle = '#fff';
+    const encode = (quality) => new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    const targetBytes = 300 * 1024;
+    let best = null;
+    for (let resize = 0; resize < 5; resize++) {
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(img, 0, 0, canvas.width, canvas.height);
+      for (const quality of [0.78, 0.65, 0.52, 0.4, 0.3]) {
+        const blob = await encode(quality);
+        if (!blob) throw new Error('사진 변환에 실패했어.');
+        if (!best || blob.size < best.size) best = blob;
+        if (blob.size <= targetBytes) return blob;
+      }
+      if (canvas.width <= 480 && canvas.height <= 480) break;
+      canvas.width = Math.max(1, Math.round(canvas.width * 0.8));
+      canvas.height = Math.max(1, Math.round(canvas.height * 0.8));
+    }
+    if (!best) throw new Error('사진 압축에 실패했어.');
+    return best;
   } finally { URL.revokeObjectURL(source); }
 }
 function InboxPhoto({client, path, thumbnail=false}) {
