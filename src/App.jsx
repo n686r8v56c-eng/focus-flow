@@ -23,6 +23,7 @@ import {
   Clock3,
   ListTodo,
   ListMusic,
+  Music2,
   Heart,
   Blocks,
   ClipboardCheck,
@@ -1774,7 +1775,8 @@ export function App({
       <header className="focus-v6-header">
         <button type="button" className="brand" onClick={()=>{setRegistryOpen(false);setChecklistOpen(false);setTab("timelog");}}>Focus Flow</button>
         <div className="header-actions">
-          <button type="button" className="api-top-button" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9,padding:"7px 11px",fontSize:14,fontWeight:650,minHeight:36}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><ListMusic size={15}/> 플레이리스트</button>
+          <button type="button" className="api-top-button focus-header-icon-button" title="플레이리스트" aria-label="플레이리스트" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><Music2 size={20}/></button>
+          <button type="button" className="api-top-button focus-header-timelog" style={{border:"1px solid #e3d9ee",background:tab === "timelog" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("timelog")} aria-current={tab === "timelog" ? "page" : undefined}><Clock3 size={16}/> 타임로그</button>
           <button type="button" className="api-top-button" style={{border:"1px solid #e3d9ee",background:tab === "api" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9,padding:"7px 11px",fontSize:14,fontWeight:650,minHeight:36}} onClick={()=>setTab("api")} aria-current={tab === "api" ? "page" : undefined}>API</button>
           <span className="focus-autosave">자동 저장</span>
           <button type="button" className="header-timer" aria-label="로그아웃" title="로그아웃" onClick={onLogout}><LogOut size={18}/></button>
@@ -1805,8 +1807,6 @@ export function App({
       </main>
       <nav className="bottom-nav" aria-label="메인 메뉴">
         {[
-          ["timelog",Clock3,"타임로그"],
-          
           ["weeklyfocus",CalendarRange,"주간"],
           ["calendar",CalendarDays,"일정"],
           ["todo",Inbox,"인박스"],
