@@ -108,6 +108,8 @@ export function App({
   }, [bridgeClient,bridgeUserId]);
   const [playlistOpened, setPlaylistOpened] = useState(false);
   const [familyRecorded,setFamilyRecorded]=useState("");
+  const [familyEditing,setFamilyEditing]=useState(null);
+  const [familyDraft,setFamilyDraft]=useState({date:"",memo:""});
   const [tab, setTab] = useState("daily"),
     [calendarMode, setCalendarMode] = useState("schedule"),
     [todoDate, setTodoDate] = useState(localDate()),
@@ -231,23 +233,14 @@ export function App({
     setFamilyRecorded(label+" 기록 완료");
     setFocusDate(date);
   };
-  const editFamilyMemo=item=>{
-    const next=window.prompt(item.title+" · 한마디 (비워두면 메모 삭제)",item.memo||"");
-    if(next===null)return;
-    update(d=>({...d,familyLogs:(d.familyLogs||[]).map(record=>record.id===item.id?{...record,memo:next.trim()}:record)}));
+  const startFamilyEdit=item=>{setFamilyEditing(item.id);setFamilyDraft({date:item.date,memo:item.memo||""});};
+  const saveFamilyEdit=()=>{
+    const value=familyDraft.date;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(value)){window.alert("날짜를 확인해 줘.");return;}
+    update(d=>({...d,familyLogs:(d.familyLogs||[]).map(item=>item.id===familyEditing?{...item,date:value,memo:familyDraft.memo.trim()}:item)}));
+    setFocusDate(value);setFamilyEditing(null);
   };
   const removeFamilyRecord=id=>update(d=>({...d,familyLogs:(d.familyLogs||[]).filter(item=>item.id!==id)}));
-  const changeFamilyDate=(item)=>{
-    const next=window.prompt("기록 날짜 수정 (YYYY-MM-DD)",item.date);
-    if(next===null)return;
-    const value=next.trim();
-    const parsed=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-    if(!parsed||localDate(new Date(Number(parsed[1]),Number(parsed[2])-1,Number(parsed[3])))!==value){
-      window.alert("날짜를 YYYY-MM-DD 형식으로 정확하게 입력해 줘.");return;
-    }
-    update(d=>({...d,familyLogs:(d.familyLogs||[]).map(record=>record.id===item.id?{...record,date:value}:record)}));
-    setFocusDate(value);
-  };
   const changeTask = (id, fields) =>
     update((d) => ({
       ...d,
@@ -1045,7 +1038,21 @@ export function App({
       </section>
       <section className="focus-panel">
         <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="family"?"가족":calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
-        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div className="focus-task-row" key={item.id}><div style={{flex:1,minWidth:0}}><div>🐾 {item.title}</div>{item.memo&&<div style={{fontSize:12,color:"#856e98",whiteSpace:"pre-wrap",overflowWrap:"anywhere",marginTop:4}}>{item.memo}</div>}</div><small>{item.createdAt?new Date(item.createdAt).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}):""}</small><button type="button" className="inbox-icon" aria-label={item.title+" 한마디 편집"} title="한마디" onClick={()=>editFamilyMemo(item)}><Pencil size={16}/></button><button type="button" className="inbox-icon" aria-label={item.title+" 날짜 수정"} title="날짜 수정" onClick={()=>changeFamilyDate(item)}><Pencil size={16}/></button><button type="button" className="inbox-icon" aria-label={item.title+" 기록 삭제"} onClick={()=>removeFamilyRecord(item.id)}><Trash2 size={16}/></button></div>):<div className="focus-empty">이날의 가족 기록이 없어.</div>}</div>:<FocusTaskRows items={selected} mode={calendarMode}/>}
+        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div key={item.id} style={{padding:"11px 12px",borderRadius:12,background:"#f7f3fa",marginBottom:8}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:650}}>🐾 {item.title}</div>
+              {familyEditing!==item.id&&item.memo&&<div style={{fontSize:13,color:"#856e98",whiteSpace:"pre-wrap",overflowWrap:"anywhere",marginTop:4,lineHeight:1.45}}>{item.memo}</div>}
+            </div>
+            <button type="button" className="inbox-icon" title="날짜·메모 수정" aria-label={item.title+" 날짜와 메모 수정"} onClick={()=>familyEditing===item.id?setFamilyEditing(null):startFamilyEdit(item)}><Pencil size={16}/></button>
+            <button type="button" className="inbox-icon" title="삭제" aria-label={item.title+" 기록 삭제"} onClick={()=>removeFamilyRecord(item.id)}><Trash2 size={16}/></button>
+          </div>
+          {familyEditing===item.id&&<div style={{display:"grid",gap:8,marginTop:12}}>
+            <input type="date" aria-label="기록 날짜" value={familyDraft.date} onChange={e=>setFamilyDraft(v=>({...v,date:e.target.value}))} style={{fontSize:16,padding:9,border:"1px solid #dfd0eb",borderRadius:8,width:"100%",boxSizing:"border-box"}}/>
+            <textarea aria-label="한마디" placeholder="한마디 (선택)" rows={2} value={familyDraft.memo} onChange={e=>setFamilyDraft(v=>({...v,memo:e.target.value}))} style={{fontSize:16,padding:9,border:"1px solid #dfd0eb",borderRadius:8,width:"100%",boxSizing:"border-box",resize:"vertical",fontFamily:"inherit"}}/>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" className="secondary" onClick={()=>setFamilyEditing(null)}>취소</button><button type="button" className="primary" onClick={saveFamilyEdit}>저장</button></div>
+          </div>}
+        </div>):<div className="focus-empty">이날의 가족 기록이 없어.</div>}</div>:<FocusTaskRows items={selected} mode={calendarMode}/>
       </section>
     </div>;
   }
