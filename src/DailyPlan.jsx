@@ -70,6 +70,11 @@ export function DailyPlan({data,onDataChange}){
  const categories=plan.categories||[];
  const assignments=plan.assignments?.[day]||{};
  const chosen=categories.find(c=>c.id===selected);
+ const allocationSummary=categories.map(category=>({
+  ...category,
+  count:Object.values(assignments).filter(id=>id===category.id).length
+ })).filter(item=>item.count>0);
+ const allocatedCount=allocationSummary.reduce((sum,item)=>sum+item.count,0);
  const notes=(plan.notes?.[day]||{});
  const openCellNote=i=>{setNoteCell(i);setNoteDraft(notes[i]||"");};
  const startCellHold=(e,i)=>{
@@ -207,6 +212,14 @@ export function DailyPlan({data,onDataChange}){
     <button type="button" className="macro-palette-add" onClick={openNew} aria-label="컬러 항목 추가"><Plus size={25}/></button>
     <button type="button" className={`macro-palette-eraser ${erase?"selected":""}`} onClick={()=>{setErase(true);setSelected(null)}} aria-pressed={erase}><Eraser size={19}/></button>
    </aside>
+  </div>
+  <div className="macro-allocation-summary" aria-label="시간별 배분 요약">
+   <div className="macro-allocation-total">배분 합계 <strong>{(allocatedCount*0.25).toLocaleString("ko-KR",{maximumFractionDigits:2})+"시간"}</strong></div>
+   <div className="macro-allocation-items">{allocationSummary.map(item=><div key={item.id} className="macro-allocation-item">
+    <span className="macro-allocation-swatch" style={{backgroundColor:swatchOf(item.family,item.shade)}}/>
+    <span className="macro-allocation-name">{item.name}</span>
+    <strong>{(item.count*0.25).toLocaleString("ko-KR",{maximumFractionDigits:2})+"시간"}</strong>
+   </div>)}</div>
   </div>
   <div className="macro-board-footer"><span>{Object.keys(assignments).filter(k=>categories.some(c=>c.id===assignments[k])).length} / 68칸 배정</span><span>{erase?"지울 칸을 눌러줘":chosen?`${chosen.name} 선택 중 · 칸을 눌러 배정`:"오른쪽에서 항목을 선택해 줘"}</span></div>
   {noteCell!==null&&<div className="macro-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setNoteCell(null)}}>
