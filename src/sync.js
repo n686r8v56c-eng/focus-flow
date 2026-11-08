@@ -78,7 +78,7 @@ export function mergeState(base, local, remote, path = "data") {
   }
   if (equal(local, base)) return remote;
   if (equal(remote, base) || equal(local, remote)) return local;
-  if (path === "data.inboxItems" && (local === undefined || Array.isArray(local)) && (remote === undefined || Array.isArray(remote)))
+  if ((path === "data.inboxItems" || path === "data.opportunityItems") && (local === undefined || Array.isArray(local)) && (remote === undefined || Array.isArray(remote)))
     return mergeInbox(base,local,remote,path);
   if (
     Array.isArray(local) &&
