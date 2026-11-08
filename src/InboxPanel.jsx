@@ -93,10 +93,10 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
   const foldersKey = isOpportunity ? 'opportunityFolders' : 'inboxFolders';
   const label = isOpportunity ? '기회' : '인박스';
   const folders=data[foldersKey] || [], entries=isOpportunity ? (data[itemsKey] || []) : inboxEntries(data);
-  const changeEntry=(item,patch)=>onDataChange(d=>item.legacyTask ? {...d,tasks:d.tasks.map(t=>t.id===item.id?{...t,...patch,...(patch.archived!==undefined?{inboxArchived:patch.archived}:{}),...(patch.text!==undefined?{title:patch.text}: {})}:t)} : {...d,inboxItems:(d[itemsKey] || []).map(n=>n.id===item.id?{...n,...patch}:n)});
+  const changeEntry=(item,patch)=>onDataChange(d=>item.legacyTask ? {...d,tasks:d.tasks.map(t=>t.id===item.id?{...t,...patch,...(patch.archived!==undefined?{inboxArchived:patch.archived}:{}),...(patch.text!==undefined?{title:patch.text}: {})}:t)} : {...d,[itemsKey]:(d[itemsKey] || []).map(n=>n.id===item.id?{...n,...patch}:n)});
   const toggleLine=(item,index)=>onDataChange(d=>item.legacyTask
     ? {...d,tasks:d.tasks.map(t=>t.id===item.id?{...t,title:toggleInboxTextLine(t.title || '',index)}:t)}
-    : {...d,inboxItems:(d[itemsKey] || []).map(n=>n.id===item.id?{...n,text:toggleInboxTextLine(n.text || '',index)}:n)});
+    : {...d,[itemsKey]:(d[itemsKey] || []).map(n=>n.id===item.id?{...n,text:toggleInboxTextLine(n.text || '',index)}:n)});
   async function capture(text) {
     if(uploading) return;
     const added=makeInboxItems(text,newId);
@@ -110,7 +110,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
       }
     } catch(e) {setPhotoError(e.message || '사진을 저장하지 못했어. 저장소 설정을 확인해 줘.');setUploading(false);return;}
     setUploading(false);setPendingPhotos([]);
-    onDataChange(d=>({...d,inboxItems:[...(d[itemsKey] || []),...added]}));
+    onDataChange(d=>({...d,[itemsKey]:[...(d[itemsKey] || []),...added]}));
     setDraft('');setView('inbox');setFolderId('');setQuery('');notify(`${added.length}개를 ${label}에 담았어.`);
     // Failure to read a public title never prevents the original link from saving.
     for (const item of added.filter(n=>n.videoId)) {
@@ -118,7 +118,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
         const r=await fetch('https://www.youtube.com/oembed?url='+encodeURIComponent(item.url)+'&format=json',{signal:AbortSignal.timeout(7000)});
         if(!r.ok) continue;
         const info=await r.json();
-        if(info.title) onDataChange(d=>({...d,inboxItems:(d[itemsKey] || []).map(n=>n.id===item.id && n.title===item.title ? {...n,title:info.title} : n)}));
+        if(info.title) onDataChange(d=>({...d,[itemsKey]:(d[itemsKey] || []).map(n=>n.id===item.id && n.title===item.title ? {...n,title:info.title} : n)}));
       } catch { /* The saved card keeps its editable fallback title. */ }
     }
   }
@@ -177,7 +177,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
                 {item.url&&<a href={item.url} target="_blank" rel="noopener noreferrer" aria-label="원본 링크 열기"><ExternalLink size={17}/></a>}
                 <button type="button" onClick={()=>item.legacyTask?onOpenTask(item.id):setEdit({id:item.id,title:item.title || '',text:item.text || ''})} aria-label="메모 수정"><Pencil size={17}/></button>
                 <button type="button" onClick={()=>changeEntry(item,{archived:!item.archived})} aria-label={item.archived?'보관 해제':'보관'} title={item.archived?'보관 해제':'보관'}>{item.archived?<ArchiveRestore size={17}/>:<Archive size={17}/>}</button>
-                <button type="button" title="삭제" aria-label="메모 삭제" onClick={()=>{if(!window.confirm('원본 메모를 삭제할까? 이미 담은 할 일은 유지돼.'))return;onDataChange(d=>item.legacyTask?{...d,tasks:d.tasks.filter(t=>t.id!==item.id)}:{...d,inboxItems:(d[itemsKey] || []).filter(n=>n.id!==item.id)});setExpanded(null);}}><Trash2 size={17}/></button>
+                <button type="button" title="삭제" aria-label="메모 삭제" onClick={()=>{if(!window.confirm('원본 메모를 삭제할까? 이미 담은 할 일은 유지돼.'))return;onDataChange(d=>item.legacyTask?{...d,tasks:d.tasks.filter(t=>t.id!==item.id)}:{...d,[itemsKey]:(d[itemsKey] || []).filter(n=>n.id!==item.id)});setExpanded(null);}}><Trash2 size={17}/></button>
               </div>
             </div>}
           </article>;
@@ -185,6 +185,6 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
         {!shown.length&&<div className="focus-empty">{query?'검색 결과가 없어.':view==='inbox'?'떠오르는 생각이나 링크를 먼저 담아 봐.':view==='archive'?'보관한 자료가 없어.':'메모를 열어 폴더를 지정하면 여기에 모여.'}</div>}
       </section>
     </>}
-    {folderDraft!==null&&<div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&setFolderDraft(null)}><form className="sheet" onSubmit={e=>{e.preventDefault();const name=folderDraft.trim();if(!name)return;const existing=folders.find(f=>f.name===name);if(existing){setFolderId(existing.id);setView('folders');setFolderDraft(null);return;}const id=newId();onDataChange(d=>({...d,inboxFolders:[...(d[foldersKey] || []),{id,name}]}));setFolderDraft(null);notify('폴더를 만들었어. 메모에서 선택해 줘.');}}><div className="sheet-top"><h2>새 폴더</h2><button type="button" onClick={()=>setFolderDraft(null)} aria-label="닫기"><X size={20}/></button></div><label>폴더 이름<input autoFocus required maxLength={40} value={folderDraft} onChange={e=>setFolderDraft(e.target.value)}/></label><button className="primary save" disabled={!folderDraft.trim()}>만들기</button></form></div>}
+    {folderDraft!==null&&<div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&setFolderDraft(null)}><form className="sheet" onSubmit={e=>{e.preventDefault();const name=folderDraft.trim();if(!name)return;const existing=folders.find(f=>f.name===name);if(existing){setFolderId(existing.id);setView('folders');setFolderDraft(null);return;}const id=newId();onDataChange(d=>({...d,[foldersKey]:[...(d[foldersKey] || []),{id,name}]}));setFolderDraft(null);notify('폴더를 만들었어. 메모에서 선택해 줘.');}}><div className="sheet-top"><h2>새 폴더</h2><button type="button" onClick={()=>setFolderDraft(null)} aria-label="닫기"><X size={20}/></button></div><label>폴더 이름<input autoFocus required maxLength={40} value={folderDraft} onChange={e=>setFolderDraft(e.target.value)}/></label><button className="primary save" disabled={!folderDraft.trim()}>만들기</button></form></div>}
   </section>;
 }
