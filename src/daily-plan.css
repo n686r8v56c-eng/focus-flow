@@ -21,3 +21,19 @@
 @media(max-width:699px){.daily-board .macro-row-date{left:-53px}}
 @media(max-width:390px){.daily-board .macro-row-date{left:-50px}}
 @media(min-width:700px){.daily-board .macro-row-date{left:-64px}}
+
+/* Collapsible time-slot notes below the daily allocation totals. */
+.daily-notes-accordion{margin:10px 0 8px;border:1px solid #e9ddf0;border-radius:13px;background:#fcfaff;overflow:hidden;color:#45344f;font-size:13px}
+.daily-notes-accordion summary{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;list-style:none;font-weight:650;-webkit-user-select:none;user-select:none}
+.daily-notes-accordion summary::-webkit-details-marker{display:none}
+.daily-notes-accordion summary strong{margin-left:5px;color:#8759b2}
+.daily-notes-chevron{font-size:20px;color:#9975b5;transition:transform .15s}
+.daily-notes-accordion[open] .daily-notes-chevron{transform:rotate(180deg)}
+.daily-notes-list{padding:0 14px 10px}
+.daily-notes-entry{display:flex;align-items:flex-start;gap:10px;border-top:1px solid #efe7f3;padding:10px 0}
+.daily-notes-time{font-weight:700;color:#805da0;flex:none;min-width:42px;font-variant-numeric:tabular-nums}
+.daily-notes-body{flex:1;min-width:0}
+.daily-notes-category{display:flex;align-items:center;gap:5px;font-weight:650;margin-bottom:3px}
+.daily-notes-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.daily-notes-edit{flex:none;border:0;background:transparent;color:#8a68a9;padding:1px 2px;font:inherit;cursor:pointer}
+.daily-notes-empty{padding:10px 0;color:#9c8ba5}
