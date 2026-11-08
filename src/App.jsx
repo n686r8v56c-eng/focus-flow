@@ -1052,7 +1052,7 @@ export function App({
             <textarea aria-label="한마디" placeholder="한마디 (선택)" rows={2} value={familyDraft.memo} onChange={e=>setFamilyDraft(v=>({...v,memo:e.target.value}))} style={{fontSize:16,padding:9,border:"1px solid #dfd0eb",borderRadius:8,width:"100%",boxSizing:"border-box",resize:"vertical",fontFamily:"inherit"}}/>
             <div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" className="secondary" onClick={()=>setFamilyEditing(null)}>취소</button><button type="button" className="primary" onClick={saveFamilyEdit}>저장</button></div>
           </div>}
-        </div>):<div className="focus-empty">이날의 가족 기록이 없어.</div>}</div>:<FocusTaskRows items={selected} mode={calendarMode}/>
+        </div>):<div className="focus-empty">이날의 가족 기록이 없어.</div>}</div>:<FocusTaskRows items={selected} mode={calendarMode}/>}
       </section>
     </div>;
   }
