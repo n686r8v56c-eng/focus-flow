@@ -147,3 +147,11 @@
 
 /* Align color palette with first week after removing column labels. */
 .macro-palette{padding-top:0}
+
+/* Align palette to row 1; remove the automatic current-week outline. */
+.macro-board-body>.macro-week-side{grid-column:1 / span 4;grid-row:1;align-self:start}
+.macro-board-body>.macro-palette{
+ grid-column:5;grid-row:1;align-self:start;
+ position:static;top:auto;margin:0;padding:0;transform:none;
+}
+.macro-week-tile.is-current{outline:none;outline-offset:0}
