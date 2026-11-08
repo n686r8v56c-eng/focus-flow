@@ -144,3 +144,6 @@
 .macro-family-dot{width:11px;height:11px;flex:none;border-radius:50%}
 .macro-color-options button{min-width:0}
 @media(max-width:355px){.macro-family-options{gap:4px}.macro-family-options button{font-size:11px}.macro-family-dot{width:9px;height:9px}}
+
+/* Align color palette with first week after removing column labels. */
+.macro-palette{padding-top:0}
