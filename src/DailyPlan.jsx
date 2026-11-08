@@ -38,6 +38,12 @@ export function DailyPlan({data,onDataChange}){
  const [family,setFamily]=useState("보라");
  const [error,setError]=useState("");
  const [erase,setErase]=useState(false);
+ const [noteCell,setNoteCell]=useState(null);
+ const [noteDraft,setNoteDraft]=useState("");
+ const cellHoldTimer=useRef(null);
+ const cellHoldTriggered=useRef(false);
+ useEffect(()=>()=>clearTimeout(cellHoldTimer.current),[]);
+ const cancelCellHold=()=>clearTimeout(cellHoldTimer.current);
  const longPressTimer=useRef(null);
  const longPressTriggered=useRef(false);
  const holdId=useRef(null);
@@ -62,6 +68,26 @@ export function DailyPlan({data,onDataChange}){
  const categories=plan.categories||[];
  const assignments=plan.assignments?.[day]||{};
  const chosen=categories.find(c=>c.id===selected);
+ const notes=(plan.notes?.[day]||{});
+ const openCellNote=i=>{setNoteCell(i);setNoteDraft(notes[i]||"");};
+ const startCellHold=(e,i)=>{
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  cancelCellHold();cellHoldTriggered.current=false;
+  cellHoldTimer.current=setTimeout(()=>{cellHoldTriggered.current=true;openCellNote(i);},550);
+ };
+ const clickCell=i=>{if(cellHoldTriggered.current){cellHoldTriggered.current=false;return;}paint(i);};
+ const saveCellNote=e=>{
+  e.preventDefault();
+  const value=noteDraft.trim();
+  update(m=>{
+   const all={...(m.notes||{})};
+   const next={...(all[day]||{})};
+   if(value)next[noteCell]=value;else delete next[noteCell];
+   if(Object.keys(next).length)all[day]=next;else delete all[day];
+   return {...m,notes:all};
+  });
+  setNoteCell(null);
+ };
  const update=fn=>onDataChange(old=>({...old,dailyPlan:fn(old.dailyPlan||{})}));
  const openNew=()=>{setEditing(null);setDraft("");setFamily(PALETTES[categories.length%PALETTES.length].name);setShade(0);setError("");setModal(true);};
  const openEdit=c=>{setEditing(c.id);setDraft(c.name);setShade(c.shade??0);setFamily(c.family||"보라");setError("");setModal(true);};
@@ -109,12 +135,18 @@ export function DailyPlan({data,onDataChange}){
        const i=row*4+col;
        const assigned=categories.find(c=>c.id===assignments[i]);
        const swatch=swatchOf(assigned?.family,assigned?.shade);
-       return <button type="button" key={i} onClick={()=>paint(i)}
+       return <button type="button" key={i} onClick={()=>clickCell(i)}
+        onPointerDown={e=>startCellHold(e,i)}
+        onPointerUp={cancelCellHold}
+        onPointerLeave={cancelCellHold}
+        onPointerCancel={cancelCellHold}
+        onContextMenu={e=>e.preventDefault()}
         aria-label={hour+" "+String(col*15).padStart(2,"0")+"분 "+(assigned?.name||"미배정")}
         aria-pressed={Boolean(assigned)}
         className={`macro-week-tile ${assigned?"is-assigned":""}`}
         style={assigned?{backgroundColor:swatch,color:colorText(swatch)}:undefined}>
         {assigned?<span className="macro-week-name">{assigned.name}</span>:<span className="macro-week-placeholder">+</span>}
+        {notes[i]&&<span className="macro-cell-note-dot" aria-hidden="true" style={{backgroundColor:assigned?colorText(swatch):"#7951ab"}}/>}
        </button>;
       })}
      </div>)}
@@ -140,6 +172,13 @@ export function DailyPlan({data,onDataChange}){
    </aside>
   </div>
   <div className="macro-board-footer"><span>{Object.keys(assignments).filter(k=>categories.some(c=>c.id===assignments[k])).length} / 68칸 배정</span><span>{erase?"지울 칸을 눌러줘":chosen?`${chosen.name} 선택 중 · 칸을 눌러 배정`:"오른쪽에서 항목을 선택해 줘"}</span></div>
+  {noteCell!==null&&<div className="macro-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setNoteCell(null)}}>
+   <form className="macro-modal macro-cell-note-modal" onSubmit={saveCellNote} role="dialog" aria-modal="true" aria-label="칸 메모 편집">
+    <div className="macro-modal-heading"><h3>시간 메모</h3><button type="button" aria-label="닫기" onClick={()=>setNoteCell(null)}><X size={21}/></button></div>
+    <textarea autoFocus rows={5} aria-label="상세 계획" placeholder="무엇을 할까?" value={noteDraft} onChange={e=>setNoteDraft(e.target.value)}/>
+    <div className="macro-modal-actions"><button type="button" className="macro-cancel" onClick={()=>setNoteCell(null)}>취소</button><button type="submit" className="macro-save">저장</button></div>
+   </form>
+  </div>}
   {modal&&<div className="macro-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(false)}}>
    <form className="macro-modal" onSubmit={save} role="dialog" aria-modal="true" aria-label={editing?"항목 수정":"항목 추가"}>
     <div className="macro-modal-heading"><h3>{editing?"항목 수정":"새 항목"}</h3><button type="button" aria-label="닫기" onClick={()=>setModal(false)}><X size={21}/></button></div>
