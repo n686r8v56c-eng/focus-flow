@@ -57,3 +57,6 @@
 @media(max-width:699px){.macro-row-date{left:-42px;width:40px;font-size:9px}}
 @media(max-width:390px){.macro-row-date{left:-40px;width:39px;font-size:8.5px}}
 @media(min-width:700px){.macro-row-date{left:-48px;width:46px;font-size:11px}}
+
+/* Icon-only eraser button */
+.macro-palette-eraser{width:100%;justify-content:center;padding:5px;min-height:38px}
