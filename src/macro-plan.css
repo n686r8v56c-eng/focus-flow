@@ -25,3 +25,9 @@
  .macro-palette-choice{min-height:0;font-size:14px}
  .macro-palette-add{height:auto;min-height:0}
 }
+
+/* Keep row-start dates visible without taking width away from the five equal boxes. */
+.macro-board-body{padding-left:37px}
+.macro-palette{padding-top:23px}
+@media(max-width:390px){.macro-board-body{padding-left:33px}.macro-palette{padding-top:23px}}
+@media(min-width:700px){.macro-board-body{padding-left:48px}.macro-palette{padding-top:23px}}
