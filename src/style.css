@@ -1898,3 +1898,19 @@ body,
 /* Five equally spaced primary navigation tabs, including Weekly Focus. */
 .bottom-nav{grid-template-columns:repeat(5,minmax(0,1fr));}
 .bottom-nav>button{width:100%;min-width:0;}
+
+
+/* Four equally spaced bottom tabs after moving Time Log into the header. */
+.bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr));}
+.bottom-nav>button{min-width:0;width:100%;}
+/* Compact top shortcuts: playlist is icon-only, Time Log remains labeled. */
+.focus-v6-header .header-actions{display:flex;align-items:center;gap:5px;min-width:0;}
+.focus-v6-header .focus-header-icon-button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 37px;width:37px;min-width:37px;height:36px;padding:0;}
+.focus-v6-header .focus-header-timelog{display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;min-height:36px;padding:7px 9px;font-size:13px;font-weight:700;}
+@media(max-width:410px){
+ .focus-v6-header{padding-left:9px;padding-right:9px;gap:4px;}
+ .focus-v6-header .header-actions{gap:4px;}
+ .focus-v6-header .focus-header-timelog{padding:6px 7px;font-size:12px;}
+ .focus-v6-header .focus-header-timelog svg{width:14px;height:14px;}
+ .focus-v6-header .focus-header-icon-button{flex-basis:34px;width:34px;min-width:34px;height:34px;}
+}
