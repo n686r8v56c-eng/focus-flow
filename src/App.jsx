@@ -29,6 +29,7 @@ import {
   ClipboardCheck,
   LogOut,
   CalendarRange,
+  House,
 } from "lucide-react";
 import "./style.css";
 import { InboxPanel, copyInboxText } from "./InboxPanel.jsx";
@@ -42,7 +43,6 @@ import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
 import { CalendarExternal } from "./CalendarExternal.jsx";
-import { TimeLog } from "./TimeLog.jsx";
 import { MemoPanel } from "./MemoPanel.jsx";
 import { AppRegistry } from "./AppRegistry.jsx";
 import { ChecklistPanel } from "./ChecklistPanel.jsx";
@@ -107,6 +107,7 @@ export function App({
     return () => {active=false;window.removeEventListener("focus",onFocus);bridgeClient.removeChannel(channel);};
   }, [bridgeClient,bridgeUserId]);
   const [playlistOpened, setPlaylistOpened] = useState(false);
+  const [familyRecorded,setFamilyRecorded]=useState("");
   const [tab, setTab] = useState("daily"),
     [calendarMode, setCalendarMode] = useState("schedule"),
     [todoDate, setTodoDate] = useState(localDate()),
@@ -224,6 +225,13 @@ export function App({
     setModal(null);
     setEditing(null);
   };
+  const recordFamily=(label)=>{
+    const date=localDate();
+    update(d=>({...d,familyLogs:[...(d.familyLogs||[]),{id:uid(),date,title:label,createdAt:new Date().toISOString()}]}));
+    setFamilyRecorded(label+" 기록 완료");
+    setFocusDate(date);
+  };
+  const removeFamilyRecord=id=>update(d=>({...d,familyLogs:(d.familyLogs||[]).filter(item=>item.id!==id)}));
   const changeTask = (id, fields) =>
     update((d) => ({
       ...d,
@@ -996,19 +1004,20 @@ export function App({
     const monthFirstDay=new Date(monthStart+"T12:00:00").getDay();
     const startDay=dayAdd(monthStart,-monthFirstDay);
     const days=Array.from({length:42},(_,i)=>dayAdd(startDay,i));
-    const isMatch=t=>calendarMode==="schedule"?isScheduleEntry(t):!isScheduleEntry(t);
-    const selected=data.tasks.filter(t=>t.due===focusDate&&isMatch(t));
+    const isMatch=t=>calendarMode==="family"?false:calendarMode==="schedule"?isScheduleEntry(t):!isScheduleEntry(t);
+    const selected=calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===focusDate):data.tasks.filter(t=>t.due===focusDate&&isMatch(t));
     return <div className="focus-redesign">
-      <div className="section-top"><h1>일정</h1></div><button type="button" aria-label={calendarMode==="schedule"?"일정 추가":"할 일 추가"} title={calendarMode==="schedule"?"일정 추가":"할 일 추가"} style={{position:"fixed",right:"20px",bottom:"calc(92px + env(safe-area-inset-bottom, 0px))",width:"56px",height:"56px",borderRadius:"50%",background:"#9570c7",color:"#fff",border:"none",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 5px 18px rgba(70,40,105,.2)",zIndex:35,cursor:"pointer"}} onClick={()=>{setEditing(null);setModal("task");}}><Plus size={27}/></button>
+      <div className="section-top"><h1>일정</h1></div>{calendarMode!=="family"&&<button type="button" aria-label={calendarMode==="schedule"?"일정 추가":"할 일 추가"} title={calendarMode==="schedule"?"일정 추가":"할 일 추가"} style={{position:"fixed",right:"20px",bottom:"calc(92px + env(safe-area-inset-bottom, 0px))",width:"56px",height:"56px",borderRadius:"50%",background:"#9570c7",color:"#fff",border:"none",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 5px 18px rgba(70,40,105,.2)",zIndex:35,cursor:"pointer"}} onClick={()=>{setEditing(null);setModal("task");}}><Plus size={27}/></button>}
       <div className="focus-segments" role="tablist" aria-label="캘린더 종류">
         <button role="tab" aria-selected={calendarMode==="schedule"} className={calendarMode==="schedule"?"selected":""} onClick={()=>setCalendarMode("schedule")}>일정</button>
         <button role="tab" aria-selected={calendarMode==="todo"} className={calendarMode==="todo"?"selected":""} onClick={()=>setCalendarMode("todo")}>할 일</button>
+        <button role="tab" aria-selected={calendarMode==="family"} className={calendarMode==="family"?"selected":""} onClick={()=>setCalendarMode("family")}>가족</button>
       </div>
       <section className="focus-panel focus-calendar-panel">
         <FocusDateStrip date={focusDate} onChange={setFocusDate} month/>
         <div className="month-grid weekday">{"일월화수목금토".split("").map((x,i)=><div key={i}>{x}</div>)}</div>
         <div className="month-grid focus-month-days">{days.map(date=>{
-          const visible=data.tasks.filter(t=>t.due===date&&isMatch(t));
+          const visible=calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===date):data.tasks.filter(t=>t.due===date&&isMatch(t));
           return <button key={date} type="button"
             className={"focus-month-cell "+(date.slice(0,7)!==focusDate.slice(0,7)?"muted ":"")+(date===focusDate?"active":"")}
             onClick={()=>setFocusDate(date)} aria-pressed={date===focusDate}>
@@ -1019,8 +1028,8 @@ export function App({
         })}</div>
       </section>
       <section className="focus-panel">
-        <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
-        <FocusTaskRows items={selected} mode={calendarMode}/>
+        <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="family"?"가족":calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
+        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div className="focus-task-row" key={item.id}><span style={{flex:1}}>🐾 {item.title}</span><small>{item.createdAt?new Date(item.createdAt).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}):""}</small><button type="button" className="inbox-icon" aria-label={item.title+" 기록 삭제"} onClick={()=>removeFamilyRecord(item.id)}><Trash2 size={16}/></button></div>):<div className="focus-empty">이날의 가족 기록이 없어.</div>}</div>:<FocusTaskRows items={selected} mode={calendarMode}/>}
       </section>
     </div>;
   }
@@ -1779,14 +1788,14 @@ export function App({
         <button type="button" className="brand" onClick={()=>{setRegistryOpen(false);setChecklistOpen(false);setTab("daily");}}>Focus Flow</button>
         <div className="header-actions">
           <button type="button" className="api-top-button focus-header-icon-button" title="플레이리스트" aria-label="플레이리스트" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><Music2 size={20}/></button>
-          <button type="button" className="api-top-button focus-header-timelog" style={{border:"1px solid #e3d9ee",background:tab === "timelog" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("timelog")} aria-current={tab === "timelog" ? "page" : undefined}><Clock3 size={16}/> 타임로그</button>
+          <button type="button" className="api-top-button focus-header-icon-button" title="홈" aria-label="홈" style={{border:"1px solid #e3d9ee",background:tab === "familyhome" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("familyhome")} aria-current={tab === "familyhome" ? "page" : undefined}><House size={20}/></button>
           <button type="button" className="api-top-button" style={{border:"1px solid #e3d9ee",background:tab === "api" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9,padding:"7px 11px",fontSize:14,fontWeight:650,minHeight:36}} onClick={()=>setTab("api")} aria-current={tab === "api" ? "page" : undefined}>API</button>
           <span className="focus-autosave">자동 저장</span>
           <button type="button" className="header-timer" aria-label="로그아웃" title="로그아웃" onClick={onLogout}><LogOut size={18}/></button>
         </div>
       </header>
       <main className={tab === "playlist" ? "focus-playlist-main" : undefined}>
-        {tab === "timelog" ? <TimeLog data={data} onDataChange={setData} client={bridgeClient} userId={bridgeUserId}/>
+        {tab === "familyhome" ? <section className="focus-redesign"><div className="section-top"><h1>고미쩌미</h1></div><div className="focus-panel" style={{display:"grid",gap:12}}><button type="button" className="primary" onClick={()=>recordFamily("넥스가드")}>넥스가드</button><button type="button" className="primary" onClick={()=>recordFamily("미용")}>미용</button>{familyRecorded&&<p role="status" style={{color:"#78539e",margin:0}}>{familyRecorded} · 오늘 날짜에 저장했어</p>}<button type="button" className="secondary" onClick={()=>{setCalendarMode("family");setFocusDate(localDate());setTab("calendar")}}>가족 기록 보기</button></div></section>
           :tab === "playlist" ? null
           :tab === "opportunity" ? <InboxPanel key="opportunity" kind="opportunity" storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><><div className="section-top"><h1>오늘의 할 일</h1></div><FocusTaskRows items={data.tasks.filter(t=>!isScheduleEntry(t)&&t.due===today)} mode="todo"/></>}/>
           :tab === "todo" ? TodoPanel()
@@ -1794,7 +1803,7 @@ export function App({
           :tab === "weeklyfocus" ? <MacroPlan data={data} onDataChange={setData}/>
           :tab === "daily" ? <DailyPlan data={data} onDataChange={setData}/>
           :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
-          :<AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={()=>setTab("timelog")}/>}
+          :<AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={()=>setTab("familyhome")}/>}
         {playlistOpened && <section className="focus-playlist-screen" style={{display: tab === "playlist" ? "flex" : "none"}} aria-label="플레이리스트 플로우">
           <div className="focus-playlist-toolbar">
             <strong>플레이리스트</strong>
