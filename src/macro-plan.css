@@ -116,17 +116,17 @@
 .macro-palette-add,
 .macro-palette-eraser{
   aspect-ratio:auto;
-  height:46px;
-  min-height:46px;
-  max-height:46px;
+  height:36px;
+  min-height:36px;
+  max-height:36px;
 }
 @media(max-width:390px){
  .macro-week-tile,.macro-palette-choice,.macro-palette-add,.macro-palette-eraser{
-  aspect-ratio:auto;height:43px;min-height:43px;max-height:43px;
+  aspect-ratio:auto;height:34px;min-height:34px;max-height:34px;
  }
 }
 @media(min-width:700px){
  .macro-week-tile,.macro-palette-choice,.macro-palette-add,.macro-palette-eraser{
-  aspect-ratio:auto;height:58px;min-height:58px;max-height:58px;
+  aspect-ratio:auto;height:46px;min-height:46px;max-height:46px;
  }
 }
