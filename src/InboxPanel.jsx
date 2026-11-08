@@ -142,7 +142,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
       }}/>
       {pendingPhotos.length>0&&<div className="inbox-pending-images">{pendingPhotos.map((file,i)=><span key={i}><ImagePlus size={15}/>{file.name}<button type="button" aria-label="선택한 사진 제거" onClick={()=>setPendingPhotos(old=>old.filter((_,n)=>n!==i))}><X size={14}/></button></span>)}</div>}
       <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={e=>{addPending(e.target.files);e.target.value='';}}/>
-      <div className="inbox-capture-actions"><span>- 항목으로 적으면 체크리스트가 돼.</span><button type="button" onClick={()=>photoInput.current?.click()} aria-label="사진 첨부" title="사진 첨부"><ImagePlus size={19}/></button><button type="button" onClick={paste} aria-label="클립보드 붙여넣기" title="붙여넣어 바로 저장"><ClipboardPaste size={18}/></button><button type="submit" className="primary small" disabled={uploading||(!draft.trim()&&!pendingPhotos.length)}>{uploading?'저장 중…':'담기'}</button></div>
+      <div className="inbox-capture-actions"><button type="button" onClick={()=>photoInput.current?.click()} aria-label="사진 첨부" title="사진 첨부"><ImagePlus size={19}/></button><button type="button" onClick={paste} aria-label="클립보드 붙여넣기" title="붙여넣어 바로 저장"><ClipboardPaste size={18}/></button><button type="submit" className="primary small" disabled={uploading||(!draft.trim()&&!pendingPhotos.length)}>{uploading?'저장 중…':'담기'}</button></div>
     </form>
     {photoError&&<p className="inbox-photo-error" role="alert">{photoError}</p>}
     {view==='today' ? (renderToday ? renderToday() : <div className="focus-empty">오늘의 할 일을 인박스에서 확인해 줘.</div>) : <>
