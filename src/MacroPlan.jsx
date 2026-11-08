@@ -90,7 +90,6 @@ export function MacroPlan({data,onDataChange}){
     </div>
    </div>
    <aside className="macro-palette" aria-label="컬러 항목">
-    <div className="macro-palette-title">PROJECTS</div>
     {categories.map(c=><div key={c.id} className="macro-palette-item">
      <button type="button" className={`macro-palette-choice ${selected===c.id&&!erase?"selected":""}`}
       style={{backgroundColor:COLORS[c.shade],color:colorText(c.shade)}}
