@@ -981,8 +981,7 @@ export function App({
   }
   function TodoPanel() {
     const dated=data.tasks.filter(t=>!isScheduleEntry(t)&&(t.due===todoDate||(todoDate===today&&t.status!=="done"&&t.due&&t.due<today)));
-    return <InboxPanel storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><>
-      <FocusDateStrip date={todoDate} onChange={setTodoDate}/>
+    return <InboxPanel storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderDate={()=> <FocusDateStrip date={todoDate} onChange={setTodoDate}/>} renderToday={()=><>
       <div className="focus-kpis"><div><small>완료</small><strong>{dated.filter(x=>x.status==="done").length}/{dated.length}</strong></div><div><small>남은 할 일</small><strong>{dated.filter(x=>x.status!=="done").length}</strong></div></div>
       <section className="focus-panel"><div className="focus-day-title"><h2>{todoDate===today?"오늘의 할 일":todoDate+" 할 일"}</h2><button className="focus-move-kind" onClick={()=>{setEditing(null);setModal("task");}}><Plus size={14}/> 할 일</button></div>
         <FocusTaskRows items={dated} mode="todo" tomorrowAction={todoDate===today}/>
