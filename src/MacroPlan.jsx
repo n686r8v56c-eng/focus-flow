@@ -6,8 +6,8 @@ const COLORS=["#EDE2FA","#D7BCEF","#BD99E5","#9B72D1","#7749B2","#523083"];
 const colorText=index=>index>=3?"#FFFFFF":"#3C2A50";
 const pad=n=>String(n).padStart(2,"0");
 const dateString=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-const firstMonday=year=>{const d=new Date(year,0,1,12);d.setDate(d.getDate()-(d.getDay()+6)%7);return d;};
-const weekDates=year=>{const first=firstMonday(year);return Array.from({length:52},(_,i)=>{const d=new Date(first);d.setDate(first.getDate()+i*7);return d;});};
+const monday=d=>{const result=new Date(d);result.setHours(12,0,0,0);result.setDate(result.getDate()-(result.getDay()+6)%7);return result;};
+const weekDates=(year,anchor)=>{const base=monday(new Date(year,anchor.getMonth(),anchor.getDate(),12));return Array.from({length:52},(_,i)=>{const d=new Date(base);d.setDate(base.getDate()+i*7);return d;});};
 const short=d=>`${d.getMonth()+1}/${d.getDate()}`;
 const uid=()=>Math.random().toString(36).slice(2,11);
 
@@ -23,11 +23,14 @@ export function MacroPlan({data,onDataChange}){
  const macro=data.macroPlan||{};
  const categories=macro.categories||[];
  const assignments=macro.assignments?.[year]||{};
- const weeks=weekDates(year);
- const currentWeekDate=firstMonday(new Date().getFullYear());
- const currentIndex=year===new Date().getFullYear()?Math.floor((new Date()-currentWeekDate)/604800000):-1;
+ // Keep the 52-week board anchored to its initial start week, not Jan 1.
+ // For the current plan the first row starts November 9, 2026.
+ const anchorDate=macro.anchorWeek?new Date(macro.anchorWeek+"T12:00:00"):monday(new Date());
+ const weeks=weekDates(year,anchorDate);
+ const currentMonday=monday(new Date());
+ const currentIndex=weeks.findIndex(d=>dateString(d)===dateString(currentMonday));
  const chosen=categories.find(c=>c.id===selected);
- const update=fn=>onDataChange(old=>({...old,macroPlan:fn(old.macroPlan||{})}));
+ const update=fn=>onDataChange(old=>({...old,macroPlan:fn({...old.macroPlan,anchorWeek:old.macroPlan?.anchorWeek||dateString(anchorDate)})}));
  const openNew=()=>{setEditing(null);setDraft("");setShade(categories.length%COLORS.length);setError("");setModal(true);};
  const openEdit=c=>{setEditing(c.id);setDraft(c.name);setShade(c.shade);setError("");setModal(true);};
  const save=e=>{
@@ -68,19 +71,22 @@ export function MacroPlan({data,onDataChange}){
    <div className="macro-week-side">
     <div className="macro-week-column-label"><span>WEEK</span><span>01–52</span></div>
     <div className="macro-week-grid">
-     {weeks.map((d,i)=>{
-      const assigned=categories.find(c=>c.id===assignments[i]);
-      const swatch=assigned?.shade??0;
-      const isCurrent=i===currentIndex;
-      return <button type="button" key={i} onClick={()=>paint(i)}
-       aria-label={`${i+1}주차 ${short(d)}부터 ${assigned?.name||"미배정"}`}
-       aria-pressed={Boolean(assigned)}
-       className={`macro-week-tile ${isCurrent?"is-current":""} ${assigned?"is-assigned":""}`}
-       style={assigned?{backgroundColor:COLORS[swatch],color:colorText(swatch)}:undefined}>
-       <span className="macro-week-number">{String(i+1).padStart(2,"0")}</span>
-       {assigned?<span className="macro-week-name">{assigned.name}</span>:<span className="macro-week-placeholder">+</span>}
-      </button>;
-     })}
+     {Array.from({length:13},(_,row)=><div className="macro-week-row" key={row}>
+      <span className="macro-row-date" title={dateString(weeks[row*4])}>{pad(weeks[row*4].getMonth()+1)}.{pad(weeks[row*4].getDate())}</span>
+      {weeks.slice(row*4,row*4+4).map((d,col)=>{
+       const i=row*4+col;
+       const assigned=categories.find(c=>c.id===assignments[i]);
+       const swatch=assigned?.shade??0;
+       return <button type="button" key={i} onClick={()=>paint(i)}
+        aria-label={`${i+1}주차 ${short(d)}부터 ${assigned?.name||"미배정"}`}
+        aria-pressed={Boolean(assigned)}
+        className={`macro-week-tile ${i===currentIndex?"is-current":""} ${assigned?"is-assigned":""}`}
+        style={assigned?{backgroundColor:COLORS[swatch],color:colorText(swatch)}:undefined}>
+        <span className="macro-week-number">{String(i+1).padStart(2,"0")}</span>
+        {assigned?<span className="macro-week-name">{assigned.name}</span>:<span className="macro-week-placeholder">+</span>}
+       </button>;
+      })}
+     </div>)}
     </div>
    </div>
    <aside className="macro-palette" aria-label="컬러 항목">
