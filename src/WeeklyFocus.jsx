@@ -1,6 +1,7 @@
 import React,{useState} from "react";
 import {ChevronLeft,ChevronRight} from "lucide-react";
 import "./weekly-focus.css";
+import {MacroPlan} from "./MacroPlan.jsx";
 
 const pad=n=>String(n).padStart(2,"0");
 const key=d=>[d.getFullYear(),pad(d.getMonth()+1),pad(d.getDate())].join("-");
@@ -23,7 +24,7 @@ export function WeeklyFocus({data,onDataChange}){
    <div className="wf-header"><div><small>WEEKLY FOCUS</small><h1>주간 집중</h1></div></div>
    <div className="wf-subtabs" role="tablist" aria-label="주간 집중 보기">
      <button type="button" role="tab" aria-selected={mode==="current"} className={mode==="current"?"active":""} onClick={()=>setMode("current")}>이번 주</button>
-     <button type="button" role="tab" aria-selected={mode==="future"} className={mode==="future"?"active":""} onClick={()=>setMode("future")}>향후</button>
+     <button type="button" role="tab" aria-selected={mode==="future"} className={mode==="future"?"active":""} onClick={()=>setMode("future")}>매크로</button>
    </div>
    <datalist id="wf-projects">{names.map(n=><option value={n} key={n}/>)}</datalist>
    {mode==="current"?<>
@@ -35,16 +36,6 @@ export function WeeklyFocus({data,onDataChange}){
        <label className="wf-label" htmlFor="wf-goal">이번 주 달성 목표</label>
        <textarea id="wf-goal" rows={3} placeholder="이번 주에 무엇을 달성할까?" value={current.goal||""} onChange={e=>write(week,{goal:e.target.value})}/>
      </div>
-   </>:<>
-     <div className="wf-future-heading"><strong>향후 8주 계획</strong><span>메인 · 보조</span></div>
-     <div className="wf-future-table" aria-label="향후 8주 프로젝트 계획">
-       <div className="wf-future-columns"><span>주간</span><span>메인</span><span>보조</span></div>
-       {futureWeeks.map((date,i)=><div className="wf-future-row" key={date}>
-         <div className="wf-future-date"><small>{i+1}주차</small><strong>{short(date)}–{short(addDays(date,6))}</strong></div>
-         <input aria-label={short(date)+" 주간 메인 프로젝트"} list="wf-projects" placeholder="메인" value={records[date]?.primary||""} onChange={e=>write(date,{primary:e.target.value})}/>
-         <input aria-label={short(date)+" 주간 보조 프로젝트"} list="wf-projects" placeholder="보조" value={records[date]?.auxiliary??records[date]?.secondary?.[0]??""} onChange={e=>write(date,{auxiliary:e.target.value})}/>
-       </div>)}
-     </div>
-   </>}
+   </>:<MacroPlan data={data} onDataChange={onDataChange} onOpenWeekly={date=>{setWeek(date);setMode("current")}} />}
  </section>;
 }
