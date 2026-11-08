@@ -198,3 +198,13 @@
 /* Prevent iOS long-press text selection on planner cells and modal chrome. */
 .macro-week-tile,.macro-week-tile *,.macro-cell-note-modal .macro-modal-heading,.macro-cell-note-modal .macro-modal-heading *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .macro-cell-note-modal textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+
+/* Compact allocation totals below each planner grid. */
+.macro-allocation-summary{margin:12px 0 6px;padding:11px 12px;border:1px solid #e9e1f0;border-radius:12px;background:#fcfaff;color:#43344e;font-size:13px}
+.macro-allocation-total{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-weight:600}
+.macro-allocation-total strong{font-size:15px;color:#6e48a2}
+.macro-allocation-items{display:flex;flex-wrap:wrap;gap:7px 13px}
+.macro-allocation-item{display:inline-flex;align-items:center;gap:5px;min-width:0}
+.macro-allocation-item strong{font-weight:700;white-space:nowrap}
+.macro-allocation-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+.macro-allocation-swatch{width:9px;height:9px;flex:none;border-radius:3px;border:1px solid #00000012}
