@@ -44,7 +44,7 @@ function InboxPhoto({client, path, thumbnail=false}) {
   return url ? <img className={thumbnail?'inbox-thumbnail':'inbox-photo'} src={url} alt="첨부 사진" loading="lazy" onClick={thumbnail?undefined:()=>window.open(url,'_blank','noopener,noreferrer')}/> : <span className="inbox-note-icon"><ImagePlus size={18}/></span>;
 }
 export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, notify, storageClient, userId, kind = 'inbox'}) {
-  const [view,setView]=useState('inbox'), [draft,setDraft]=useState(''), [query,setQuery]=useState(''), [folderId,setFolderId]=useState(''), [folderDraft,setFolderDraft]=useState(null), [expanded,setExpanded]=useState(null), [edit,setEdit]=useState(null);
+  const [view,setView]=useState(kind === 'inbox' ? 'today' : 'inbox'), [draft,setDraft]=useState(''), [query,setQuery]=useState(''), [folderId,setFolderId]=useState(''), [folderDraft,setFolderDraft]=useState(null), [expanded,setExpanded]=useState(null), [edit,setEdit]=useState(null);
   const draftRef=useRef(null);
   const photoInput=useRef(null);
   const [pendingPhotos,setPendingPhotos]=useState([]);
