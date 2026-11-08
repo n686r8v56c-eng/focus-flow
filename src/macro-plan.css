@@ -189,3 +189,8 @@
  .macro-board-body{column-gap:15px}
  .macro-row-date{left:-54px}
 }
+
+/* Notes overlay the existing cells; no change to tile geometry. */
+.macro-week-tile{touch-action:manipulation;-webkit-touch-callout:none}
+.macro-cell-note-dot{position:absolute;right:4px;top:4px;width:3px;height:3px;border-radius:50%;pointer-events:none}
+.macro-cell-note-modal textarea{width:100%;min-height:120px;resize:vertical;border:1px solid #ddcfe9;border-radius:10px;padding:12px;font:inherit;font-size:16px;line-height:1.5;color:#392849;outline-color:#9570c7}
