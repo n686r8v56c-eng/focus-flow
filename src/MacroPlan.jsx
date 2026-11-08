@@ -2,8 +2,24 @@ import React,{useState,useRef,useEffect} from "react";
 import {ChevronLeft,ChevronRight,Plus,X,Check,Trash2,Eraser} from "lucide-react";
 import "./macro-plan.css";
 
-const COLORS=["#EDE2FA","#D7BCEF","#BD99E5","#9B72D1","#7749B2","#523083"];
-const colorText=index=>index>=3?"#FFFFFF":"#3C2A50";
+const PALETTES=[
+ {name:"보라",colors:["#EDE2FA","#D7BCEF","#BD99E5","#9B72D1","#7749B2","#523083"]},
+ {name:"민트",colors:["#E0F7EE","#B8EAD8","#8BD6BE","#5BBB9D","#368F75","#216956"]},
+ {name:"핑크",colors:["#FCE9F1","#F7CBDD","#EBA8C6","#DB80AD","#BD568C","#8D3567"]},
+ {name:"블루",colors:["#E7F2FC","#C3DDF8","#99C4EF","#6BA6E2","#427EBD","#285D94"]},
+ {name:"옐로",colors:["#FFF6DA","#FBE8B3","#F3D480","#DFB451","#AE8335","#77581F"]},
+ {name:"코랄",colors:["#FDE9E1","#F8CFC0","#F2AA91","#E48768","#BE624A","#914434"]},
+ {name:"인디고",colors:["#E9E9FA","#C9CAF2","#A6AAE3","#858BD0","#5E65AF","#41477E"]},
+ {name:"그린",colors:["#EDF5DE","#D3E8B2","#B0D68B","#89BA62","#609642","#3E702E"]}
+];
+const paletteOf=family=>PALETTES.find(p=>p.name===family)||PALETTES[0];
+const swatchOf=(family,shade)=>paletteOf(family).colors[Math.max(0,Math.min(5,Number(shade)||0))];
+const colorText=hex=>{
+ const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);
+ const light=rgb.map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
+ const luminance=0.2126*light[0]+0.7152*light[1]+0.0722*light[2];
+ return luminance<0.31?"#FFFFFF":"#30243D";
+};
 const pad=n=>String(n).padStart(2,"0");
 const dateString=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const monday=d=>{const result=new Date(d);result.setHours(12,0,0,0);result.setDate(result.getDate()-(result.getDay()+6)%7);return result;};
@@ -18,6 +34,7 @@ export function MacroPlan({data,onDataChange}){
  const [editing,setEditing]=useState(null);
  const [draft,setDraft]=useState("");
  const [shade,setShade]=useState(0);
+ const [family,setFamily]=useState("보라");
  const [error,setError]=useState("");
  const [erase,setErase]=useState(false);
  const longPressTimer=useRef(null);
@@ -51,17 +68,17 @@ export function MacroPlan({data,onDataChange}){
  const currentIndex=weeks.findIndex(d=>dateString(d)===dateString(currentMonday));
  const chosen=categories.find(c=>c.id===selected);
  const update=fn=>onDataChange(old=>({...old,macroPlan:fn({...old.macroPlan,anchorWeek:old.macroPlan?.anchorWeek||dateString(anchorDate)})}));
- const openNew=()=>{setEditing(null);setDraft("");setShade(categories.length%COLORS.length);setError("");setModal(true);};
- const openEdit=c=>{setEditing(c.id);setDraft(c.name);setShade(c.shade);setError("");setModal(true);};
+ const openNew=()=>{setEditing(null);setDraft("");setFamily(PALETTES[categories.length%PALETTES.length].name);setShade(0);setError("");setModal(true);};
+ const openEdit=c=>{setEditing(c.id);setDraft(c.name);setShade(c.shade??0);setFamily(c.family||"보라");setError("");setModal(true);};
  const save=e=>{
   e.preventDefault();
   const name=draft.trim();
   if(!name){setError("이름을 입력해 줘.");return;}
   if(categories.some(c=>c.id!==editing&&c.name.toLowerCase()===name.toLowerCase())){setError("같은 이름이 있어.");return;}
   if(editing){
-   update(m=>({...m,categories:(m.categories||[]).map(c=>c.id===editing?{...c,name,shade}:c)}));
+   update(m=>({...m,categories:(m.categories||[]).map(c=>c.id===editing?{...c,name,shade,family}:c)}));
   }else{
-   const id=uid();update(m=>({...m,categories:[...(m.categories||[]),{id,name,shade}]}));setSelected(id);setErase(false);
+   const id=uid();update(m=>({...m,categories:[...(m.categories||[]),{id,name,shade,family}]}));setSelected(id);setErase(false);
   }
   setModal(false);
  };
@@ -96,12 +113,12 @@ export function MacroPlan({data,onDataChange}){
       {weeks.slice(row*4,row*4+4).map((d,col)=>{
        const i=row*4+col;
        const assigned=categories.find(c=>c.id===assignments[i]);
-       const swatch=assigned?.shade??0;
+       const swatch=swatchOf(assigned?.family,assigned?.shade);
        return <button type="button" key={i} onClick={()=>paint(i)}
         aria-label={`${i+1}주차 ${short(d)}부터 ${assigned?.name||"미배정"}`}
         aria-pressed={Boolean(assigned)}
         className={`macro-week-tile ${i===currentIndex?"is-current":""} ${assigned?"is-assigned":""}`}
-        style={assigned?{backgroundColor:COLORS[swatch],color:colorText(swatch)}:undefined}>
+        style={assigned?{backgroundColor:swatch,color:colorText(swatch)}:undefined}>
         {assigned?<span className="macro-week-name">{assigned.name}</span>:<span className="macro-week-placeholder">+</span>}
        </button>;
       })}
@@ -111,7 +128,7 @@ export function MacroPlan({data,onDataChange}){
    <aside className="macro-palette" aria-label="컬러 항목">
     {categories.map(c=><div key={c.id} className="macro-palette-item">
      <button type="button" className={`macro-palette-choice ${selected===c.id&&!erase?"selected":""}`}
-      style={{backgroundColor:COLORS[c.shade],color:colorText(c.shade)}}
+      style={{backgroundColor:swatchOf(c.family,c.shade),color:colorText(swatchOf(c.family,c.shade))}}
       aria-pressed={selected===c.id&&!erase}
       aria-label={c.name+" 선택, 길게 눌러 수정"}
       onPointerDown={e=>startHold(e,c)}
@@ -133,9 +150,17 @@ export function MacroPlan({data,onDataChange}){
     <div className="macro-modal-heading"><h3>{editing?"항목 수정":"새 항목"}</h3><button type="button" aria-label="닫기" onClick={()=>setModal(false)}><X size={21}/></button></div>
     <label htmlFor="macro-category-name">이름</label>
     <input id="macro-category-name" autoFocus maxLength={30} value={draft} onChange={e=>{setDraft(e.target.value);setError("")}} placeholder="예: 논점 진도"/>
-    <div className="macro-modal-color-label">컬러 선택</div>
-    <div className="macro-color-options">{COLORS.map((c,i)=><button type="button" key={c} aria-label={"보라 "+(i+1)+"단계"} aria-pressed={shade===i} className={shade===i?"active":""} style={{backgroundColor:c,color:colorText(i)}} onClick={()=>setShade(i)}>{shade===i&&<Check size={22} strokeWidth={3}/>}</button>)}</div>
-    <div className="macro-modal-preview" style={{background:COLORS[shade],color:colorText(shade)}}>{draft||"미리보기"}</div>
+    <div className="macro-modal-color-label">컬러 계열</div>
+    <div className="macro-family-options" role="group" aria-label="컬러 계열 선택">
+     {PALETTES.map(p=><button type="button" key={p.name} className={family===p.name?"active":""} aria-pressed={family===p.name}
+      onClick={()=>setFamily(p.name)}>
+      <span className="macro-family-dot" style={{background:p.colors[3]}}/>
+      <span>{p.name}</span>
+     </button>)}
+    </div>
+    <div className="macro-modal-color-label">명도 6단계</div>
+    <div className="macro-color-options">{paletteOf(family).colors.map((hex,i)=><button type="button" key={i} aria-label={family+" "+(i+1)+"단계"} aria-pressed={shade===i} className={shade===i?"active":""} style={{backgroundColor:hex,color:colorText(hex)}} onClick={()=>setShade(i)}>{shade===i&&<Check size={22} strokeWidth={3}/>}</button>)}</div>
+    <div className="macro-modal-preview" style={{background:swatchOf(family,shade),color:colorText(swatchOf(family,shade))}}>{draft||"미리보기"}</div>
     {error&&<p className="macro-modal-error" role="alert">{error}</p>}
     <div className="macro-modal-actions">{editing&&<button type="button" className="macro-delete" onClick={deleteCategory}><Trash2 size={16}/> 삭제</button>}<button type="button" className="macro-cancel" onClick={()=>setModal(false)}>취소</button><button type="submit" className="macro-save">저장</button></div>
    </form>
