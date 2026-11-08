@@ -10,22 +10,41 @@ const addDays=(s,n)=>{const d=fromKey(s);d.setDate(d.getDate()+n);return key(d)}
 const short=s=>{const d=fromKey(s);return (d.getMonth()+1)+"/"+d.getDate()};
 
 export function WeeklyFocus({data,onDataChange}){
+ const [mode,setMode]=useState("current");
  const [week,setWeek]=useState(()=>monday(new Date()));
  const todayWeek=monday(new Date());
- const current=data.weeklyFocus?.[week]||{};
+ const records=data.weeklyFocus||{};
+ const current=records[week]||{};
+ const futureWeeks=Array.from({length:8},(_,i)=>addDays(todayWeek,(i+1)*7));
  const projects=(data.projects||[]).map(x=>x.name).filter(Boolean);
  const names=[...new Set([...projects,"Memory Lab","Body Care","Income Flow","Career Flow","Dance Flow","Market Flow","Trend Flow","Beauty Care","Fashion Flow","Cosmetic Flow","Sing Flow","Culture Flow","Mind Flow","Spend Flow","Expression Studio"])];
- const write=patch=>onDataChange(prev=>({...prev,weeklyFocus:{...(prev.weeklyFocus||{}),[week]:{...(prev.weeklyFocus?.[week]||{}),...patch}}}));
+ const write=(date,patch)=>onDataChange(prev=>({...prev,weeklyFocus:{...(prev.weeklyFocus||{}),[date]:{...(prev.weeklyFocus?.[date]||{}),...patch}}}));
  return <section className="wf-page">
-   <div className="wf-header"><div><small>WEEKLY FOCUS</small><h1>주간 집중</h1></div><span className="wf-tag">{week===todayWeek?"이번 주":week>todayWeek?"미리 계획":"지난 기록"}</span></div>
-   <div className="wf-week"><button type="button" aria-label="이전 주" onClick={()=>setWeek(addDays(week,-7))}><ChevronLeft size={19}/></button><strong>{short(week)} ~ {short(addDays(week,6))}</strong><button type="button" aria-label="다음 주" onClick={()=>setWeek(addDays(week,7))}><ChevronRight size={19}/></button></div>
-   <div className="wf-note"><strong>Daily Routine</strong><span>Memory Lab · Body Care 등 매일 하는 일은 그대로 유지</span></div>
-   <div className="wf-panel">
-     <label className="wf-label" htmlFor="wf-main">이번 주 메인 프로젝트</label>
-     <input id="wf-main" list="wf-projects" placeholder="집중할 프로젝트 선택 또는 입력" value={current.primary||""} onChange={e=>write({primary:e.target.value})}/>
-     <datalist id="wf-projects">{names.map(n=><option value={n} key={n}/>)}</datalist>
-     <label className="wf-label" htmlFor="wf-goal">이번 주 달성 목표</label>
-     <textarea id="wf-goal" rows={3} placeholder="이번 주에 무엇을 달성할까?" value={current.goal||""} onChange={e=>write({goal:e.target.value})}/>
+   <div className="wf-header"><div><small>WEEKLY FOCUS</small><h1>주간 집중</h1></div></div>
+   <div className="wf-subtabs" role="tablist" aria-label="주간 집중 보기">
+     <button type="button" role="tab" aria-selected={mode==="current"} className={mode==="current"?"active":""} onClick={()=>setMode("current")}>이번 주</button>
+     <button type="button" role="tab" aria-selected={mode==="future"} className={mode==="future"?"active":""} onClick={()=>setMode("future")}>향후</button>
    </div>
+   <datalist id="wf-projects">{names.map(n=><option value={n} key={n}/>)}</datalist>
+   {mode==="current"?<>
+     <div className="wf-week"><button type="button" aria-label="이전 주" onClick={()=>setWeek(addDays(week,-7))}><ChevronLeft size={19}/></button><strong>{short(week)} ~ {short(addDays(week,6))}</strong><button type="button" aria-label="다음 주" onClick={()=>setWeek(addDays(week,7))}><ChevronRight size={19}/></button></div>
+     <div className="wf-note"><strong>Daily Routine</strong><span>Memory Lab · Body Care 등 매일 하는 일은 그대로 유지</span></div>
+     <div className="wf-panel">
+       <label className="wf-label" htmlFor="wf-main">이번 주 메인 프로젝트</label>
+       <input id="wf-main" list="wf-projects" placeholder="집중할 프로젝트 선택 또는 입력" value={current.primary||""} onChange={e=>write(week,{primary:e.target.value})}/>
+       <label className="wf-label" htmlFor="wf-goal">이번 주 달성 목표</label>
+       <textarea id="wf-goal" rows={3} placeholder="이번 주에 무엇을 달성할까?" value={current.goal||""} onChange={e=>write(week,{goal:e.target.value})}/>
+     </div>
+   </>:<>
+     <div className="wf-future-heading"><strong>향후 8주 계획</strong><span>메인 · 보조</span></div>
+     <div className="wf-future-table" aria-label="향후 8주 프로젝트 계획">
+       <div className="wf-future-columns"><span>주간</span><span>메인</span><span>보조</span></div>
+       {futureWeeks.map((date,i)=><div className="wf-future-row" key={date}>
+         <div className="wf-future-date"><small>{i+1}주차</small><strong>{short(date)}–{short(addDays(date,6))}</strong></div>
+         <input aria-label={short(date)+" 주간 메인 프로젝트"} list="wf-projects" placeholder="메인" value={records[date]?.primary||""} onChange={e=>write(date,{primary:e.target.value})}/>
+         <input aria-label={short(date)+" 주간 보조 프로젝트"} list="wf-projects" placeholder="보조" value={records[date]?.auxiliary??records[date]?.secondary?.[0]??""} onChange={e=>write(date,{auxiliary:e.target.value})}/>
+       </div>)}
+     </div>
+   </>}
  </section>;
 }
