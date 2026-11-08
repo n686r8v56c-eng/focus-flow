@@ -76,6 +76,17 @@ export function DailyPlan({data,onDataChange}){
   cellHoldTimer.current=setTimeout(()=>{cellHoldTriggered.current=true;openCellNote(i);},550);
  };
  const clickCell=i=>{if(cellHoldTriggered.current){cellHoldTriggered.current=false;return;}paint(i);};
+ const deleteCellNote=()=>{
+  update(m=>{
+   const all={...(m.notes||{})};
+   const key=day;
+   const next={...(all[key]||{})};
+   delete next[noteCell];
+   if(Object.keys(next).length)all[key]=next;else delete all[key];
+   return {...m,notes:all};
+  });
+  setNoteCell(null);setNoteDraft("");
+ };
  const saveCellNote=e=>{
   e.preventDefault();
   const value=noteDraft.trim();
@@ -176,7 +187,7 @@ export function DailyPlan({data,onDataChange}){
    <form className="macro-modal macro-cell-note-modal" onSubmit={saveCellNote} role="dialog" aria-modal="true" aria-label="칸 메모 편집">
     <div className="macro-modal-heading"><h3>시간 메모</h3><button type="button" aria-label="닫기" onClick={()=>setNoteCell(null)}><X size={21}/></button></div>
     <textarea autoFocus rows={5} aria-label="상세 계획" placeholder="무엇을 할까?" value={noteDraft} onChange={e=>setNoteDraft(e.target.value)}/>
-    <div className="macro-modal-actions"><button type="button" className="macro-cancel" onClick={()=>setNoteCell(null)}>취소</button><button type="submit" className="macro-save">저장</button></div>
+    <div className="macro-modal-actions">{notes[noteCell]&&<button type="button" className="macro-delete" onClick={deleteCellNote}><Trash2 size={16}/> 삭제</button>}<button type="button" className="macro-cancel" onClick={()=>setNoteCell(null)}>취소</button><button type="submit" className="macro-save">저장</button></div>
    </form>
   </div>}
   {modal&&<div className="macro-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(false)}}>
