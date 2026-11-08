@@ -11,7 +11,11 @@ const PALETTES=[
  {name:"옐로",colors:["#FFF6DA","#FBE8B3","#F3D480","#DFB451","#AE8335","#77581F"]},
  {name:"코랄",colors:["#FDE9E1","#F8CFC0","#F2AA91","#E48768","#BE624A","#914434"]},
  {name:"인디고",colors:["#E9E9FA","#C9CAF2","#A6AAE3","#858BD0","#5E65AF","#41477E"]},
- {name:"그린",colors:["#EDF5DE","#D3E8B2","#B0D68B","#89BA62","#609642","#3E702E"]}
+ {name:"그린",colors:["#EDF5DE","#D3E8B2","#B0D68B","#89BA62","#609642","#3E702E"]},
+ {name:"흑백",colors:["#F5F5F5","#DEDEDE","#BDBDBD","#949494","#666666","#343434"]},
+ {name:"오렌지",colors:["#FFF0DF","#FFD8B0","#FFBC80","#F49A50","#D87627","#995018"]},
+ {name:"레드",colors:["#FCE6E6","#F7BFC1","#EA9298","#D9646C","#B83D49","#81232D"]},
+ {name:"브라운",colors:["#F3EAE2","#E3CEBC","#CDAE91","#AE886B","#896448","#60432F"]}
 ];
 const paletteOf=family=>PALETTES.find(p=>p.name===family)||PALETTES[0];
 const swatchOf=(family,shade)=>paletteOf(family).colors[Math.max(0,Math.min(5,Number(shade)||0))];
