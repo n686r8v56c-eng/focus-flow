@@ -231,6 +231,11 @@ export function App({
     setFamilyRecorded(label+" 기록 완료");
     setFocusDate(date);
   };
+  const editFamilyMemo=item=>{
+    const next=window.prompt(item.title+" · 한마디 (비워두면 메모 삭제)",item.memo||"");
+    if(next===null)return;
+    update(d=>({...d,familyLogs:(d.familyLogs||[]).map(record=>record.id===item.id?{...record,memo:next.trim()}:record)}));
+  };
   const removeFamilyRecord=id=>update(d=>({...d,familyLogs:(d.familyLogs||[]).filter(item=>item.id!==id)}));
   const changeFamilyDate=(item)=>{
     const next=window.prompt("기록 날짜 수정 (YYYY-MM-DD)",item.date);
@@ -1040,7 +1045,7 @@ export function App({
       </section>
       <section className="focus-panel">
         <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="family"?"가족":calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
-        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div className="focus-task-row" key={item.id}><span style={{flex:1}}>🐾 {item.title}</span><small>{item.createdAt?new Date(item.createdAt).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}):""}</small><button type="button" className="inbox-icon" aria-label={item.title+" 날짜 수정"} title="날짜 수정" onClick={()=>changeFamilyDate(item)}><Pencil size={16}/></button><button type="button" className="inbox-icon" aria-label={item.title+" 기록 삭제"} onClick={()=>removeFamilyRecord(item.id)}><Trash2 size={16}/></button></div>):<div className="focus-empty">이날의 가족 기록이 없어.</div>}</div>:<FocusTaskRows items={selected} mode={calendarMode}/>}
+        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div className="focus-task-row" key={item.id}><div style={{flex:1,minWidth:0}}><div>🐾 {item.title}</div>{item.memo&&<div style={{fontSize:12,color:"#856e98",whiteSpace:"pre-wrap",overflowWrap:"anywhere",marginTop:4}}>{item.memo}</div>}</div><small>{item.createdAt?new Date(item.createdAt).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}):""}</small><button type="button" className="inbox-icon" aria-label={item.title+" 한마디 편집"} title="한마디" onClick={()=>editFamilyMemo(item)}><Pencil size={16}/></button><button type="button" className="inbox-icon" aria-label={item.title+" 날짜 수정"} title="날짜 수정" onClick={()=>changeFamilyDate(item)}><Pencil size={16}/></button><button type="button" className="inbox-icon" aria-label={item.title+" 기록 삭제"} onClick={()=>removeFamilyRecord(item.id)}><Trash2 size={16}/></button></div>):<div className="focus-empty">이날의 가족 기록이 없어.</div>}</div>:<FocusTaskRows items={selected} mode={calendarMode}/>}
       </section>
     </div>;
   }
