@@ -1804,7 +1804,7 @@ export function App({
       <nav className="bottom-nav" aria-label="메인 메뉴">
         {[
           ["timelog",Clock3,"타임로그"],
-          ["opportunity",Lightbulb,"기회"],
+          
           ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"],
           ["apps",Blocks,"앱관리"]
