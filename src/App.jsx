@@ -35,6 +35,7 @@ import { youtubeId } from "./inbox-model.js";
 import "./timeblocks.css";
 import { TimeTable } from "./TimeTable.jsx";
 import { WeeklyPlan } from "./WeeklyPlan.jsx";
+import { WeeklyFocus } from "./WeeklyFocus.jsx";
 import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
@@ -1785,6 +1786,7 @@ export function App({
           :tab === "opportunity" ? <InboxPanel key="opportunity" kind="opportunity" storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><><div className="section-top"><h1>오늘의 할 일</h1></div><FocusTaskRows items={data.tasks.filter(t=>!isScheduleEntry(t)&&t.due===today)} mode="todo"/></>}/>
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
+          :tab === "weeklyfocus" ? <WeeklyFocus data={data} onDataChange={setData}/>
           :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
           :<AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={()=>setTab("timelog")}/>}
         {playlistOpened && <section className="focus-playlist-screen" style={{display: tab === "playlist" ? "flex" : "none"}} aria-label="플레이리스트 플로우">
@@ -1807,6 +1809,7 @@ export function App({
           
           ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"],
+          ["weeklyfocus",CalendarRange,"주간"],
           ["apps",Blocks,"앱관리"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
       </nav>
