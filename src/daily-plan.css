@@ -1,0 +1,17 @@
+/* Daily 19 Hours uses the same compact five-column layout as Macro. */
+.daily-board{padding-top:4px}
+.daily-board .macro-board-body{padding-left:48px}
+.daily-board .macro-row-date{left:-48px;width:46px;font-size:10px}
+.daily-board .macro-week-name{font-size:12px}
+.daily-board .macro-board-header{margin-bottom:16px}
+.daily-board .macro-year-nav strong{min-width:58px;font-variant-numeric:tabular-nums}
+@media(max-width:390px){
+ .daily-board .macro-board-body{padding-left:45px}
+ .daily-board .macro-row-date{left:-45px;width:44px;font-size:9px}
+ .daily-board .macro-week-name{font-size:11.5px}
+}
+@media(min-width:700px){
+ .daily-board .macro-board-body{padding-left:58px}
+ .daily-board .macro-row-date{left:-58px;width:55px;font-size:13px}
+ .daily-board .macro-week-name{font-size:15px}
+}
