@@ -133,9 +133,9 @@ export function InboxPanel({data, onDataChange, today, renderToday, renderDate, 
     .filter(n=>`${n.title || ''} ${n.text || ''} ${n.url || ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     .sort((a,b)=>(b.createdAt || '').localeCompare(a.createdAt || ''));
   return <section className="focus-redesign inbox-page">
-    {view==='today' && renderDate?.()}
+    {renderDate?.()}
     <nav className="focus-segments inbox-segments" aria-label={`${label} 분류`}>{[['inbox',label],['today','오늘'],['folders','폴더'],['archive','보관함']].map(([id,label])=><button type="button" key={id} className={view===id?'selected':''} onClick={()=>setView(id)} aria-pressed={view===id}>{label}</button>)}</nav>
-    <form className="focus-panel inbox-capture" onSubmit={e=>{e.preventDefault();capture(draft);}}>
+    {view==='inbox' && <form className="focus-panel inbox-capture" onSubmit={e=>{e.preventDefault();capture(draft);}}>
       <textarea ref={draftRef} rows={2} value={draft} onChange={e=>setDraft(e.target.value)} aria-label={`${label}에 담을 내용`} placeholder={isOpportunity ? '모집·공모·제안·협업 기회와 링크를 담기' : '메모·할 일·링크, 일단 여기에 담기'} onPaste={e=>{
         const text=e.clipboardData.getData('text');
         if(!draft.trim() && linksIn(text).length){e.preventDefault();capture(text);}
@@ -143,8 +143,8 @@ export function InboxPanel({data, onDataChange, today, renderToday, renderDate, 
       {pendingPhotos.length>0&&<div className="inbox-pending-images">{pendingPhotos.map((file,i)=><span key={i}><ImagePlus size={15}/>{file.name}<button type="button" aria-label="선택한 사진 제거" onClick={()=>setPendingPhotos(old=>old.filter((_,n)=>n!==i))}><X size={14}/></button></span>)}</div>}
       <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={e=>{addPending(e.target.files);e.target.value='';}}/>
       <div className="inbox-capture-actions"><button type="button" onClick={()=>photoInput.current?.click()} aria-label="사진 첨부" title="사진 첨부"><ImagePlus size={19}/></button><button type="button" onClick={paste} aria-label="클립보드 붙여넣기" title="붙여넣어 바로 저장"><ClipboardPaste size={18}/></button><button type="submit" className="primary small" disabled={uploading||(!draft.trim()&&!pendingPhotos.length)}>{uploading?'저장 중…':'담기'}</button></div>
-    </form>
-    {photoError&&<p className="inbox-photo-error" role="alert">{photoError}</p>}
+    </form>}
+    {view==='inbox' && photoError&&<p className="inbox-photo-error" role="alert">{photoError}</p>}
     {view==='today' ? (renderToday ? renderToday() : <div className="focus-empty">오늘의 할 일을 인박스에서 확인해 줘.</div>) : <>
       <div className="inbox-search"><Search size={17}/><input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="제목·내용·링크 검색" aria-label="인박스 검색"/></div>
       {view==='folders' && <div className="inbox-folder-bar">
