@@ -106,7 +106,7 @@ export function MacroPlan({data,onDataChange}){
   </div>
   <div className="macro-board-body">
    <div className="macro-week-side">
-    <div className="macro-week-column-label"><span>WEEK</span><span>01–52</span></div>
+    
     <div className="macro-week-grid">
      {Array.from({length:13},(_,row)=><div className="macro-week-row" key={row}>
       <span className="macro-row-date" title={dateString(weeks[row*4])}>{pad(weeks[row*4].getMonth()+1)}.{pad(weeks[row*4].getDate())}</span>
