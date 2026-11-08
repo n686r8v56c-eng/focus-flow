@@ -1,5 +1,5 @@
-import React,{useState} from "react";
-import {ChevronLeft,ChevronRight,Plus,X,Check,Pencil,Trash2,Eraser} from "lucide-react";
+import React,{useState,useRef,useEffect} from "react";
+import {ChevronLeft,ChevronRight,Plus,X,Check,Trash2,Eraser} from "lucide-react";
 import "./macro-plan.css";
 
 const COLORS=["#EDE2FA","#D7BCEF","#BD99E5","#9B72D1","#7749B2","#523083"];
@@ -20,6 +20,26 @@ export function MacroPlan({data,onDataChange}){
  const [shade,setShade]=useState(0);
  const [error,setError]=useState("");
  const [erase,setErase]=useState(false);
+ const longPressTimer=useRef(null);
+ const longPressTriggered=useRef(false);
+ const holdId=useRef(null);
+ useEffect(()=>()=>clearTimeout(longPressTimer.current),[]);
+ const cancelHold=()=>{clearTimeout(longPressTimer.current);holdId.current=null;};
+ const startHold=(e,item)=>{
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  cancelHold();
+  holdId.current=item.id;
+  longPressTriggered.current=false;
+  longPressTimer.current=setTimeout(()=>{
+   longPressTriggered.current=true;
+   holdId.current=null;
+   openEdit(item);
+  },550);
+ };
+ const selectCategory=id=>{
+  if(longPressTriggered.current){longPressTriggered.current=false;return;}
+  setSelected(id);setErase(false);
+ };
  const macro=data.macroPlan||{};
  const categories=macro.categories||[];
  const assignments=macro.assignments?.[year]||{};
@@ -82,7 +102,6 @@ export function MacroPlan({data,onDataChange}){
         aria-pressed={Boolean(assigned)}
         className={`macro-week-tile ${i===currentIndex?"is-current":""} ${assigned?"is-assigned":""}`}
         style={assigned?{backgroundColor:COLORS[swatch],color:colorText(swatch)}:undefined}>
-        <span className="macro-week-number">{String(i+1).padStart(2,"0")}</span>
         {assigned?<span className="macro-week-name">{assigned.name}</span>:<span className="macro-week-placeholder">+</span>}
        </button>;
       })}
@@ -94,10 +113,15 @@ export function MacroPlan({data,onDataChange}){
      <button type="button" className={`macro-palette-choice ${selected===c.id&&!erase?"selected":""}`}
       style={{backgroundColor:COLORS[c.shade],color:colorText(c.shade)}}
       aria-pressed={selected===c.id&&!erase}
-      onClick={()=>{setSelected(c.id);setErase(false)}} title={c.name}>
+      aria-label={c.name+" 선택, 길게 눌러 수정"}
+      onPointerDown={e=>startHold(e,c)}
+      onPointerUp={cancelHold}
+      onPointerCancel={cancelHold}
+      onPointerLeave={cancelHold}
+      onContextMenu={e=>e.preventDefault()}
+      onClick={()=>selectCategory(c.id)} title={c.name}>
       <span>{c.name}</span>{selected===c.id&&!erase&&<Check size={15} strokeWidth={3}/>}
      </button>
-     <button type="button" className="macro-palette-edit" title={c.name+" 편집"} aria-label={c.name+" 편집"} onClick={()=>openEdit(c)}><Pencil size={13}/></button>
     </div>)}
     <button type="button" className="macro-palette-add" onClick={openNew} aria-label="컬러 항목 추가"><Plus size={25}/></button>
     <button type="button" className={`macro-palette-eraser ${erase?"selected":""}`} onClick={()=>{setErase(true);setSelected(null)}} aria-pressed={erase}><Eraser size={19}/></button>
