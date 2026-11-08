@@ -37,6 +37,7 @@ import "./timeblocks.css";
 import { TimeTable } from "./TimeTable.jsx";
 import { WeeklyPlan } from "./WeeklyPlan.jsx";
 import { WeeklyFocus } from "./WeeklyFocus.jsx";
+import { DailyPlan } from "./DailyPlan.jsx";
 import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
@@ -1791,6 +1792,7 @@ export function App({
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
           :tab === "weeklyfocus" ? <WeeklyFocus data={data} onDataChange={setData}/>
+          :tab === "daily" ? <DailyPlan data={data} onDataChange={setData}/>
           :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
           :<AppRegistry client={bridgeClient} userId={bridgeUserId} onClose={()=>setTab("timelog")}/>}
         {playlistOpened && <section className="focus-playlist-screen" style={{display: tab === "playlist" ? "flex" : "none"}} aria-label="플레이리스트 플로우">
@@ -1811,6 +1813,7 @@ export function App({
         {[
           ["weeklyfocus",CalendarRange,"주간"],
           ["todo",Inbox,"인박스"],
+          ["daily",Clock3,"데일리"],
           ["calendar",CalendarDays,"일정"],
           ["apps",Blocks,"앱관리"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
