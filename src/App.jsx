@@ -579,11 +579,8 @@ export function App({
   };
   useEffect(()=>{
     if (!bridgeClient || !bridgeUserId) {setPomError('로그인이 필요해.');return;}
+    // Load server timer state once; avoid continuous Supabase polling while idle.
     void pomAction('read');
-    const timer=setInterval(()=>void pomAction('read',{},true),3000);
-    const onVisible=()=>{if(document.visibilityState==='visible')void pomAction('read',{},true)};
-    document.addEventListener('visibilitychange',onVisible);
-    return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',onVisible)};
   },[bridgeClient,bridgeUserId]);
   useEffect(()=>{
     if (!running || !endAt.current) return;
