@@ -133,7 +133,7 @@ export function InboxPanel({data, onDataChange, today, renderToday, onOpenTask, 
     .filter(n=>`${n.title || ''} ${n.text || ''} ${n.url || ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     .sort((a,b)=>(b.createdAt || '').localeCompare(a.createdAt || ''));
   return <section className="focus-redesign inbox-page">
-    <div className="section-top"><h1>{label}</h1><button className="primary small" onClick={()=>draftRef.current?.focus()}><Plus size={16}/> 담기</button></div>
+    <div className="section-top"><h1>{label}</h1></div>
     <nav className="focus-segments inbox-segments" aria-label={`${label} 분류`}>{[['inbox',label],['today','오늘'],['folders','폴더'],['archive','보관함']].map(([id,label])=><button type="button" key={id} className={view===id?'selected':''} onClick={()=>setView(id)} aria-pressed={view===id}>{label}</button>)}</nav>
     <form className="focus-panel inbox-capture" onSubmit={e=>{e.preventDefault();capture(draft);}}>
       <textarea ref={draftRef} rows={2} value={draft} onChange={e=>setDraft(e.target.value)} aria-label={`${label}에 담을 내용`} placeholder={isOpportunity ? '모집·공모·제안·협업 기회와 링크를 담기' : '메모·할 일·링크, 일단 여기에 담기'} onPaste={e=>{
