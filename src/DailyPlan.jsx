@@ -146,7 +146,7 @@ export function DailyPlan({data,onDataChange}){
         className={`macro-week-tile ${assigned?"is-assigned":""}`}
         style={assigned?{backgroundColor:swatch,color:colorText(swatch)}:undefined}>
         {assigned?<span className="macro-week-name">{assigned.name}</span>:<span className="macro-week-placeholder">+</span>}
-        {notes[i]&&<span className="macro-cell-note-dot" aria-hidden="true" style={{backgroundColor:assigned?paletteOf(assigned.family).colors[5]:"#523083"}}/>}
+        {notes[i]&&<span className="macro-cell-note-dot" aria-hidden="true" style={{backgroundColor:assigned?(Number(assigned.shade??0)>=4?"#FFFFFF":paletteOf(assigned.family).colors[5]):"#523083"}}/>}
        </button>;
       })}
      </div>)}
