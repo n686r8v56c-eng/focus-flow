@@ -60,3 +60,51 @@
 
 /* Icon-only eraser button */
 .macro-palette-eraser{width:100%;justify-content:center;padding:5px;min-height:38px}
+
+
+/* Compact 52-week board: five genuinely equal columns and shorter rows. */
+.macro-board-body{
+  --macro-gap:5px;
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  column-gap:var(--macro-gap);
+  align-items:start;
+}
+.macro-week-side{grid-column:span 4;min-width:0}
+.macro-palette{grid-column:span 1;gap:var(--macro-gap)}
+.macro-week-grid{gap:var(--macro-gap)}
+.macro-week-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--macro-gap)}
+.macro-week-tile,
+.macro-palette-choice,
+.macro-palette-add,
+.macro-palette-eraser{
+  width:100%;
+  height:auto;
+  min-height:0;
+  aspect-ratio:1.27;
+  border-radius:8px;
+}
+.macro-week-tile{padding:3px 2px}
+.macro-week-number{display:none}
+.macro-week-name{font-size:11px;line-height:1.18;text-align:center}
+.macro-palette-choice{padding:4px 5px;justify-content:center;text-align:center;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.macro-palette-choice svg{width:12px}
+.macro-palette-edit{display:none}
+.macro-palette-add{padding:0}
+.macro-palette-eraser{display:flex;align-items:center;justify-content:center;padding:0}
+@media(max-width:699px){
+ .macro-board-body{--macro-gap:5px;grid-template-columns:repeat(5,minmax(0,1fr));column-gap:var(--macro-gap)}
+ .macro-week-grid,.macro-week-row,.macro-palette{gap:var(--macro-gap)}
+ .macro-week-tile,.macro-palette-choice,.macro-palette-add,.macro-palette-eraser{aspect-ratio:1.27;min-height:0}
+ .macro-week-name,.macro-palette-choice{font-size:10px}
+}
+@media(max-width:390px){
+ .macro-board-body{--macro-gap:4px;grid-template-columns:repeat(5,minmax(0,1fr));column-gap:var(--macro-gap)}
+ .macro-week-grid,.macro-week-row,.macro-palette{gap:var(--macro-gap)}
+}
+@media(min-width:700px){
+ .macro-board-body{--macro-gap:9px;grid-template-columns:repeat(5,minmax(0,1fr));column-gap:var(--macro-gap)}
+ .macro-week-grid,.macro-week-row,.macro-palette{gap:var(--macro-gap)}
+ .macro-week-tile,.macro-palette-choice,.macro-palette-add,.macro-palette-eraser{aspect-ratio:1.27;min-height:0}
+ .macro-week-name,.macro-palette-choice{font-size:13px}
+}
