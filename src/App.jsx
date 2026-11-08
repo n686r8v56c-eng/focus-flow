@@ -953,7 +953,7 @@ export function App({
     return <div className="focus-date-strip">
       <div className="focus-date-center">
         <button type="button" onClick={()=>onChange(shift(-1))} aria-label={month?"이전 달":"이전 날짜"}><ChevronLeft size={19}/></button>
-        <strong>{month?`${base.getFullYear()}년 ${base.getMonth()+1}월`:`${base.getMonth()+1}월 ${base.getDate()}일`}</strong>
+        <strong>{month?`${base.getFullYear()}년 ${base.getMonth()+1}월`:`${base.getMonth()+1}월 ${base.getDate()}일 ${"일월화수목금토"[base.getDay()]}요일`}</strong>
         <button type="button" onClick={()=>onChange(shift(1))} aria-label={month?"다음 달":"다음 날짜"}><ChevronRight size={19}/></button>
       </div>
       <button type="button" className="focus-today-button" onClick={()=>onChange(today)}>오늘</button>
