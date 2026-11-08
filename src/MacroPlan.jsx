@@ -1,5 +1,5 @@
 import React,{useState,useRef,useEffect} from "react";
-import {ChevronLeft,ChevronRight,Plus,X,Check,Trash2,Eraser} from "lucide-react";
+import {ChevronDown,Plus,X,Check,Pencil,Trash2,Eraser} from "lucide-react";
 import "./macro-plan.css";
 
 const PALETTES=[
@@ -29,6 +29,12 @@ const uid=()=>Math.random().toString(36).slice(2,11);
 
 export function MacroPlan({data,onDataChange}){
  const [year,setYear]=useState(()=>new Date().getFullYear());
+ const [boardId,setBoardId]=useState("default");
+ const [boardsOpen,setBoardsOpen]=useState(false);
+ const [boardEditing,setBoardEditing]=useState(null);
+ const [boardDraft,setBoardDraft]=useState("");
+ const [boardError,setBoardError]=useState("");
+ const boardMenuRef=useRef(null);
  const [selected,setSelected]=useState(null);
  const [modal,setModal]=useState(false);
  const [editing,setEditing]=useState(null);
@@ -58,8 +64,17 @@ export function MacroPlan({data,onDataChange}){
   setSelected(id);setErase(false);
  };
  const macro=data.macroPlan||{};
- const categories=macro.categories||[];
- const assignments=macro.assignments?.[year]||{};
+ const boards=macro.boards||[];
+ const customBoard=macro.boardData?.[boardId];
+ const categories=boardId==="default"?(macro.categories||[]):(customBoard?.categories||[]);
+ const assignments=boardId==="default"?(macro.assignments?.[year]||{}):(customBoard?.assignments||{});
+ const activeBoard=boards.find(b=>b.id===boardId);
+ useEffect(()=>{
+  if(!boardsOpen)return;
+  const outside=e=>{if(boardMenuRef.current&&!boardMenuRef.current.contains(e.target))setBoardsOpen(false)};
+  document.addEventListener("pointerdown",outside);
+  return()=>document.removeEventListener("pointerdown",outside);
+ },[boardsOpen]);
  // Keep the 52-week board anchored to its initial start week, not Jan 1.
  // For the current plan the first row starts November 9, 2026.
  const anchorDate=macro.anchorWeek?new Date(macro.anchorWeek+"T12:00:00"):monday(new Date());
@@ -67,7 +82,40 @@ export function MacroPlan({data,onDataChange}){
  const currentMonday=monday(new Date());
  const currentIndex=weeks.findIndex(d=>dateString(d)===dateString(currentMonday));
  const chosen=categories.find(c=>c.id===selected);
- const update=fn=>onDataChange(old=>({...old,macroPlan:fn({...old.macroPlan,anchorWeek:old.macroPlan?.anchorWeek||dateString(anchorDate)})}));
+ const update=fn=>onDataChange(old=>{
+  const m={...old.macroPlan,anchorWeek:old.macroPlan?.anchorWeek||dateString(anchorDate)};
+  if(boardId==="default")return {...old,macroPlan:fn(m)};
+  const item=m.boardData?.[boardId]||{categories:[],assignments:{}};
+  const view={...m,categories:item.categories||[],assignments:{[year]:item.assignments||{}}};
+  const changed=fn(view);
+  return {...old,macroPlan:{...m,boardData:{...(m.boardData||{}),[boardId]:{categories:changed.categories||[],assignments:changed.assignments?.[year]||{}}}}};
+ });
+ const saveBoard=e=>{
+  e.preventDefault();
+  const title=boardDraft.trim();
+  if(!title){setBoardError("이름을 입력해 줘.");return;}
+  if((title===String(year)&&boardEditing!=="default")||boards.some(b=>b.id!==boardEditing&&b.name.toLowerCase()===title.toLowerCase())){setBoardError("이미 같은 이름이 있어.");return;}
+  if(boardEditing){
+   onDataChange(old=>({...old,macroPlan:{...old.macroPlan,boards:(old.macroPlan?.boards||[]).map(b=>b.id===boardEditing?{...b,name:title}:b)}}));
+  }else{
+   const id=uid();
+   onDataChange(old=>({...old,macroPlan:{...old.macroPlan,boards:[...(old.macroPlan?.boards||[]),{id,name:title}],boardData:{...(old.macroPlan?.boardData||{}),[id]:{categories:[],assignments:{}}}}}));
+   setBoardId(id);setSelected(null);setErase(false);
+  }
+  setBoardEditing(null);setBoardDraft("");setBoardError("");setBoardsOpen(false);
+ };
+ const deleteBoard=id=>{
+  const target=boards.find(b=>b.id===id);
+  if(!target||!window.confirm(`"${target.name}" 계획과 모든 배정 데이터를 삭제할까?`))return;
+  onDataChange(old=>{
+   const m=old.macroPlan||{},next={...(m.boardData||{})};
+   delete next[id];
+   return {...old,macroPlan:{...m,boards:(m.boards||[]).filter(b=>b.id!==id),boardData:next}};
+  });
+  if(boardId===id){setBoardId("default");setSelected(null);setErase(false)}
+ };
+ const selectBoard=id=>{setBoardId(id);setSelected(null);setErase(false);setBoardsOpen(false);setBoardEditing(null)};
+
  const openNew=()=>{setEditing(null);setDraft("");setFamily(PALETTES[categories.length%PALETTES.length].name);setShade(0);setError("");setModal(true);};
  const openEdit=c=>{setEditing(c.id);setDraft(c.name);setShade(c.shade??0);setFamily(c.family||"보라");setError("");setModal(true);};
  const save=e=>{
@@ -102,7 +150,25 @@ export function MacroPlan({data,onDataChange}){
  return <section className="macro-board" aria-label="매크로 52주 계획">
   <div className="macro-board-header">
    <div className="macro-board-heading"><span>MACRO PLAN</span><h2>52 Weeks</h2></div>
-   <div className="macro-year-nav"><button type="button" aria-label="이전 연도" onClick={()=>setYear(y=>y-1)}><ChevronLeft size={19}/></button><strong>{year}</strong><button type="button" aria-label="다음 연도" onClick={()=>setYear(y=>y+1)}><ChevronRight size={19}/></button></div>
+   <div className="macro-board-switch" ref={boardMenuRef}>
+    <button type="button" className="macro-board-switch-trigger" aria-expanded={boardsOpen} aria-label="매크로 계획 선택 및 관리" onClick={()=>{setBoardsOpen(v=>!v);setBoardEditing(null);setBoardError("")}}>
+     <span>{activeBoard?.name||year}</span><ChevronDown size={18}/>
+    </button>
+    {boardsOpen&&<div className="macro-board-menu">
+      <button type="button" className={boardId==="default"?"current":""} onClick={()=>selectBoard("default")}><span>{year}</span>{boardId==="default"&&<Check size={16}/>}</button>
+      {boards.map(b=><div key={b.id} className="macro-board-menu-row">
+        <button type="button" className={boardId===b.id?"current":""} onClick={()=>selectBoard(b.id)}><span>{b.name}</span>{boardId===b.id&&<Check size={16}/>}</button>
+        <button type="button" aria-label={b.name+" 이름 수정"} title="이름 수정" onClick={()=>{setBoardEditing(b.id);setBoardDraft(b.name);setBoardError("")}}><Pencil size={15}/></button>
+        <button type="button" aria-label={b.name+" 삭제"} title="삭제" onClick={()=>deleteBoard(b.id)}><Trash2 size={15}/></button>
+      </div>)}
+      {boardEditing!==null?<form className="macro-board-menu-form" onSubmit={saveBoard}>
+       <input autoFocus maxLength={28} aria-label="계획 이름 수정" value={boardDraft} onChange={e=>{setBoardDraft(e.target.value);setBoardError("")}}/>
+       <button type="submit" aria-label="저장"><Check size={17}/></button>
+       <button type="button" aria-label="취소" onClick={()=>setBoardEditing(null)}><X size={17}/></button>
+      </form>:<button type="button" className="macro-board-menu-add" onClick={()=>{setBoardEditing("");setBoardDraft("");setBoardError("")}}><Plus size={17}/> 추가</button>}
+      {boardError&&<p className="macro-board-menu-error">{boardError}</p>}
+     </div>}
+   </div>
   </div>
   <div className="macro-board-body">
    <div className="macro-week-side">
