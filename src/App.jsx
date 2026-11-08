@@ -958,7 +958,7 @@ export function App({
       <button type="button" className="focus-today-button" onClick={()=>onChange(today)}>오늘</button>
     </div>;
   }
-  function FocusTaskRows({items, mode, compact=false}) {
+  function FocusTaskRows({items, mode, compact=false, tomorrowAction=false}) {
     const ordered=[...items].sort(byDueThenTitle);
     if(!ordered.length)return <div className="focus-empty">{mode==="schedule"?"등록된 일정이 없어.":"등록된 할 일이 없어."}</div>;
     return <div className="focus-task-list">{ordered.map(t=><div key={t.id} className="focus-task-row">
@@ -971,9 +971,11 @@ export function App({
         <small>{[t.time,taskProject(t)?.name||"개인",mode==="schedule"&&t.status==="done"?"완료":""].filter(Boolean).join(" · ")}</small>
       </button>
       {!!t.url && <button type="button" className="inbox-icon" aria-label="링크 복사" title="링크 복사" onClick={()=>copyInboxText(t.url,setToast)}><Copy size={16}/></button>}
-      <button type="button" className="focus-move-kind" title={mode==="schedule"?"할 일로 이동":"일정으로 이동"}
+      {tomorrowAction ? <button type="button" className="focus-move-kind" title="내일 할 일로 이동" aria-label={t.title+" 내일로 이동"}
+        onClick={()=>changeTask(t.id,{due:dayAdd(today,1),entryType:"todo"})}>내일</button>
+        : <button type="button" className="focus-move-kind" title={mode==="schedule"?"할 일로 이동":"일정으로 이동"}
         aria-label={mode==="schedule"?"할 일로 이동":"일정으로 이동"}
-        onClick={()=>changeTask(t.id,{entryType:mode==="schedule"?"todo":"schedule",due:t.due||focusDate})}>{mode==="schedule"?"할 일로":"일정으로"}</button>
+        onClick={()=>changeTask(t.id,{entryType:mode==="schedule"?"todo":"schedule",due:t.due||focusDate})}>{mode==="schedule"?"할 일로":"일정으로"}</button>}
     </div>)}</div>;
   }
   function TodoPanel() {
@@ -982,7 +984,7 @@ export function App({
       <FocusDateStrip date={todoDate} onChange={setTodoDate}/>
       <div className="focus-kpis"><div><small>완료</small><strong>{dated.filter(x=>x.status==="done").length}/{dated.length}</strong></div><div><small>남은 할 일</small><strong>{dated.filter(x=>x.status!=="done").length}</strong></div></div>
       <section className="focus-panel"><div className="focus-day-title"><h2>{todoDate===today?"오늘의 할 일":todoDate+" 할 일"}</h2><button className="focus-move-kind" onClick={()=>{setEditing(null);setModal("task");}}><Plus size={14}/> 할 일</button></div>
-        <FocusTaskRows items={dated} mode="todo"/>
+        <FocusTaskRows items={dated} mode="todo" tomorrowAction={todoDate===today}/>
       </section>
       <p className="focus-help">오늘 할 일만 골라 실행해. 완료해도 인박스의 원본과 링크는 남아 있어.</p>
     </>}/>;
@@ -1808,8 +1810,8 @@ export function App({
       <nav className="bottom-nav" aria-label="메인 메뉴">
         {[
           ["weeklyfocus",CalendarRange,"주간"],
-          ["calendar",CalendarDays,"일정"],
           ["todo",Inbox,"인박스"],
+          ["calendar",CalendarDays,"일정"],
           ["apps",Blocks,"앱관리"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
       </nav>
