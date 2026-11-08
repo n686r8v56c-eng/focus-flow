@@ -50,3 +50,10 @@
  .macro-week-grid,.macro-week-row,.macro-palette{gap:4px}
  .macro-row-date{right:calc(100% + 5px);font-size:8.5px}
 }
+
+/* Align all row-start dates with the left edge of the 52 Weeks heading. */
+.macro-board-body{position:relative}
+.macro-row-date{color:#36263f;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:0;right:auto;left:calc(-1 * (37px + 0px));width:37px;text-align:left}
+@media(max-width:699px){.macro-row-date{left:-42px;width:40px;font-size:9px}}
+@media(max-width:390px){.macro-row-date{left:-40px;width:39px;font-size:8.5px}}
+@media(min-width:700px){.macro-row-date{left:-48px;width:46px;font-size:11px}}
