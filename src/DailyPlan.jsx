@@ -25,7 +25,7 @@ const pad=n=>String(n).padStart(2,"0");
 const dateString=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const dayFromKey=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d,12)};
 const addDay=(s,n)=>{const d=dayFromKey(s);d.setDate(d.getDate()+n);return dateString(d)};
-const slotHours=Array.from({length:19},(_,i)=>String((6+i)%24).padStart(2,"0")+":00");
+const slotHours=Array.from({length:17},(_,i)=>String((6+i)%24).padStart(2,"0")+":00");
 const uid=()=>Math.random().toString(36).slice(2,11);
 
 export function DailyPlan({data,onDataChange}){
@@ -94,9 +94,9 @@ export function DailyPlan({data,onDataChange}){
    return {...m,assignments:all};
   });
  };
- return <section className="macro-board daily-board" aria-label="데일리 19시간 계획">
+ return <section className="macro-board daily-board" aria-label="데일리 17시간 계획">
   <div className="macro-board-header">
-   <div className="macro-board-heading"><span>DAILY PLAN</span><h2>19 Hours</h2></div>
+   <div className="macro-board-heading"><span>DAILY PLAN</span><h2>17 Hours</h2></div>
    <div className="macro-year-nav"><button type="button" aria-label="이전 날짜" onClick={()=>setDay(d=>addDay(d,-1))}><ChevronLeft size={19}/></button><strong>{day.slice(5).replace("-",".")}</strong><button type="button" aria-label="다음 날짜" onClick={()=>setDay(d=>addDay(d,1))}><ChevronRight size={19}/></button></div>
   </div>
   <div className="macro-board-body">
@@ -139,7 +139,7 @@ export function DailyPlan({data,onDataChange}){
     <button type="button" className={`macro-palette-eraser ${erase?"selected":""}`} onClick={()=>{setErase(true);setSelected(null)}} aria-pressed={erase}><Eraser size={19}/></button>
    </aside>
   </div>
-  <div className="macro-board-footer"><span>{Object.keys(assignments).filter(k=>categories.some(c=>c.id===assignments[k])).length} / 76칸 배정</span><span>{erase?"지울 칸을 눌러줘":chosen?`${chosen.name} 선택 중 · 칸을 눌러 배정`:"오른쪽에서 항목을 선택해 줘"}</span></div>
+  <div className="macro-board-footer"><span>{Object.keys(assignments).filter(k=>categories.some(c=>c.id===assignments[k])).length} / 68칸 배정</span><span>{erase?"지울 칸을 눌러줘":chosen?`${chosen.name} 선택 중 · 칸을 눌러 배정`:"오른쪽에서 항목을 선택해 줘"}</span></div>
   {modal&&<div className="macro-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(false)}}>
    <form className="macro-modal" onSubmit={save} role="dialog" aria-modal="true" aria-label={editing?"항목 수정":"항목 추가"}>
     <div className="macro-modal-heading"><h3>{editing?"항목 수정":"새 항목"}</h3><button type="button" aria-label="닫기" onClick={()=>setModal(false)}><X size={21}/></button></div>
