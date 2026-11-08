@@ -1807,9 +1807,9 @@ export function App({
         {[
           ["timelog",Clock3,"타임로그"],
           
-          ["todo",Inbox,"인박스"],
-          ["calendar",CalendarDays,"일정"],
           ["weeklyfocus",CalendarRange,"주간"],
+          ["calendar",CalendarDays,"일정"],
+          ["todo",Inbox,"인박스"],
           ["apps",Blocks,"앱관리"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
       </nav>
