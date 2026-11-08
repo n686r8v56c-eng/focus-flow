@@ -1873,3 +1873,24 @@ body,
 .focus-playlist-toolbar strong {font-size:16px;color:#614580;}
 .focus-playlist-toolbar a {display:inline-flex;align-items:center;gap:5px;font-size:13px;color:#7452a5;background:#f0eaf7;border:1px solid #e6def0;border-radius:9px;padding:7px 10px;text-decoration:none;white-space:nowrap;}
 .focus-playlist-screen iframe {width:100%;flex:1;min-height:0;border:1px solid #e9e1f3;border-radius:12px;background:#faf8ff;display:block;}
+
+
+/* Four visible bottom tabs after moving Playlist and hiding Opportunities.
+   Previous five-column overrides left unused space on the right. */
+.bottom-nav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-items: stretch;
+  align-items: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  margin-inline: auto;
+}
+.bottom-nav > button {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
