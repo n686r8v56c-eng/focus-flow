@@ -155,3 +155,21 @@
  position:static;top:auto;margin:0;padding:0;transform:none;
 }
 .macro-week-tile.is-current{outline:none;outline-offset:0}
+
+/* Minimal plan selector, anchored to the former year pill. */
+.macro-board-switch{position:relative;min-width:0;width:min(37%,170px);z-index:8}
+.macro-board-switch-trigger{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:39px;min-width:0;background:#f5f0f9;border:0;border-radius:12px;color:#654785;padding:7px 10px;font-size:16px;font-weight:800}
+.macro-board-switch-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.macro-board-switch-trigger svg{flex:none}
+.macro-board-menu{position:absolute;right:0;top:calc(100% + 6px);width:min(260px,83vw);max-height:55vh;overflow-y:auto;overscroll-behavior:contain;border:1px solid #e9def0;border-radius:13px;background:#fff;box-shadow:0 12px 35px #3b255b20;padding:7px;display:flex;flex-direction:column;gap:2px}
+.macro-board-menu>button,.macro-board-menu-row>button:first-child{display:flex;align-items:center;justify-content:space-between;gap:9px;text-align:left;width:100%;min-width:0;min-height:38px;border:0;border-radius:8px;background:transparent;color:#4d3b5a;padding:8px 10px;font-size:13px;font-weight:700}
+.macro-board-menu>button.current,.macro-board-menu-row>button.current{color:#764bab;background:#f3ecfa}
+.macro-board-menu button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.macro-board-menu-row{display:flex;align-items:center;gap:0;min-width:0}
+.macro-board-menu-row>button:first-child{flex:1}
+.macro-board-menu-row>button:not(:first-child){display:grid;place-items:center;flex:0 0 27px;width:27px;height:32px;padding:4px;border:0;background:transparent;color:#9a88a8}
+.macro-board-menu .macro-board-menu-add{justify-content:flex-start;color:#7654a0;border-top:1px solid #f1ecf5;border-radius:0;margin-top:3px}
+.macro-board-menu-form{display:flex;gap:5px;align-items:center;padding:5px 2px}
+.macro-board-menu-form input{flex:1;min-width:0;height:35px;padding:5px 8px;border:1px solid #d5c4e5;border-radius:8px;font-size:16px}
+.macro-board-menu-form button{border:0;border-radius:6px;background:#efe7f6;color:#704c93;padding:7px;display:grid;place-items:center}
+.macro-board-menu-error{font-size:11px;color:#b34b67;margin:2px 6px}
