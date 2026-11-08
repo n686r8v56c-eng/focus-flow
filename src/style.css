@@ -1914,3 +1914,20 @@ body,
  .focus-v6-header .focus-header-timelog svg{width:14px;height:14px;}
  .focus-v6-header .focus-header-icon-button{flex-basis:34px;width:34px;min-width:34px;height:34px;}
 }
+
+/* Five primary tabs: Weekly, Inbox, Daily, Calendar, Apps — one row on iPhone. */
+.bottom-nav{
+ display:grid;
+ grid-template-columns:repeat(5,minmax(0,1fr));
+ grid-auto-flow:row;
+ align-items:stretch;
+ justify-items:stretch;
+}
+.bottom-nav>button{
+ width:100%;
+ min-width:0;
+ white-space:nowrap;
+ font-size:clamp(10px,2.65vw,13px)!important;
+ gap:3px;
+}
+.bottom-nav>button svg{flex-shrink:0}
