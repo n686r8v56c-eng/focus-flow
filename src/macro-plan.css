@@ -108,3 +108,25 @@
  .macro-week-tile,.macro-palette-choice,.macro-palette-add,.macro-palette-eraser{aspect-ratio:1.27;min-height:0}
  .macro-week-name,.macro-palette-choice{font-size:13px}
 }
+
+
+/* Shorter rows only: preserve the existing widths and five-column alignment. */
+.macro-week-tile,
+.macro-palette-choice,
+.macro-palette-add,
+.macro-palette-eraser{
+  aspect-ratio:auto;
+  height:46px;
+  min-height:46px;
+  max-height:46px;
+}
+@media(max-width:390px){
+ .macro-week-tile,.macro-palette-choice,.macro-palette-add,.macro-palette-eraser{
+  aspect-ratio:auto;height:43px;min-height:43px;max-height:43px;
+ }
+}
+@media(min-width:700px){
+ .macro-week-tile,.macro-palette-choice,.macro-palette-add,.macro-palette-eraser{
+  aspect-ratio:auto;height:58px;min-height:58px;max-height:58px;
+ }
+}
