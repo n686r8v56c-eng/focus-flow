@@ -76,6 +76,13 @@ export function DailyPlan({data,onDataChange}){
  })).filter(item=>item.count>0);
  const allocatedCount=allocationSummary.reduce((sum,item)=>sum+item.count,0);
  const notes=(plan.notes?.[day]||{});
+ const noteEntries=Object.entries(notes).filter(([index,value])=>Number.isInteger(Number(index))&&Number(index)>=0&&Number(index)<68&&typeof value==="string"&&value.trim()).sort((a,b)=>Number(a[0])-Number(b[0])).map(([index,value])=>{
+  const slot=Number(index);
+  const hour=String((6+Math.floor(slot/4))%24).padStart(2,"0");
+  const minute=String((slot%4)*15).padStart(2,"0");
+  const category=categories.find(item=>item.id===assignments[slot]);
+  return {slot,time:hour+":"+minute,category,text:value};
+ });
  const openCellNote=i=>{setNoteCell(i);setNoteDraft(notes[i]||"");};
  const startCellHold=(e,i)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
@@ -221,6 +228,19 @@ export function DailyPlan({data,onDataChange}){
     <strong>{(item.count*0.25).toLocaleString("ko-KR",{maximumFractionDigits:2})+"시간"}</strong>
    </div>)}</div>
   </div>
+  <details className="daily-notes-accordion">
+   <summary><span>시간 메모 <strong>{noteEntries.length}</strong></span><span className="daily-notes-chevron" aria-hidden="true">⌄</span></summary>
+   <div className="daily-notes-list">
+    {noteEntries.length?noteEntries.map(entry=><div className="daily-notes-entry" key={entry.slot}>
+     <span className="daily-notes-time">{entry.time}</span>
+     <div className="daily-notes-body">
+      {entry.category&&<div className="daily-notes-category"><span className="macro-allocation-swatch" style={{backgroundColor:swatchOf(entry.category.family,entry.category.shade)}}/>{entry.category.name}</div>}
+      <div className="daily-notes-text">{entry.text}</div>
+     </div>
+     <button type="button" className="daily-notes-edit" aria-label={entry.time+" 메모 수정"} onClick={()=>openCellNote(entry.slot)}>수정</button>
+    </div>):<div className="daily-notes-empty">작성된 시간 메모가 없어</div>}
+   </div>
+  </details>
   <div className="macro-board-footer"><span>{Object.keys(assignments).filter(k=>categories.some(c=>c.id===assignments[k])).length} / 68칸 배정</span><span>{erase?"지울 칸을 눌러줘":chosen?`${chosen.name} 선택 중 · 칸을 눌러 배정`:"오른쪽에서 항목을 선택해 줘"}</span></div>
   {noteCell!==null&&<div className="macro-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setNoteCell(null)}}>
    <form className="macro-modal macro-cell-note-modal" onSubmit={saveCellNote} role="dialog" aria-modal="true" aria-label="칸 메모 편집">
