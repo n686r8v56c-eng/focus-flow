@@ -107,7 +107,7 @@ export function App({
     return () => {active=false;window.removeEventListener("focus",onFocus);bridgeClient.removeChannel(channel);};
   }, [bridgeClient,bridgeUserId]);
   const [playlistOpened, setPlaylistOpened] = useState(false);
-  const [tab, setTab] = useState("weeklyfocus"),
+  const [tab, setTab] = useState("daily"),
     [calendarMode, setCalendarMode] = useState("schedule"),
     [todoDate, setTodoDate] = useState(localDate()),
     [selectedProject, setSelectedProject] = useState("p1"),
@@ -1776,7 +1776,7 @@ export function App({
   return (
     <div className="app">
       <header className="focus-v6-header">
-        <button type="button" className="brand" onClick={()=>{setRegistryOpen(false);setChecklistOpen(false);setTab("weeklyfocus");}}>Focus Flow</button>
+        <button type="button" className="brand" onClick={()=>{setRegistryOpen(false);setChecklistOpen(false);setTab("daily");}}>Focus Flow</button>
         <div className="header-actions">
           <button type="button" className="api-top-button focus-header-icon-button" title="플레이리스트" aria-label="플레이리스트" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><Music2 size={20}/></button>
           <button type="button" className="api-top-button focus-header-timelog" style={{border:"1px solid #e3d9ee",background:tab === "timelog" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("timelog")} aria-current={tab === "timelog" ? "page" : undefined}><Clock3 size={16}/> 타임로그</button>
@@ -1811,9 +1811,9 @@ export function App({
       </main>
       <nav className="bottom-nav" aria-label="메인 메뉴">
         {[
-          ["weeklyfocus",CalendarRange,"주간"],
-          ["todo",Inbox,"인박스"],
+          ["weeklyfocus",CalendarRange,"매크로"],
           ["daily",Clock3,"데일리"],
+          ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"],
           ["apps",Blocks,"앱관리"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
