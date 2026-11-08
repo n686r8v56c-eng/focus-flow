@@ -69,6 +69,7 @@ export function MacroPlan({data,onDataChange}){
  const categories=boardId==="default"?(macro.categories||[]):(customBoard?.categories||[]);
  const assignments=boardId==="default"?(macro.assignments?.[year]||{}):(customBoard?.assignments||{});
  const activeBoard=boards.find(b=>b.id===boardId);
+ const baseName=macro.baseBoardName||"메모리랩";
  useEffect(()=>{
   if(!boardsOpen)return;
   const outside=e=>{if(boardMenuRef.current&&!boardMenuRef.current.contains(e.target))setBoardsOpen(false)};
@@ -94,8 +95,10 @@ export function MacroPlan({data,onDataChange}){
   e.preventDefault();
   const title=boardDraft.trim();
   if(!title){setBoardError("이름을 입력해 줘.");return;}
-  if((title===String(year)&&boardEditing!=="default")||boards.some(b=>b.id!==boardEditing&&b.name.toLowerCase()===title.toLowerCase())){setBoardError("이미 같은 이름이 있어.");return;}
-  if(boardEditing){
+  if((title.toLowerCase()===baseName.toLowerCase()&&boardEditing!=="default")||boards.some(b=>b.id!==boardEditing&&b.name.toLowerCase()===title.toLowerCase())){setBoardError("이미 같은 이름이 있어.");return;}
+  if(boardEditing==="default"){
+   onDataChange(old=>({...old,macroPlan:{...old.macroPlan,baseBoardName:title}}));
+  }else if(boardEditing){
    onDataChange(old=>({...old,macroPlan:{...old.macroPlan,boards:(old.macroPlan?.boards||[]).map(b=>b.id===boardEditing?{...b,name:title}:b)}}));
   }else{
    const id=uid();
@@ -152,10 +155,13 @@ export function MacroPlan({data,onDataChange}){
    <div className="macro-board-heading"><span>MACRO PLAN</span><h2>52 Weeks</h2></div>
    <div className="macro-board-switch" ref={boardMenuRef}>
     <button type="button" className="macro-board-switch-trigger" aria-expanded={boardsOpen} aria-label="매크로 계획 선택 및 관리" onClick={()=>{setBoardsOpen(v=>!v);setBoardEditing(null);setBoardError("")}}>
-     <span>{activeBoard?.name||year}</span><ChevronDown size={18}/>
+     <span>{activeBoard?.name||baseName}</span><ChevronDown size={18}/>
     </button>
     {boardsOpen&&<div className="macro-board-menu">
-      <button type="button" className={boardId==="default"?"current":""} onClick={()=>selectBoard("default")}><span>{year}</span>{boardId==="default"&&<Check size={16}/>}</button>
+      <div className="macro-board-menu-row">
+       <button type="button" className={boardId==="default"?"current":""} onClick={()=>selectBoard("default")}><span>{baseName}</span>{boardId==="default"&&<Check size={16}/>}</button>
+       <button type="button" aria-label={baseName+" 이름 수정"} title="이름 수정" onClick={()=>{setBoardEditing("default");setBoardDraft(baseName);setBoardError("")}}><Pencil size={15}/></button>
+      </div>
       {boards.map(b=><div key={b.id} className="macro-board-menu-row">
         <button type="button" className={boardId===b.id?"current":""} onClick={()=>selectBoard(b.id)}><span>{b.name}</span>{boardId===b.id&&<Check size={16}/>}</button>
         <button type="button" aria-label={b.name+" 이름 수정"} title="이름 수정" onClick={()=>{setBoardEditing(b.id);setBoardDraft(b.name);setBoardError("")}}><Pencil size={15}/></button>
