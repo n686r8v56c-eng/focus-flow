@@ -998,7 +998,7 @@ export function App({
     const isMatch=t=>calendarMode==="schedule"?isScheduleEntry(t):!isScheduleEntry(t);
     const selected=data.tasks.filter(t=>t.due===focusDate&&isMatch(t));
     return <div className="focus-redesign">
-      <div className="section-top"><h1>일정</h1><button className="primary small" onClick={()=>{setEditing(null);setModal("task");}}><Plus size={16}/>{calendarMode==="schedule"?"일정":"할 일"} 추가</button></div>
+      <div className="section-top"><h1>일정</h1></div><button type="button" aria-label={calendarMode==="schedule"?"일정 추가":"할 일 추가"} title={calendarMode==="schedule"?"일정 추가":"할 일 추가"} style={{position:"fixed",right:"20px",bottom:"calc(92px + env(safe-area-inset-bottom, 0px))",width:"56px",height:"56px",borderRadius:"50%",background:"#9570c7",color:"#fff",border:"none",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 5px 18px rgba(70,40,105,.2)",zIndex:35,cursor:"pointer"}} onClick={()=>{setEditing(null);setModal("task");}}><Plus size={27}/></button>
       <div className="focus-segments" role="tablist" aria-label="캘린더 종류">
         <button role="tab" aria-selected={calendarMode==="schedule"} className={calendarMode==="schedule"?"selected":""} onClick={()=>setCalendarMode("schedule")}>일정</button>
         <button role="tab" aria-selected={calendarMode==="todo"} className={calendarMode==="todo"?"selected":""} onClick={()=>setCalendarMode("todo")}>할 일</button>
