@@ -173,3 +173,19 @@
 .macro-board-menu-form input{flex:1;min-width:0;height:35px;padding:5px 8px;border:1px solid #d5c4e5;border-radius:8px;font-size:16px}
 .macro-board-menu-form button{border:0;border-radius:6px;background:#efe7f6;color:#704c93;padding:7px;display:grid;place-items:center}
 .macro-board-menu-error{font-size:11px;color:#b34b67;margin:2px 6px}
+
+/* Slight extra breathing room between the 4 time/week cells and the palette. */
+.macro-board-body{column-gap:11px}
+.macro-row-date{left:-53px}
+@media(max-width:699px){
+ .macro-board-body{column-gap:10px}
+ .macro-row-date{left:-47px}
+}
+@media(max-width:390px){
+ .macro-board-body{column-gap:8px}
+ .macro-row-date{left:-45px}
+}
+@media(min-width:700px){
+ .macro-board-body{column-gap:15px}
+ .macro-row-date{left:-54px}
+}
