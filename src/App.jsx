@@ -2009,7 +2009,7 @@ function TaskModal({ onClose, onSave }) {
   const [duration,setDuration]=useState("30");
   return (
     <div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
-      <form className="sheet" onSubmit={e=>{
+      <form className="sheet compact-task-sheet" onSubmit={e=>{
         e.preventDefault();
         if(title.trim())onSave({
           title,projectId:"",taskScope:"personal",entryType:"todo",
