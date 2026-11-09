@@ -16,7 +16,7 @@ export function Timeline({data,onDataChange,onAdd}) {
  const current=new Date(now),today=dateKey(current),currentMinutes=current.getHours()*60+current.getMinutes();
  let previousEnd=0;
  return <section className="focus-redesign" style={{paddingBottom:30}}>
-  <div className="macro-board-heading" style={{margin:"3px 0 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div><span>DAILY PLAN</span><h2>Timeline</h2></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} style={{width:36,height:36,flexShrink:0,border:"1px solid #e3d5ef",borderRadius:10,background:"#fff",color:"#9570c7",display:"grid",placeItems:"center",padding:0}}><Plus size={21}/></button></div>
+  <div className="macro-board-heading" style={{margin:"3px 0 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div><span>DAILY PLAN</span><h2>Timeline</h2></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
   <div style={{display:"grid",gap:10}}>
    {timed.length===0&&<p style={{color:"#8d8398",fontSize:14}}>시간을 지정하면 여기에 표시돼.</p>}
    {timed.map(t=>{const start=minutes(t.time);const duration=Math.max(5,Number(t.durationMinutes||t.minutes||30)||30);const end=start+duration;const gap=Math.max(0,start-previousEnd);previousEnd=Math.max(previousEnd,end);return <React.Fragment key={t.id}>
