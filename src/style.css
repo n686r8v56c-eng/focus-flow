@@ -1953,3 +1953,10 @@ body,
 .focus-backup-popover small{font-size:11px;color:#92869e;line-height:1.4}
 .focus-backup-popover button{border:1px solid #dfd2ed;background:#f4eefb;color:#7452a5;border-radius:9px;padding:9px;font-size:13px}
 @media(max-width:380px){.bottom-nav>button{font-size:9px!important}.bottom-nav>button svg{width:19px;height:19px}}
+
+/* Timeline task pastel color choices */
+.timeline-color-picker{display:flex;flex-direction:column;gap:9px;margin:0 0 12px;color:#897b93;font-size:14px;font-weight:600}
+.timeline-color-options{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.timeline-color-options button{position:relative;width:34px;height:34px;flex:0 0 34px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #ddd5e6;display:grid;place-items:center;padding:0;color:#59446f;font-size:18px;font-weight:700}
+.timeline-color-options button.selected{box-shadow:0 0 0 2px #8e6dbb}
+.timeline-color-options button:focus-visible{outline:2px solid #7652aa;outline-offset:3px}
