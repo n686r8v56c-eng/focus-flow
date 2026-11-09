@@ -2052,7 +2052,7 @@ function PomEstimatePicker({ value, onChange }) {
     </fieldset>
   );
 }
-const TIMELINE_COLORS = ["#eee6f7","#e6edf8","#e5f2ed","#fff0df","#f9e5ec","#e9e7f8","#f2eddf","#e6f0f4"];
+const TIMELINE_COLORS = ["#eee6f7","#e6edf8","#e5f2ed","#fff0df","#f9e5ec"];
 function TaskModal({ onClose, onSave, timelineMode=false }) {
   const [title,setTitle]=useState("");
   const [due,setDue]=useState(()=>localDate());
