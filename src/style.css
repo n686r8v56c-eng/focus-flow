@@ -1931,3 +1931,4 @@ body,
  gap:3px;
 }
 .bottom-nav>button svg{flex-shrink:0}
+\n/* Compact add actions aligned to their section headings */\n.inline-add-task{width:32px;height:32px;min-width:32px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e4d8f2;border-radius:50%;background:#f2ebfa;color:#805eb1;padding:0;box-shadow:none;cursor:pointer}\n.inline-add-task:active{background:#e5d7f4;transform:scale(.96)}\n.focus-day-title{align-items:center;margin-bottom:12px}\n.focus-day-title h2{margin:0}\n.macro-board-heading .inline-add-task{align-self:center}\n
