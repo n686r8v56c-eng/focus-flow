@@ -998,9 +998,9 @@ export function App({
   function TodoPanel() {
     const dated=data.tasks.filter(t=>!isScheduleEntry(t)&&(t.due===todoDate||(todoDate===today&&t.status!=="done"&&t.due&&t.due<today)));
     return <InboxPanel storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderDate={()=> <FocusDateStrip date={todoDate} onChange={setTodoDate}/>} renderToday={()=><>
-      <button type="button" aria-label="할 일 추가" title="할 일 추가" style={{position:"fixed",right:"20px",bottom:"calc(92px + env(safe-area-inset-bottom, 0px))",width:"56px",height:"56px",borderRadius:"50%",background:"#9570c7",color:"#fff",border:"none",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 5px 18px rgba(70,40,105,.2)",zIndex:35,cursor:"pointer"}} onClick={()=>{setEditing(null);setModal("task");}}><Plus size={27}/></button>
+
       <div className="focus-kpis"><div><small>완료</small><strong>{dated.filter(x=>x.status==="done").length}/{dated.length}</strong></div><div><small>남은 할 일</small><strong>{dated.filter(x=>x.status!=="done").length}</strong></div></div>
-      <section className="focus-panel"><div className="focus-day-title"><h2>{todoDate===today?"오늘의 할 일":todoDate+" 할 일"}</h2></div>
+      <section className="focus-panel"><div className="focus-day-title" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><h2>{todoDate===today?"오늘의 할 일":todoDate+" 할 일"}</h2><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={()=>{setEditing(null);setModal("task");}} style={{width:36,height:36,flexShrink:0,border:"1px solid #e3d5ef",borderRadius:10,background:"#fff",color:"#9570c7",display:"grid",placeItems:"center",padding:0}}><Plus size={21}/></button></div>
         <FocusTaskRows items={dated} mode="todo" tomorrowAction={todoDate===today}/>
       </section>
       <p className="focus-help">오늘 할 일만 골라 실행해. 완료해도 인박스의 원본과 링크는 남아 있어.</p>
