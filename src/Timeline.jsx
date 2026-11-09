@@ -30,7 +30,7 @@ export function Timeline({data,onDataChange,onAdd}) {
  const timed=tasks.filter(t=>minutes(t.time)!==null).sort((a,b)=>minutes(a.time)-minutes(b.time));
  const change=(id,fields)=>onDataChange(prev=>({...prev,timelineTasks:(Array.isArray(prev.timelineTasks)?prev.timelineTasks:(prev.tasks||[]).filter(t=>Boolean(t.time)).map(t=>({...t}))).map(t=>t.id===id?{...t,...fields}:t)}));
  const current=new Date(now),today=dateKey(current),currentMinutes=current.getHours()*60+current.getMinutes();
- const startHour=6,endHour=22;
+ const startHour=6,endHour=23;
  const dayStart=startHour*60,dayEnd=endHour*60;
  const hourHeight=288;
  const gutter=62;
@@ -82,7 +82,7 @@ export function Timeline({data,onDataChange,onAdd}) {
      const h=startHour+i;
      const top=i*hourHeight;
      return <div key={h} style={{position:"absolute",top,left:0,right:0,height:0}}>
-       <span style={{position:"absolute",left:0,top:-10,width:gutter-9,textAlign:"left",fontSize:13,color:"#9b90a6",fontVariantNumeric:"tabular-nums"}}>{String(h).padStart(2,"0")}:00{h===6?" 기상":h===22?" 수면":""}</span>
+       <span style={{position:"absolute",left:0,top:-10,width:gutter-9,textAlign:"left",fontSize:13,color:"#9b90a6",fontVariantNumeric:"tabular-nums"}}>{String(h).padStart(2,"0")}:00{h===6?" 기상":h===23?" 수면":""}</span>
        <div style={{position:"absolute",left:gutter,right:0,borderTop:"1px solid #e9e2ef"}}/>
      </div>;
    })}
@@ -109,7 +109,7 @@ export function Timeline({data,onDataChange,onAdd}) {
    {lineVisible&&<div aria-label={`현재 시각 ${fmt(currentMinutes)}`} style={{position:"absolute",top:timeToY(currentMinutes),left:0,right:0,height:0,zIndex:5,pointerEvents:"none"}}>
      <div style={{position:"absolute",top:0,left:gutter,right:0,borderTop:"1px solid #56358b"}}/>
      <span style={{position:"absolute",right:`calc(100% - ${gutter-5}px)`,top:-9,background:"#56358b",color:"white",borderRadius:9,padding:"2px 5px",fontSize:10,fontWeight:700,lineHeight:"15px",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{fmt(currentMinutes)}</span>
-     <span aria-label={`22시까지 ${remainingToBedLabel} 남음`} title="22:00까지 남은 시간" style={{position:"absolute",right:0,top:-9,background:"#56358b",color:"white",borderRadius:9,padding:"2px 7px",fontSize:10,fontWeight:700,lineHeight:"15px",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{remainingToBedLabel}</span>
+     <span aria-label={`23시까지 ${remainingToBedLabel} 남음`} title="23:00까지 남은 시간" style={{position:"absolute",right:0,top:-9,background:"#56358b",color:"white",borderRadius:9,padding:"2px 7px",fontSize:10,fontWeight:700,lineHeight:"15px",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{remainingToBedLabel}</span>
    </div>}
   </div>
   {editing&&<div style={{position:"fixed",inset:0,zIndex:100,background:"#0006",display:"grid",placeItems:"center",padding:20}}>
