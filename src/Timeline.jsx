@@ -14,63 +14,48 @@ export function Timeline({data,onDataChange,onAdd}) {
  const change=(id,fields)=>onDataChange(prev=>({...prev,timelineTasks:(Array.isArray(prev.timelineTasks)?prev.timelineTasks:(prev.tasks||[]).filter(t=>Boolean(t.time)).map(t=>({...t}))).map(t=>t.id===id?{...t,...fields}:t)}));
  const toggle=t=>change(t.id,t.status==="done"?{status:"todo",completedAt:null}:{status:"done",completedAt:new Date().toISOString()});
  const current=new Date(now),today=dateKey(current),currentMinutes=current.getHours()*60+current.getMinutes();
- const pxPerMinute=0.8;
- const rowGap=10;
- const blocks=[];
- let cursor=0,offset=0,markerTop=null;
- const pushBlock=(block,height)=>{
-   if(markerTop===null && currentMinutes>=block.start && currentMinutes<=block.end){
-     markerTop=offset+(currentMinutes-block.start)*pxPerMinute;
-   }
-   blocks.push({...block,height});
-   offset+=height+rowGap;
- };
- const firstStart=timed.length?minutes(timed[0].time):currentMinutes;
- cursor=Math.min(firstStart,currentMinutes);
- for(const t of timed){
+ const startHour=6,endHour=22;
+ const dayStart=startHour*60,dayEnd=endHour*60;
+ const hourHeight=88;
+ const gutter=62;
+ const dayHeight=(endHour-startHour)*hourHeight;
+ const timeToY=m=>(m-dayStart)/60*hourHeight;
+ const lineVisible=currentMinutes>=dayStart&&currentMinutes<=dayEnd;
+ const visibleTasks=timed.filter(t=>{
    const start=minutes(t.time);
-   const duration=Math.max(5,Number(t.durationMinutes||t.minutes||30)||30);
-   const end=start+duration;
-   if(start>cursor){
-     const gap=start-cursor;
-     pushBlock({kind:"gap",start:cursor,end:start,key:"gap-"+t.id},gap*pxPerMinute);
-   }
-   const height=Math.max(100,duration*pxPerMinute);
-   if(markerTop===null&&currentMinutes>=start&&currentMinutes<=end){
-     markerTop=offset+Math.min(height,(currentMinutes-start)*height/duration);
-   }
-   blocks.push({kind:"task",key:t.id,task:t,start,end,duration,height});
-   offset+=height+rowGap;
-   cursor=Math.max(cursor,end);
- }
- if(currentMinutes>cursor){
-   const gap=currentMinutes-cursor;
-   pushBlock({kind:"gap",start:cursor,end:currentMinutes,key:"gap-current"},gap*pxPerMinute);
- }
- if(markerTop===null)markerTop=0;
+   return start<dayEnd && start+Math.max(5,Number(t.durationMinutes||t.minutes||30)||30)>dayStart;
+ });
  return <section className="focus-redesign" style={{paddingBottom:30}}>
   <div className="macro-board-heading" style={{margin:"3px 0 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div><span>DAILY PLAN</span><h2>Timeline</h2></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
-  <div style={{position:"relative",paddingTop:10}}>
-   <div style={{display:"grid",gap:rowGap}}>
-    {blocks.map(block=>block.kind==="gap"
-     ?<div key={block.key} style={{height:block.height,display:"flex",alignItems:"center",paddingLeft:57,color:"#968ba0",fontSize:12,boxSizing:"border-box"}}>
-       {block.end-block.start>=15&&<span>✧ {block.end-block.start}분 빈 시간</span>}
-      </div>
-     :<div key={block.key} style={{display:"flex",gap:10,alignItems:"stretch",height:block.height}}>
-       <span style={{width:47,flexShrink:0,fontSize:12,color:"#93869c",paddingTop:12}}>{fmt(block.start)}</span>
-       <div role="button" tabIndex={0} aria-label={`${block.task.title} 일정 수정`} onClick={()=>setEditing(block.task)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setEditing(block.task);}}} style={{flex:1,background:block.task.color||"#eee6f7",borderRadius:13,padding:"12px 14px",color:"#44394d",minWidth:0,boxSizing:"border-box",cursor:"pointer",display:"flex",flexDirection:"column",justifyContent:"center",gap:8}}>
-        <span style={{fontSize:12,color:"#71677b",lineHeight:1.3,whiteSpace:"nowrap"}}>{fmt(block.start)}–{fmt(block.end)} · {block.duration}분</span>
-        <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
-         <button type="button" aria-label={block.task.status==="done"?"완료 취소":"완료 표시"} onClick={e=>{e.stopPropagation();toggle(block.task);}} style={{border:"1.5px solid #71677b",borderRadius:"50%",background:block.task.status==="done"?"#7754aa":"transparent",color:block.task.status==="done"?"white":"#71677b",width:24,height:24,flexShrink:0,display:"grid",placeItems:"center",padding:0,fontSize:15}}>{block.task.status==="done"?"✓":""}</button>
-         <strong style={{flex:1,minWidth:0,overflowWrap:"anywhere",fontSize:16,lineHeight:1.35,textDecoration:block.task.status==="done"?"line-through":"none"}}>{block.task.title}</strong>
-        </div>
+  <div style={{position:"relative",height:dayHeight,marginTop:30}}>
+   {Array.from({length:endHour-startHour+1},(_,i)=>{
+     const h=startHour+i;
+     const top=i*hourHeight;
+     return <div key={h} style={{position:"absolute",top,left:0,right:0,height:0}}>
+       <span style={{position:"absolute",left:0,top:-10,width:gutter-9,textAlign:"left",fontSize:13,color:"#9b90a6",fontVariantNumeric:"tabular-nums"}}>{String(h).padStart(2,"0")}:00{h===6?" 기상":h===22?" 수면":""}</span>
+       <div style={{position:"absolute",left:gutter,right:0,borderTop:"1px solid #e9e2ef"}}/>
+     </div>;
+   })}
+   {visibleTasks.map(t=>{
+     const start=minutes(t.time);
+     const duration=Math.max(5,Number(t.durationMinutes||t.minutes||30)||30);
+     const end=start+duration;
+     const top=timeToY(Math.max(dayStart,start));
+     const height=Math.max(24,timeToY(Math.min(dayEnd,end))-top-3);
+     const compact=height<65;
+     return <div key={t.id} role="button" tabIndex={0} aria-label={`${t.title} 일정 수정`} onClick={()=>setEditing(t)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setEditing(t);}}}
+       style={{position:"absolute",top,left:gutter,right:0,height,boxSizing:"border-box",borderRadius:12,background:t.color||"#eee6f7",color:"#44394d",padding:compact?"4px 9px":"8px 12px",display:"flex",flexDirection:compact?"row":"column",justifyContent:"center",gap:compact?7:5,alignItems:compact?"center":"stretch",overflow:"hidden",cursor:"pointer"}}>
+       <span style={{fontSize:compact?10:11,color:"#71677b",whiteSpace:"nowrap",lineHeight:1.25,flexShrink:0}}>{fmt(start)}–{fmt(end)} · {duration}분</span>
+       <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+         <button type="button" aria-label={t.status==="done"?"완료 취소":"완료 표시"} onClick={e=>{e.stopPropagation();toggle(t);}} style={{border:"1.5px solid #71677b",borderRadius:"50%",background:t.status==="done"?"#7754aa":"transparent",color:t.status==="done"?"white":"#71677b",width:20,height:20,flexShrink:0,display:"grid",placeItems:"center",padding:0,fontSize:12}}>{t.status==="done"?"✓":""}</button>
+         <strong style={{minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:compact?12:15,lineHeight:1.3,textDecoration:t.status==="done"?"line-through":"none"}}>{t.title}</strong>
        </div>
-      </div>)}
-    {timed.length===0&&<p style={{color:"#8d8398",fontSize:14,paddingLeft:57}}>시간을 지정하면 여기에 표시돼.</p>}
-   </div>
-   <div aria-label={`현재 시각 ${fmt(currentMinutes)}`} style={{position:"absolute",top:10+markerTop,left:0,right:0,height:0,borderTop:"3px solid #56358b",zIndex:5,pointerEvents:"none",display:"flex",alignItems:"center"}}>
-     <span style={{position:"absolute",left:0,top:-16,background:"#56358b",color:"white",borderRadius:18,padding:"4px 9px",fontSize:12,fontWeight:700,fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{fmt(currentMinutes)}</span>
-   </div>
+     </div>;
+   })}
+   {lineVisible&&<div aria-label={`현재 시각 ${fmt(currentMinutes)}`} style={{position:"absolute",top:timeToY(currentMinutes),left:0,right:0,height:0,zIndex:5,pointerEvents:"none"}}>
+     <div style={{position:"absolute",top:0,left:gutter,right:0,borderTop:"1px solid #56358b"}}/>
+     <span style={{position:"absolute",right:`calc(100% - ${gutter-5}px)`,top:-9,background:"#56358b",color:"white",borderRadius:9,padding:"2px 5px",fontSize:10,fontWeight:700,lineHeight:"15px",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{fmt(currentMinutes)}</span>
+   </div>}
   </div>
   {editing&&<div style={{position:"fixed",inset:0,zIndex:100,background:"#0006",display:"grid",placeItems:"center",padding:20}}>
    <form onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);change(editing.id,{title:String(fd.get("title")||"").trim()||editing.title,time:fd.get("time")||"",durationMinutes:Number(fd.get("duration"))||30,color:fd.get("color")||editing.color||"#eee6f7"});setEditing(null);}} style={{width:"100%",maxWidth:380,background:"white",padding:22,borderRadius:18,display:"grid",gap:12}}>
