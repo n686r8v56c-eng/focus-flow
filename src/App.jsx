@@ -203,6 +203,12 @@ export function App({
     setData((old) => (typeof fn === "function" ? fn(old) : fn));
   const project = (id) => data.projects.find((p) => p.id === id);
   const taskProject = (t) => project(t.projectId) || (t.taskScope === "project" ? {name:"프로젝트", color:"#a897dd"} : null);
+  const addTimelineTask = (t) => {
+    const newTask={id:uid(),title:t.title.trim(),due:t.due||localDate(),time:t.time||"",durationMinutes:Number(t.durationMinutes)||30,status:"todo",completedAt:null,createdAt:new Date().toISOString()};
+    update(d=>({...d,timelineTasks:[...(Array.isArray(d.timelineTasks)?d.timelineTasks:(d.tasks||[]).filter(item=>Boolean(item.time)).map(item=>({...item}))),newTask]}));
+    setModal(null);
+    setEditing(null);
+  };
   const addTask = (t) => {
     let id = uid();
     update((d) => ({
@@ -1832,7 +1838,7 @@ export function App({
           :tab === "opportunity" ? <InboxPanel key="opportunity" kind="opportunity" storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><><div className="section-top"><h1>오늘의 할 일</h1></div><FocusTaskRows items={data.tasks.filter(t=>!isScheduleEntry(t)&&t.due===today)} mode="todo"/></>}/>
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
-          :tab === "timeline" ? <Timeline data={data} onDataChange={setData} onAdd={()=>setModal("task")}/>
+          :tab === "timeline" ? <Timeline data={data} onDataChange={setData} onAdd={()=>setModal("timelineTask")}/>
           :tab === "weeklyfocus" ? <MacroPlan data={data} onDataChange={setData}/>
           :tab === "daily" ? <DailyPlan data={data} onDataChange={setData}/>
           :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
@@ -1861,13 +1867,13 @@ export function App({
           ["apps",Blocks,"앱관리"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
       </nav>
-      {modal === "task" && (
+      {(modal === "task" || modal === "timelineTask") && (
         <TaskModal
           projects={data.projects}
           registryApps={registryApps}
           preProject=""
           onClose={() => setModal(null)}
-          onSave={addTask}
+          onSave={modal === "timelineTask" ? addTimelineTask : addTask}
           initialDate={tab === "calendar" ? focusDate : tab === "todo" ? todoDate : today}
           initialType={tab === "calendar" ? calendarMode : "todo"}
         />
