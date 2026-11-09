@@ -37,6 +37,8 @@ export function Timeline({data,onDataChange,onAdd}) {
    el.scrollTop=Math.max(0,Math.min(el.scrollHeight-el.clientHeight,target));
  },[]);
  const lineVisible=currentMinutes>=dayStart&&currentMinutes<=dayEnd;
+ const remainingToBed=Math.max(0,dayEnd-currentMinutes);
+ const remainingToBedLabel=`${Math.floor(remainingToBed/60)}시간 ${String(remainingToBed%60).padStart(2,'0')}분`;
  const visibleTasks=timed.filter(t=>{
    const start=minutes(t.time);
    return start<dayEnd && start+Math.max(5,Number(t.durationMinutes||t.minutes||30)||30)>dayStart;
@@ -81,6 +83,7 @@ export function Timeline({data,onDataChange,onAdd}) {
    {lineVisible&&<div aria-label={`현재 시각 ${fmt(currentMinutes)}`} style={{position:"absolute",top:timeToY(currentMinutes),left:0,right:0,height:0,zIndex:5,pointerEvents:"none"}}>
      <div style={{position:"absolute",top:0,left:gutter,right:0,borderTop:"1px solid #56358b"}}/>
      <span style={{position:"absolute",right:`calc(100% - ${gutter-5}px)`,top:-9,background:"#56358b",color:"white",borderRadius:9,padding:"2px 5px",fontSize:10,fontWeight:700,lineHeight:"15px",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{fmt(currentMinutes)}</span>
+     <span aria-label={`22시까지 ${remainingToBedLabel} 남음`} title="22:00까지 남은 시간" style={{position:"absolute",right:0,top:-9,background:"#56358b",color:"white",borderRadius:9,padding:"2px 7px",fontSize:10,fontWeight:700,lineHeight:"15px",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{remainingToBedLabel}</span>
    </div>}
   </div>
   {editing&&<div style={{position:"fixed",inset:0,zIndex:100,background:"#0006",display:"grid",placeItems:"center",padding:20}}>
