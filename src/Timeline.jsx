@@ -12,11 +12,10 @@ export function Timeline({data,onDataChange,onAdd}) {
  const tasks=useMemo(()=>(Array.isArray(data.timelineTasks)?data.timelineTasks:(data.tasks||[]).filter(t=>Boolean(t.time))).filter(t=>t.due===date || (date===dateKey(new Date())&&t.due&&t.due<date&&t.status!=="done")), [data.timelineTasks,data.tasks,date]);
  const timed=tasks.filter(t=>minutes(t.time)!==null).sort((a,b)=>minutes(a.time)-minutes(b.time));
  const change=(id,fields)=>onDataChange(prev=>({...prev,timelineTasks:(Array.isArray(prev.timelineTasks)?prev.timelineTasks:(prev.tasks||[]).filter(t=>Boolean(t.time)).map(t=>({...t}))).map(t=>t.id===id?{...t,...fields}:t)}));
- const toggle=t=>change(t.id,t.status==="done"?{status:"todo",completedAt:null}:{status:"done",completedAt:new Date().toISOString()});
  const current=new Date(now),today=dateKey(current),currentMinutes=current.getHours()*60+current.getMinutes();
  const startHour=6,endHour=22;
  const dayStart=startHour*60,dayEnd=endHour*60;
- const hourHeight=88;
+ const hourHeight=144;
  const gutter=62;
  const dayHeight=(endHour-startHour)*hourHeight;
  const timeToY=m=>(m-dayStart)/60*hourHeight;
@@ -43,12 +42,13 @@ export function Timeline({data,onDataChange,onAdd}) {
      const top=timeToY(Math.max(dayStart,start));
      const height=Math.max(24,timeToY(Math.min(dayEnd,end))-top-3);
      const compact=height<65;
+     const remainingLabel=currentMinutes<start?"시작 전":currentMinutes>=end?"종료":`${Math.max(0,Math.ceil((end*60000-(now-new Date(current.getFullYear(),current.getMonth(),current.getDate()).getTime()))/60000))}분 남음`;
      return <div key={t.id} role="button" tabIndex={0} aria-label={`${t.title} 일정 수정`} onClick={()=>setEditing(t)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setEditing(t);}}}
-       style={{position:"absolute",top,left:gutter,right:0,height,boxSizing:"border-box",borderRadius:12,background:t.color||"#eee6f7",color:"#44394d",padding:compact?"4px 9px":"8px 12px",display:"flex",flexDirection:compact?"row":"column",justifyContent:"center",gap:compact?7:5,alignItems:compact?"center":"stretch",overflow:"hidden",cursor:"pointer"}}>
-       <span style={{fontSize:compact?10:11,color:"#71677b",whiteSpace:"nowrap",lineHeight:1.25,flexShrink:0}}>{fmt(start)}–{fmt(end)} · {duration}분</span>
-       <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-         <button type="button" aria-label={t.status==="done"?"완료 취소":"완료 표시"} onClick={e=>{e.stopPropagation();toggle(t);}} style={{border:"1.5px solid #71677b",borderRadius:"50%",background:t.status==="done"?"#7754aa":"transparent",color:t.status==="done"?"white":"#71677b",width:20,height:20,flexShrink:0,display:"grid",placeItems:"center",padding:0,fontSize:12}}>{t.status==="done"?"✓":""}</button>
-         <strong style={{minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:compact?12:15,lineHeight:1.3,textDecoration:t.status==="done"?"line-through":"none"}}>{t.title}</strong>
+       style={{position:"absolute",top,left:gutter,right:0,height,boxSizing:"border-box",borderRadius:12,background:t.color||"#eee6f7",color:"#44394d",padding:compact?"2px 9px":"8px 12px",display:"flex",flexDirection:"column",justifyContent:"center",gap:compact?7:5,alignItems:"stretch",overflow:"hidden",cursor:"pointer"}}>
+       {!compact&&<span style={{fontSize:11,color:"#71677b",whiteSpace:"nowrap",lineHeight:1.2}}>{fmt(start)}–{fmt(end)} · {duration}분</span>}
+       <div style={{display:"flex",flexDirection:"column",gap:2,minWidth:0}}>
+         <strong style={{minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:compact?12:15,lineHeight:1.2,textDecoration:t.status==="done"?"line-through":"none"}}>{t.title}</strong>
+         <span style={{fontSize:compact?10:12,color:"#674b9d",lineHeight:1.15,fontWeight:600}}>{remainingLabel}</span>
        </div>
      </div>;
    })}
