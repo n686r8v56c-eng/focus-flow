@@ -112,6 +112,18 @@ export function App({
   }, [bridgeClient,bridgeUserId]);
   const [playlistOpened, setPlaylistOpened] = useState(false);
   const [familyRecorded,setFamilyRecorded]=useState("");
+  const familyHoldTimer=useRef(null);
+  const familyHoldStart=useRef(null);
+  const [familyMenuId,setFamilyMenuId]=useState(null);
+  const cancelFamilyHold=()=>{if(familyHoldTimer.current)clearTimeout(familyHoldTimer.current);familyHoldTimer.current=null;familyHoldStart.current=null;};
+  const beginFamilyHold=(e,id)=>{
+    if(e.pointerType==="mouse"&&e.button!==0)return;
+    cancelFamilyHold();
+    familyHoldStart.current={x:e.clientX,y:e.clientY};
+    familyHoldTimer.current=setTimeout(()=>{familyHoldTimer.current=null;setFamilyMenuId(id);},550);
+  };
+  const moveFamilyHold=e=>{const p=familyHoldStart.current;if(p&&Math.hypot(e.clientX-p.x,e.clientY-p.y)>12)cancelFamilyHold();};
+  useEffect(()=>()=>{if(familyHoldTimer.current)clearTimeout(familyHoldTimer.current);},[]);
   const [familyEditing,setFamilyEditing]=useState(null);
   const [familyDraft,setFamilyDraft]=useState({date:"",memo:""});
   const [tab, setTab] = useState("daily"),
@@ -1046,15 +1058,14 @@ export function App({
       </section>
       <section className="focus-panel">
         <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="family"?"가족":calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
-        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div key={item.id} style={{padding:"11px 12px",borderRadius:12,background:"#f7f3fa",marginBottom:8}}>
-          <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:650}}>🐾 {item.title}</div>
-              {familyEditing!==item.id&&item.memo&&<div style={{fontSize:13,color:"#856e98",whiteSpace:"pre-wrap",overflowWrap:"anywhere",marginTop:4,lineHeight:1.45}}>{item.memo}</div>}
-            </div>
-            <button type="button" className="inbox-icon" title="날짜·메모 수정" aria-label={item.title+" 날짜와 메모 수정"} onClick={()=>familyEditing===item.id?setFamilyEditing(null):startFamilyEdit(item)}><Pencil size={16}/></button>
-            <button type="button" className="inbox-icon" title="삭제" aria-label={item.title+" 기록 삭제"} onClick={()=>removeFamilyRecord(item.id)}><Trash2 size={16}/></button>
-          </div>
+        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div key={item.id} onPointerDown={e=>{if(!e.target.closest("button,textarea,input"))beginFamilyHold(e,item.id)}} onPointerMove={moveFamilyHold} onPointerUp={cancelFamilyHold} onPointerCancel={cancelFamilyHold} onContextMenu={e=>{e.preventDefault();cancelFamilyHold();setFamilyMenuId(item.id)}} style={{padding:"11px 12px",borderRadius:12,background:"#f7f3fa",marginBottom:8,WebkitTouchCallout:"none"}}>
+          <div style={{fontWeight:650}}>🐾 {item.title}</div>
+          {familyEditing!==item.id&&item.memo&&<div style={{fontSize:13,color:"#856e98",whiteSpace:"pre-wrap",overflowWrap:"anywhere",marginTop:4,lineHeight:1.45}}>{item.memo}</div>}
+          {familyMenuId===item.id&&<div role="group" aria-label={item.title+" 기록 메뉴"} style={{display:"flex",gap:8,marginTop:10}}>
+            <button type="button" className="secondary" onClick={()=>{startFamilyEdit(item);setFamilyMenuId(null)}}>수정</button>
+            <button type="button" className="secondary" onClick={()=>{setFamilyMenuId(null);if(window.confirm("이 기록을 삭제할까?"))removeFamilyRecord(item.id)}}>삭제</button>
+            <button type="button" className="secondary" onClick={()=>setFamilyMenuId(null)}>닫기</button>
+          </div>}
           {familyEditing===item.id&&<div style={{display:"grid",gap:8,marginTop:12}}>
             
             <textarea aria-label="한마디" placeholder="한마디 (선택)" rows={2} value={familyDraft.memo} onChange={e=>setFamilyDraft(v=>({...v,memo:e.target.value}))} style={{fontSize:16,padding:9,border:"1px solid #dfd0eb",borderRadius:8,width:"100%",boxSizing:"border-box",resize:"vertical",fontFamily:"inherit"}}/>
