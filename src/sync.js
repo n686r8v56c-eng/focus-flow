@@ -126,200 +126,145 @@ export function normalizeState(value) {
     sessions: value.sessions || [],
   };
 }
+
+const DB_NAME = "focus-flow-local-v1";
+const STORE = "snapshots";
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(STORE);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function diskRead(key) {
+  const db = await openDatabase();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const req = tx.objectStore(STORE).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } finally { db.close(); }
+}
+async function diskWrite(key, value) {
+  const db = await openDatabase();
+  try {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally { db.close(); }
+}
+const dayStamp = () => new Date().toLocaleDateString("en-CA");
 export function useSyncedState(client, userId, initial) {
-  const [data, setData] = useState(null),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState("");
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [backupInfo, setBackupInfo] = useState({status:"loading",lastBackup:null});
   const context = useRef(null);
   useEffect(() => {
-    const ctx = {
-      userId,
-      active: true,
-      busy: false,
-      dirty: false,
-      base: null,
-      local: null,
-    };
+    const ctx = {active:true,userId,local:null,base:null,dirty:false,busy:false,lastBackup:null,backupDay:null,write:Promise.resolve()};
     context.current = ctx;
-    setData(null);
-    setLoading(true);
-    setError("");
-    if (!userId) {
-      setLoading(false);
-      return () => {
-        ctx.active = false;
-      };
-    }
-    const key = "focus-flow-pending:" + userId;
-    const backup = () => {
-      localStorage.setItem(
-        key,
-        JSON.stringify({ base: ctx.base, local: ctx.local }),
-      );
+    setLoading(true);setData(null);setError("");
+    if (!userId) {setLoading(false);return ()=>{ctx.active=false;};}
+    const key = "state:"+userId;
+    const legacyKey = "focus-flow-pending:"+userId;
+    const persist = () => {
+      const snapshot = {local:ctx.local,base:ctx.base,dirty:ctx.dirty,lastBackup:ctx.lastBackup,backupDay:ctx.backupDay};
+      ctx.write = ctx.write.then(()=>diskWrite(key,snapshot)).catch(e=>{
+        if(ctx.active)setError("기기 저장 실패: "+e.message);
+        throw e;
+      });
+      return ctx.write;
     };
-    const read = async () => {
-      const { data: row, error } = await client
-        .from("focus_flow_states")
-        .select("data,updated_at")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (error) throw error;
-      if (!row && ctx.rowExists)
-        throw new Error(
-          "서버 기록을 찾지 못했어. 기존 내용을 덮어쓰지 않았어.",
-        );
+    const fetchRemote = async () => {
+      const {data:row,error:e} = await client.from("focus_flow_states").select("data,updated_at").eq("user_id",userId).maybeSingle();
+      if(e)throw e;
       return row;
     };
-    ctx.flush = async () => {
-      if (!ctx.active || ctx.busy || !ctx.dirty || !ctx.base) return;
-      ctx.busy = true;
+    ctx.backup = async (manual=false) => {
+      if (!ctx.active || ctx.busy || !ctx.local || !ctx.dirty || (!manual && ctx.backupDay===dayStamp())) return;
+      ctx.busy=true;
+      setBackupInfo({status:"backing-up",lastBackup:ctx.lastBackup});
       try {
-        for (
-          let attempt = 0;
-          attempt < 5 && ctx.active && ctx.dirty;
-          attempt++
-        ) {
-          const original = ctx.local,
-            base = ctx.base,
-            row = await read();
-          if (!ctx.active) return;
-          const remote = row
-              ? normalizeState(row.data)
-              : structuredClone(initial),
-            merged = mergeState(base, original, remote);
-          let result;
-          if (row)
-            result = await client
-              .from("focus_flow_states")
-              .update({
-                data: merged,
-                updated_at: new Date(
-                  Math.max(Date.now(), Date.parse(row.updated_at) + 1),
-                ).toISOString(),
-              })
-              .eq("user_id", userId)
-              .eq("updated_at", row.updated_at)
-              .select("updated_at");
-          else
-            result = await client
-              .from("focus_flow_states")
-              .insert({
-                user_id: userId,
-                data: merged,
-                updated_at: new Date().toISOString(),
-              })
-              .select("updated_at");
-          if (!ctx.active) return;
-          if (result.error) {
-            if (result.error.code === "23505") continue;
-            throw result.error;
+        await ctx.write;
+        const localAtStart=ctx.local;
+        const row=await fetchRemote();
+        const remote=row?normalizeState(row.data):structuredClone(initial);
+        const merged=mergeState(ctx.base||remote,localAtStart,remote);
+        let result;
+        if(row) result=await client.from("focus_flow_states").update({data:merged,updated_at:new Date(Math.max(Date.now(),Date.parse(row.updated_at)+1)).toISOString()}).eq("user_id",userId).eq("updated_at",row.updated_at).select("updated_at");
+        else result=await client.from("focus_flow_states").insert({user_id:userId,data:merged,updated_at:new Date().toISOString()}).select("updated_at");
+        if(result.error)throw result.error;
+        if(!result.data?.length)throw new Error("서버 데이터가 변경됐어. 다음 백업에서 다시 확인할게.");
+        ctx.base=merged;
+        ctx.local=mergeState(localAtStart,ctx.local,merged);
+        ctx.dirty=!equal(ctx.local,merged);
+        ctx.lastBackup=new Date().toISOString();
+        ctx.backupDay=dayStamp();
+        await persist();
+        if(ctx.active){setData(ctx.local);setError("");setBackupInfo({status:ctx.dirty?"pending":"saved",lastBackup:ctx.lastBackup});}
+      }catch(e){
+        if(ctx.active){setError("백업 실패 (로컬 데이터 유지): "+e.message);setBackupInfo({status:"failed",lastBackup:ctx.lastBackup});}
+      }finally{ctx.busy=false;}
+    };
+    ctx.change=(fn)=>{
+      const next=typeof fn==="function"?fn(ctx.local):fn;
+      if(equal(next,ctx.local))return;
+      ctx.local=next;ctx.dirty=true;
+      setData(next);setBackupInfo({status:"pending",lastBackup:ctx.lastBackup});
+      void persist().catch(()=>{});
+    };
+    (async()=>{
+      try {
+        const saved=await diskRead(key);
+        if(saved) {
+          ctx.local=normalizeState(saved.local);
+          ctx.base=saved.base?normalizeState(saved.base):null;
+          ctx.dirty=Boolean(saved.dirty);
+          ctx.lastBackup=saved.lastBackup||null;
+          ctx.backupDay=saved.backupDay||null;
+          setData(ctx.local);
+        } else {
+          // First migration: import the authoritative Supabase snapshot BEFORE enabling local writes.
+          const row=await fetchRemote();
+          const remote=row?normalizeState(row.data):structuredClone(initial);
+          let local=remote,base=remote,dirty=false;
+          const pending=localStorage.getItem(legacyKey);
+          if(pending){
+            const parsed=JSON.parse(pending);
+            base=normalizeState(parsed.base);
+            local=normalizeState(parsed.local);
+            dirty=true;
           }
-          if (!result.data?.length) continue; // Another writer won the compare-and-swap. Re-read.
-          ctx.local = mergeState(original, ctx.local, merged);
-          ctx.base = merged;
-          ctx.rowExists = true;
-          ctx.dirty = !equal(ctx.local, merged);
-          setData(ctx.local);
-          setError("");
-          if (ctx.dirty) backup();
-          else localStorage.removeItem(key);
+          ctx.local=local;ctx.base=base;ctx.dirty=dirty;
+          await persist();
+          // Verify the persisted snapshot before declaring migration successful.
+          const verified=await diskRead(key);
+          if(!verified||!equal(verified.local,local))throw new Error("IndexedDB 이전 검증 실패");
+          if(pending)localStorage.removeItem(legacyKey);
+          setData(local);
         }
-        if (ctx.dirty)
-          throw new Error(
-            "동기화를 다시 시도할게. 변경 내용은 이 기기에 보관했어.",
-          );
-      } catch (e) {
-        if (ctx.active) setError("동기화 확인: " + e.message);
-      } finally {
-        ctx.busy = false;
-      }
-    };
-    ctx.change = (fn) => {
-      const next = typeof fn === "function" ? fn(ctx.local) : fn;
-      if (equal(next, ctx.local)) return;
-      ctx.local = next;
-      ctx.dirty = true;
-      setData(next);
-      try {
-        backup();
-      } catch (e) {
-        setError("기기 임시 저장 실패: " + e.message);
-      }
-      void ctx.flush();
-    };
-    const check = async () => {
-      if (!ctx.active || document.visibilityState === "hidden" || ctx.busy)
-        return;
-      if (ctx.dirty) {
-        await ctx.flush();
-        return;
-      }
-      ctx.busy = true;
-      try {
-        const before = ctx.local,
-          row = await read();
-        if (!ctx.active || ctx.dirty || ctx.local !== before) return;
-        if (row) {
-          ctx.local = ctx.base = normalizeState(row.data);
-          setData(ctx.local);
-          setError("");
+        if(ctx.active){
+          setBackupInfo({status:ctx.dirty?"pending":"saved",lastBackup:ctx.lastBackup});
+          if(ctx.dirty && ctx.backupDay!==dayStamp())void ctx.backup();
         }
-      } catch (e) {
-        if (ctx.active) setError("동기화 확인: " + e.message);
-      } finally {
-        ctx.busy = false;
-        if (ctx.dirty) void ctx.flush();
-      }
-    };
-    (async () => {
-      try {
-        const row = await read();
-        if (!ctx.active) return;
-        const remote = row
-          ? normalizeState(row.data)
-          : structuredClone(initial);
-        ctx.local = ctx.base = remote;
-        ctx.rowExists = Boolean(row);
-        const saved = localStorage.getItem(key);
-        if (saved) {
-          const pending = JSON.parse(saved);
-          ctx.base = normalizeState(pending.base);
-          ctx.local = normalizeState(pending.local);
-          ctx.dirty = true;
-        }
-        setData(ctx.local);
-        if (ctx.dirty) void ctx.flush();
-      } catch (e) {
-        if (ctx.active) setError("데이터 불러오기 실패: " + e.message);
-      } finally {
-        if (ctx.active) setLoading(false);
-      }
+      }catch(e){if(ctx.active)setError("데이터 이전/불러오기 실패 (서버 데이터 보존): "+e.message);}
+      finally{if(ctx.active)setLoading(false);}
     })();
-    const timer = setInterval(check, 12000);
-    window.addEventListener("focus", check);
-    window.addEventListener("online", check);
-    document.addEventListener("visibilitychange", check);
-    const beforeUnload = (e) => {
-      if (ctx.dirty) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
-    };
-    window.addEventListener("beforeunload", beforeUnload);
-    return () => {
-      ctx.active = false;
-      clearInterval(timer);
-      window.removeEventListener("focus", check);
-      window.removeEventListener("online", check);
-      document.removeEventListener("visibilitychange", check);
-      window.removeEventListener("beforeunload", beforeUnload);
-    };
-  }, [client, userId, initial]);
-  const change = useCallback((fn) => context.current?.change?.(fn), []);
-  const canLogout = useCallback(async () => {
-    const ctx = context.current;
-    if (ctx?.dirty) await ctx.flush?.();
-    return !ctx?.dirty && !ctx?.busy;
-  }, []);
-  return { data, change, loading, error, canLogout };
+    const onResume=()=>{if(document.visibilityState==="visible"&&ctx.dirty&&ctx.backupDay!==dayStamp())void ctx.backup();};
+    window.addEventListener("focus",onResume);
+    window.addEventListener("online",onResume);
+    document.addEventListener("visibilitychange",onResume);
+    return ()=>{ctx.active=false;window.removeEventListener("focus",onResume);window.removeEventListener("online",onResume);document.removeEventListener("visibilitychange",onResume);};
+  },[client,userId,initial]);
+  const change=useCallback(fn=>context.current?.change?.(fn),[]);
+  const backupNow=useCallback(()=>context.current?.backup?.(true),[]);
+  const canLogout=useCallback(async()=>{const ctx=context.current;if(!ctx)return true;try{await ctx.write;}catch{return false;}return !ctx.dirty;},[]);
+  return {data,change,loading,error,canLogout,backupNow,backupInfo};
 }
