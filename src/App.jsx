@@ -39,6 +39,7 @@ import { TimeTable } from "./TimeTable.jsx";
 import { WeeklyPlan } from "./WeeklyPlan.jsx";
 import { MacroPlan } from "./MacroPlan.jsx";
 import { DailyPlan } from "./DailyPlan.jsx";
+import { Timeline } from "./Timeline.jsx";
 import focusBellSound from "./assets/focus-bell.mp3";
 import { HomeWorkouts } from "./HomeWorkouts.jsx";
 import { LinkedActivities } from "./LinkedActivities.jsx";
@@ -1820,6 +1821,7 @@ export function App({
           :tab === "opportunity" ? <InboxPanel key="opportunity" kind="opportunity" storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><><div className="section-top"><h1>오늘의 할 일</h1></div><FocusTaskRows items={data.tasks.filter(t=>!isScheduleEntry(t)&&t.due===today)} mode="todo"/></>}/>
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
+          :tab === "timeline" ? <Timeline data={data} onDataChange={setData} onAdd={()=>setModal("task")}/>
           :tab === "weeklyfocus" ? <MacroPlan data={data} onDataChange={setData}/>
           :tab === "daily" ? <DailyPlan data={data} onDataChange={setData}/>
           :tab === "api" ? <ApiChecklist data={data} onDataChange={setData}/>
@@ -1842,6 +1844,7 @@ export function App({
         {[
           ["weeklyfocus",CalendarRange,"매크로"],
           ["daily",Clock3,"데일리"],
+          ["timeline",CalendarRange,"타임라인"],
           ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"],
           ["apps",Blocks,"앱관리"]
