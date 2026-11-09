@@ -1,39 +1,22 @@
 import React,{useMemo,useState,useEffect} from "react";
-import {ChevronLeft,ChevronRight,Plus,Clock3} from "lucide-react";
+import {Plus} from "lucide-react";
 const dateKey=(d)=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
 const shift=(date,days)=>{const [y,m,d]=date.split("-").map(Number);return dateKey(new Date(y,m-1,d+days));};
 const minutes=(value)=>{const [h,m]=String(value||"").split(":").map(Number);return Number.isFinite(h)&&Number.isFinite(m)?h*60+m:null;};
 const fmt=(m)=>String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
 export function Timeline({data,onDataChange,onAdd}) {
- const [date,setDate]=useState(dateKey(new Date()));
+ const date=dateKey(new Date(now));
  const [now,setNow]=useState(Date.now());
  const [editing,setEditing]=useState(null);
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(id);},[]);
  const tasks=useMemo(()=>(data.tasks||[]).filter(t=>t.due===date || (date===dateKey(new Date())&&t.due&&t.due<date&&t.status!=="done")), [data.tasks,date]);
  const timed=tasks.filter(t=>minutes(t.time)!==null).sort((a,b)=>minutes(a.time)-minutes(b.time));
- const untimed=tasks.filter(t=>minutes(t.time)===null);
  const change=(id,fields)=>onDataChange(prev=>({...prev,tasks:prev.tasks.map(t=>t.id===id?{...t,...fields}:t)}));
  const toggle=t=>change(t.id,t.status==="done"?{status:"todo",completedAt:null}:{status:"done",completedAt:new Date().toISOString()});
  const current=new Date(now),today=dateKey(current),currentMinutes=current.getHours()*60+current.getMinutes();
  let previousEnd=0;
  return <section className="focus-redesign" style={{paddingBottom:30}}>
-  <div className="section-top"><h1>타임라인</h1><button className="secondary" onClick={onAdd} aria-label="할 일 추가"><Plus size={18}/></button></div>
-  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-   <button className="secondary" onClick={()=>setDate(shift(date,-7))}><ChevronLeft size={17}/></button>
-   <strong>{date.slice(0,4)}년 {Number(date.slice(5,7))}월</strong>
-   <button className="secondary" onClick={()=>setDate(shift(date,7))}><ChevronRight size={17}/></button>
-  </div>
-  <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:3,marginBottom:18}}>
-   {Array.from({length:7},(_,i)=>{const d=shift(date,i-new Date(date+"T12:00:00").getDay());return <button key={d} onClick={()=>setDate(d)} style={{border:"none",borderRadius:12,padding:"9px 0",background:d===date?"#e9e0f6":"#f7f5f9",color:"#59477d",fontSize:13}}>{["일","월","화","수","목","금","토"][i]}<div style={{fontWeight:700,marginTop:5}}>{Number(d.slice(-2))}</div></button>;})}
-  </div>
-  <div style={{background:"#f6f2fa",borderRadius:15,padding:14,marginBottom:18}}>
-   <strong>시간 미지정 · {untimed.length}</strong>
-   {untimed.length===0?<p style={{fontSize:13,color:"#8d8398"}}>시간 없는 할 일이 없어</p>:untimed.map(t=><div key={t.id} style={{display:"flex",gap:9,alignItems:"center",marginTop:11}}>
-    <button onClick={()=>toggle(t)} aria-label="완료 전환" style={{border:"none",background:"transparent",fontSize:19,color:"#7656a4"}}>{t.status==="done"?"☑":"○"}</button>
-    <span onClick={()=>setEditing(t)} style={{flex:1,textDecoration:t.status==="done"?"line-through":"none"}}>{t.title}</span>
-    <button className="secondary" onClick={()=>setEditing(t)}><Clock3 size={15}/></button>
-   </div>)}
-  </div>
+  <div className="macro-board-heading" style={{margin:"3px 0 18px"}}><span>DAILY PLAN</span><h2>Timeline</h2></div>
   <div style={{display:"grid",gap:10}}>
    {timed.length===0&&<p style={{color:"#8d8398",fontSize:14}}>시간을 지정하면 여기에 표시돼.</p>}
    {timed.map(t=>{const start=minutes(t.time);const duration=Math.max(5,Number(t.durationMinutes||t.minutes||30)||30);const end=start+duration;const gap=Math.max(0,start-previousEnd);previousEnd=Math.max(previousEnd,end);return <React.Fragment key={t.id}>
