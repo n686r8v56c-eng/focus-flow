@@ -15,7 +15,7 @@ export function Timeline({data,onDataChange,onAdd}) {
  const current=new Date(now),today=dateKey(current),currentMinutes=current.getHours()*60+current.getMinutes();
  const startHour=6,endHour=22;
  const dayStart=startHour*60,dayEnd=endHour*60;
- const hourHeight=216;
+ const hourHeight=288;
  const gutter=62;
  const dayHeight=(endHour-startHour)*hourHeight;
  const timeToY=m=>(m-dayStart)/60*hourHeight;
