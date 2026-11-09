@@ -1056,7 +1056,7 @@ export function App({
             <button type="button" className="inbox-icon" title="삭제" aria-label={item.title+" 기록 삭제"} onClick={()=>removeFamilyRecord(item.id)}><Trash2 size={16}/></button>
           </div>
           {familyEditing===item.id&&<div style={{display:"grid",gap:8,marginTop:12}}>
-            <input type="date" aria-label="기록 날짜" value={familyDraft.date} onChange={e=>setFamilyDraft(v=>({...v,date:e.target.value}))} style={{fontSize:16,padding:9,border:"1px solid #dfd0eb",borderRadius:8,width:"100%",boxSizing:"border-box"}}/>
+            
             <textarea aria-label="한마디" placeholder="한마디 (선택)" rows={2} value={familyDraft.memo} onChange={e=>setFamilyDraft(v=>({...v,memo:e.target.value}))} style={{fontSize:16,padding:9,border:"1px solid #dfd0eb",borderRadius:8,width:"100%",boxSizing:"border-box",resize:"vertical",fontFamily:"inherit"}}/>
             <div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" className="secondary" onClick={()=>setFamilyEditing(null)}>취소</button><button type="button" className="primary" onClick={saveFamilyEdit}>저장</button></div>
           </div>}
