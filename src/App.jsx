@@ -112,6 +112,16 @@ export function App({
   }, [bridgeClient,bridgeUserId]);
   const [playlistOpened, setPlaylistOpened] = useState(false);
   const [familyRecorded,setFamilyRecorded]=useState("");
+  const [emotionRecorded,setEmotionRecorded]=useState("");
+  const [emotionEditing,setEmotionEditing]=useState(null);
+  const [emotionDraft,setEmotionDraft]=useState("");
+  const [emotionMenuId,setEmotionMenuId]=useState(null);
+  const emotionHoldTimer=useRef(null);
+  const emotionHoldStart=useRef(null);
+  const cancelEmotionHold=()=>{if(emotionHoldTimer.current)clearTimeout(emotionHoldTimer.current);emotionHoldTimer.current=null;emotionHoldStart.current=null;};
+  const beginEmotionHold=(e,id)=>{if(e.pointerType==="mouse"&&e.button!==0)return;cancelEmotionHold();emotionHoldStart.current={x:e.clientX,y:e.clientY};emotionHoldTimer.current=setTimeout(()=>{emotionHoldTimer.current=null;setEmotionMenuId(id);},550);};
+  const moveEmotionHold=e=>{const p=emotionHoldStart.current;if(p&&Math.hypot(e.clientX-p.x,e.clientY-p.y)>12)cancelEmotionHold();};
+  useEffect(()=>()=>cancelEmotionHold(),[]);
   const familyHoldTimer=useRef(null);
   const familyHoldStart=useRef(null);
   const [familyMenuId,setFamilyMenuId]=useState(null);
@@ -256,6 +266,9 @@ export function App({
     setFamilyRecorded(label+" 기록 완료");
     setFocusDate(date);
   };
+  const recordEmotion=label=>{const date=localDate();update(d=>({...d,emotionLogs:[...(d.emotionLogs||[]),{id:uid(),date,title:label,memo:"",createdAt:new Date().toISOString()}]}));setEmotionRecorded(label+" 기록 완료");setFocusDate(date);};
+  const saveEmotionEdit=()=>{update(d=>({...d,emotionLogs:(d.emotionLogs||[]).map(item=>item.id===emotionEditing?{...item,memo:emotionDraft.trim()}:item)}));setEmotionEditing(null);};
+  const removeEmotionRecord=id=>update(d=>({...d,emotionLogs:(d.emotionLogs||[]).filter(item=>item.id!==id)}));
   const startFamilyEdit=item=>{setFamilyEditing(item.id);setFamilyDraft({date:item.date,memo:item.memo||""});};
   const saveFamilyEdit=()=>{
     const value=familyDraft.date;
@@ -1033,20 +1046,21 @@ export function App({
     const monthFirstDay=new Date(monthStart+"T12:00:00").getDay();
     const startDay=dayAdd(monthStart,-monthFirstDay);
     const days=Array.from({length:42},(_,i)=>dayAdd(startDay,i));
-    const isMatch=t=>calendarMode==="family"?false:calendarMode==="schedule"?isScheduleEntry(t):!isScheduleEntry(t);
-    const selected=calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===focusDate):data.tasks.filter(t=>t.due===focusDate&&isMatch(t));
+    const isMatch=t=>calendarMode==="family"||calendarMode==="emotion"?false:calendarMode==="schedule"?isScheduleEntry(t):!isScheduleEntry(t);
+    const selected=calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===focusDate):calendarMode==="emotion"?(data.emotionLogs||[]).filter(item=>item.date===focusDate):data.tasks.filter(t=>t.due===focusDate&&isMatch(t));
     return <div className="focus-redesign">
-      <div className="section-top"><h1>일정</h1></div>{calendarMode!=="family"&&<button type="button" aria-label={calendarMode==="schedule"?"일정 추가":"할 일 추가"} title={calendarMode==="schedule"?"일정 추가":"할 일 추가"} style={{position:"fixed",right:"20px",bottom:"calc(92px + env(safe-area-inset-bottom, 0px))",width:"56px",height:"56px",borderRadius:"50%",background:"#9570c7",color:"#fff",border:"none",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 5px 18px rgba(70,40,105,.2)",zIndex:35,cursor:"pointer"}} onClick={()=>{setEditing(null);setModal("task");}}><Plus size={27}/></button>}
+      <div className="section-top"><h1>일정</h1></div>{calendarMode!=="family"&&calendarMode!=="emotion"&&<button type="button" aria-label={calendarMode==="schedule"?"일정 추가":"할 일 추가"} title={calendarMode==="schedule"?"일정 추가":"할 일 추가"} style={{position:"fixed",right:"20px",bottom:"calc(92px + env(safe-area-inset-bottom, 0px))",width:"56px",height:"56px",borderRadius:"50%",background:"#9570c7",color:"#fff",border:"none",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 5px 18px rgba(70,40,105,.2)",zIndex:35,cursor:"pointer"}} onClick={()=>{setEditing(null);setModal("task");}}><Plus size={27}/></button>}
       <div className="focus-segments" role="tablist" aria-label="캘린더 종류">
         <button role="tab" aria-selected={calendarMode==="schedule"} className={calendarMode==="schedule"?"selected":""} onClick={()=>setCalendarMode("schedule")}>일정</button>
         <button role="tab" aria-selected={calendarMode==="todo"} className={calendarMode==="todo"?"selected":""} onClick={()=>setCalendarMode("todo")}>할 일</button>
         <button role="tab" aria-selected={calendarMode==="family"} className={calendarMode==="family"?"selected":""} onClick={()=>setCalendarMode("family")}>가족</button>
+        <button role="tab" aria-selected={calendarMode==="emotion"} className={calendarMode==="emotion"?"selected":""} onClick={()=>setCalendarMode("emotion")}>감정</button>
       </div>
       <section className="focus-panel focus-calendar-panel">
         <FocusDateStrip date={focusDate} onChange={setFocusDate} month/>
         <div className="month-grid weekday">{"일월화수목금토".split("").map((x,i)=><div key={i}>{x}</div>)}</div>
         <div className="month-grid focus-month-days">{days.map(date=>{
-          const visible=calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===date):data.tasks.filter(t=>t.due===date&&isMatch(t));
+          const visible=calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===date):calendarMode==="emotion"?(data.emotionLogs||[]).filter(item=>item.date===date):data.tasks.filter(t=>t.due===date&&isMatch(t));
           return <button key={date} type="button"
             className={"focus-month-cell "+(date.slice(0,7)!==focusDate.slice(0,7)?"muted ":"")+(date===focusDate?"active":"")}
             onClick={()=>setFocusDate(date)} aria-pressed={date===focusDate}>
@@ -1057,8 +1071,21 @@ export function App({
         })}</div>
       </section>
       <section className="focus-panel">
-        <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="family"?"가족":calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
-        {calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div key={item.id} onPointerDown={e=>{if(!e.target.closest("button,textarea,input"))beginFamilyHold(e,item.id)}} onPointerMove={moveFamilyHold} onPointerUp={cancelFamilyHold} onPointerCancel={cancelFamilyHold} onContextMenu={e=>{e.preventDefault();cancelFamilyHold();setFamilyMenuId(item.id)}} style={{padding:"11px 12px",borderRadius:12,background:"#f7f3fa",marginBottom:8,WebkitTouchCallout:"none"}}>
+        <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="family"?"가족":calendarMode==="emotion"?"감정":calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
+        {calendarMode==="emotion"?<div className="focus-task-list">{selected.length?selected.map(item=><div key={item.id} onPointerDown={e=>{if(!e.target.closest("button,textarea,input"))beginEmotionHold(e,item.id)}} onPointerMove={moveEmotionHold} onPointerUp={cancelEmotionHold} onPointerCancel={cancelEmotionHold} onContextMenu={e=>{e.preventDefault();cancelEmotionHold();setEmotionMenuId(item.id)}} style={{padding:"11px 12px",borderRadius:12,background:"#f7f3fa",marginBottom:8,WebkitTouchCallout:"none"}}>
+          <div style={{fontWeight:650}}>{item.title}</div>
+          {emotionEditing!==item.id&&item.memo&&<div style={{fontSize:13,color:"#856e98",whiteSpace:"pre-wrap",overflowWrap:"anywhere",marginTop:4,lineHeight:1.45}}>{item.memo}</div>}
+          {emotionMenuId===item.id&&<div role="group" aria-label="감정 기록 메뉴" style={{display:"flex",gap:8,marginTop:10}}>
+            <button type="button" className="secondary" onClick={()=>{setEmotionEditing(item.id);setEmotionDraft(item.memo||"");setEmotionMenuId(null)}}>수정</button>
+            <button type="button" className="secondary" onClick={()=>{setEmotionMenuId(null);if(window.confirm("이 감정 기록을 삭제할까?"))removeEmotionRecord(item.id)}}>삭제</button>
+            <button type="button" className="secondary" onClick={()=>setEmotionMenuId(null)}>닫기</button>
+          </div>}
+          {emotionEditing===item.id&&<div style={{display:"grid",gap:8,marginTop:12}}>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{["행복","감사","성취","슬픔","화남"].map(label=><button key={label} type="button" className="secondary" style={{background:item.title===label?"#eee5f8":undefined}} onClick={()=>update(d=>({...d,emotionLogs:(d.emotionLogs||[]).map(x=>x.id===item.id?{...x,title:label}:x)}))}>{label}</button>)}</div>
+            <textarea aria-label="감정 메모" placeholder="오늘의 마음 (선택)" rows={2} value={emotionDraft} onChange={e=>setEmotionDraft(e.target.value)} style={{fontSize:16,padding:9,border:"1px solid #dfd0eb",borderRadius:8,width:"100%",boxSizing:"border-box",resize:"vertical",fontFamily:"inherit"}}/>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8}}><button type="button" className="secondary" onClick={()=>setEmotionEditing(null)}>취소</button><button type="button" className="primary" onClick={saveEmotionEdit}>저장</button></div>
+          </div>}
+        </div>):<div className="focus-empty">이날의 감정 기록이 없어.</div>}</div>:calendarMode==="family"?<div className="focus-task-list">{selected.length?selected.map(item=><div key={item.id} onPointerDown={e=>{if(!e.target.closest("button,textarea,input"))beginFamilyHold(e,item.id)}} onPointerMove={moveFamilyHold} onPointerUp={cancelFamilyHold} onPointerCancel={cancelFamilyHold} onContextMenu={e=>{e.preventDefault();cancelFamilyHold();setFamilyMenuId(item.id)}} style={{padding:"11px 12px",borderRadius:12,background:"#f7f3fa",marginBottom:8,WebkitTouchCallout:"none"}}>
           <div style={{fontWeight:650}}>🐾 {item.title}</div>
           {familyEditing!==item.id&&item.memo&&<div style={{fontSize:13,color:"#856e98",whiteSpace:"pre-wrap",overflowWrap:"anywhere",marginTop:4,lineHeight:1.45}}>{item.memo}</div>}
           {familyMenuId===item.id&&<div role="group" aria-label={item.title+" 기록 메뉴"} style={{display:"flex",gap:8,marginTop:10}}>
@@ -1844,7 +1871,7 @@ export function App({
         </div>
       </header>
       <main className={tab === "playlist" ? "focus-playlist-main" : undefined}>
-        {tab === "familyhome" ? <section className="focus-redesign"><div className="section-top"><h1>고미쩌미</h1></div><div className="focus-panel" style={{display:"grid",gap:12}}><div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:5}}>{["넥스가드","미용","산책","공놀이","여행"].map(label=><button key={label} type="button" onClick={()=>recordFamily(label)} style={{minWidth:0,padding:"12px 2px",border:"1px solid #dfd0eb",borderRadius:10,background:"#f2eafa",color:"#6e4b94",fontSize:12,fontWeight:700,whiteSpace:"nowrap",cursor:"pointer"}}>{label}</button>)}</div>{familyRecorded&&<p role="status" style={{color:"#78539e",margin:0}}>{familyRecorded} · 오늘 날짜에 저장했어</p>}<button type="button" className="secondary" onClick={()=>{setCalendarMode("family");setFocusDate(localDate());setTab("calendar")}}>가족 기록 보기</button></div></section>
+        {tab === "familyhome" ? <section className="focus-redesign"><div className="section-top"><h1>고미쩌미</h1></div><div className="focus-panel" style={{display:"grid",gap:12}}><div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:5}}>{["넥스가드","미용","산책","공놀이","여행"].map(label=><button key={label} type="button" onClick={()=>recordFamily(label)} style={{minWidth:0,padding:"12px 2px",border:"1px solid #dfd0eb",borderRadius:10,background:"#f2eafa",color:"#6e4b94",fontSize:12,fontWeight:700,whiteSpace:"nowrap",cursor:"pointer"}}>{label}</button>)}</div><div style={{display:"grid",gap:8}}><strong style={{color:"#43364e"}}>감정</strong><div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:5}}>{["행복","감사","성취","슬픔","화남"].map(label=><button key={label} type="button" onClick={()=>recordEmotion(label)} style={{minWidth:0,padding:"12px 2px",border:"1px solid #b9e1d4",borderRadius:10,background:"#dff4eb",color:"#286957",fontSize:12,fontWeight:700,whiteSpace:"nowrap",cursor:"pointer"}}>{label}</button>)}</div>{emotionRecorded&&<p role="status" style={{color:"#487b6d",margin:0}}>{emotionRecorded} · 오늘 날짜에 저장했어</p>}<button type="button" className="secondary" onClick={()=>{setCalendarMode("emotion");setFocusDate(localDate());setTab("calendar")}}>감정 기록 보기</button></div>{familyRecorded&&<p role="status" style={{color:"#78539e",margin:0}}>{familyRecorded} · 오늘 날짜에 저장했어</p>}<button type="button" className="secondary" onClick={()=>{setCalendarMode("family");setFocusDate(localDate());setTab("calendar")}}>가족 기록 보기</button></div></section>
           :tab === "playlist" ? null
           :tab === "opportunity" ? <InboxPanel key="opportunity" kind="opportunity" storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><><div className="section-top"><h1>오늘의 할 일</h1></div><FocusTaskRows items={data.tasks.filter(t=>!isScheduleEntry(t)&&t.due===today)} mode="todo"/></>}/>
           :tab === "todo" ? TodoPanel()
