@@ -176,7 +176,7 @@ export function useSyncedState(client, userId, initial) {
     const legacyKey = "focus-flow-pending:"+userId;
     const persist = () => {
       const snapshot = {local:ctx.local,base:ctx.base,dirty:ctx.dirty,lastBackup:ctx.lastBackup,backupDay:ctx.backupDay};
-      ctx.write = ctx.write.then(()=>diskWrite(key,snapshot)).catch(e=>{
+      ctx.write = ctx.write.catch(()=>{}).then(()=>diskWrite(key,snapshot)).catch(e=>{
         if(ctx.active)setError("기기 저장 실패: "+e.message);
         throw e;
       });
@@ -258,10 +258,11 @@ export function useSyncedState(client, userId, initial) {
       finally{if(ctx.active)setLoading(false);}
     })();
     const onResume=()=>{if(document.visibilityState==="visible"&&ctx.dirty&&ctx.backupDay!==dayStamp())void ctx.backup();};
+    const dailyCheck=setInterval(onResume,60000);
     window.addEventListener("focus",onResume);
     window.addEventListener("online",onResume);
     document.addEventListener("visibilitychange",onResume);
-    return ()=>{ctx.active=false;window.removeEventListener("focus",onResume);window.removeEventListener("online",onResume);document.removeEventListener("visibilitychange",onResume);};
+    return ()=>{ctx.active=false;clearInterval(dailyCheck);window.removeEventListener("focus",onResume);window.removeEventListener("online",onResume);document.removeEventListener("visibilitychange",onResume);};
   },[client,userId,initial]);
   const change=useCallback(fn=>context.current?.change?.(fn),[]);
   const backupNow=useCallback(()=>context.current?.backup?.(true),[]);
