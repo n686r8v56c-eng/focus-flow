@@ -4,7 +4,7 @@ const dateKey=(d)=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),Strin
 const shift=(date,days)=>{const [y,m,d]=date.split("-").map(Number);return dateKey(new Date(y,m-1,d+days));};
 const minutes=(value)=>{const [h,m]=String(value||"").split(":").map(Number);return Number.isFinite(h)&&Number.isFinite(m)?h*60+m:null;};
 const fmt=(m)=>String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
-const TIMELINE_COLORS=["#eee6f7","#e6edf8","#e5f2ed","#fff0df","#f9e5ec","#e9e7f8","#f2eddf","#e6f0f4"];
+const TIMELINE_COLORS=["#eee6f7","#e6edf8","#e5f2ed","#fff0df","#f9e5ec"];
 const normalizeColor=value=>String(value||TIMELINE_COLORS[0]).trim().toLowerCase();
 export function Timeline({data,onDataChange,onAdd}) {
  const [now,setNow]=useState(Date.now());
@@ -104,7 +104,7 @@ export function Timeline({data,onDataChange,onAdd}) {
    <form onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);change(editing.id,{title:String(fd.get("title")||"").trim()||editing.title,time:fd.get("time")||"",durationMinutes:Number(fd.get("duration"))||30,color:editColor});setEditing(null);}} style={{width:"100%",maxWidth:380,background:"white",padding:22,borderRadius:18,display:"grid",gap:12}}>
     <strong>일정 수정</strong><label>할 일 이름 <input name="title" required defaultValue={editing.title}/></label><label>시작 시간 <input name="time" type="time" defaultValue={editing.time||""}/></label>
     <label>소요 시간(분) <input name="duration" type="number" min="5" step="5" defaultValue={editing.durationMinutes||editing.minutes||30}/></label>
-    <div><div style={{fontSize:14,marginBottom:8}}>컬러</div><div role="group" aria-label="일정 컬러 선택" style={{display:"flex",gap:9,flexWrap:"wrap"}}>{[...new Set([...TIMELINE_COLORS,normalizeColor(editing.color)])].map((c,i)=><button key={c} type="button" aria-label={`컬러 ${i+1}`} aria-pressed={editColor===c} onClick={()=>setEditColor(c)} style={{width:34,height:34,borderRadius:"50%",backgroundColor:c,border:editColor===c?"3px solid #68449d":"1px solid #a9a0b1",boxShadow:editColor===c?"0 0 0 2px #fff inset":"none",cursor:"pointer",flexShrink:0}}/>)}</div></div>\n    <div style={{display:"flex",gap:8}}><button type="button" className="secondary" onClick={()=>setEditing(null)}>취소</button><button type="submit" className="primary">저장</button></div>
+    <div><div style={{fontSize:14,marginBottom:8}}>컬러</div><div role="group" aria-label="일정 컬러 선택" style={{display:"flex",gap:9,flexWrap:"wrap"}}>{TIMELINE_COLORS.map((c,i)=><button key={c} type="button" aria-label={`컬러 ${i+1}`} aria-pressed={editColor===c} onClick={()=>setEditColor(c)} style={{width:34,height:34,borderRadius:"50%",backgroundColor:c,border:editColor===c?"3px solid #68449d":"1px solid #a9a0b1",boxShadow:editColor===c?"0 0 0 2px #fff inset":"none",cursor:"pointer",flexShrink:0}}/>)}</div></div>\n    <div style={{display:"flex",gap:8}}><button type="button" className="secondary" onClick={()=>setEditing(null)}>취소</button><button type="submit" className="primary">저장</button></div>
    </form>
   </div>}
  </section>;
