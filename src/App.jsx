@@ -81,10 +81,13 @@ export function App({
   onLogout,
   bridgeClient,
   bridgeUserId,
+  backupNow,
+  backupInfo,
 }) {
   const data = initialData,
     setData = onDataChange;
   const [registryOpen, setRegistryOpen] = useState(false);
+  const [backupMenuOpen,setBackupMenuOpen]=useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [registryApps, setRegistryApps] = useState([]);
   const [registryError, setRegistryError] = useState("");
@@ -1812,7 +1815,14 @@ export function App({
           <button type="button" className="api-top-button focus-header-icon-button" title="플레이리스트" aria-label="플레이리스트" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><Music2 size={20}/></button>
           <button type="button" className="api-top-button focus-header-icon-button" title="홈" aria-label="홈" style={{border:"1px solid #e3d9ee",background:tab === "familyhome" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("familyhome")} aria-current={tab === "familyhome" ? "page" : undefined}><House size={20}/></button>
           <button type="button" className="api-top-button" style={{border:"1px solid #e3d9ee",background:tab === "api" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9,padding:"7px 11px",fontSize:14,fontWeight:650,minHeight:36}} onClick={()=>setTab("api")} aria-current={tab === "api" ? "page" : undefined}>API</button>
-          <span className="focus-autosave">자동 저장</span>
+          <div className="focus-backup-menu">
+            <button type="button" className="focus-backup-trigger" onClick={()=>setBackupMenuOpen(v=>!v)} aria-expanded={backupMenuOpen} aria-label="백업 상태와 수동 백업">자동 저장</button>
+            {backupMenuOpen&&<div className="focus-backup-popover" role="group" aria-label="백업 관리">
+              <strong>{backupInfo?.status==="saved"?"백업 완료":backupInfo?.status==="failed"?"백업 실패":backupInfo?.status==="backing-up"?"백업 중":"백업 대기"}</strong>
+              <small>{backupInfo?.lastBackup?"마지막 백업: "+new Date(backupInfo.lastBackup).toLocaleString("ko-KR"):"아직 백업 기록 없음"}</small>
+              <button type="button" disabled={backupInfo?.status==="backing-up"} onClick={()=>{backupNow?.();setBackupMenuOpen(false)}}>지금 백업</button>
+            </div>}
+          </div>
           <button type="button" className="header-timer" aria-label="로그아웃" title="로그아웃" onClick={onLogout}><LogOut size={18}/></button>
         </div>
       </header>
