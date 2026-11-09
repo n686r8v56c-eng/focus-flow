@@ -1,4 +1,4 @@
-import React,{useMemo,useState,useEffect} from "react";
+import React,{useMemo,useState,useEffect,useRef} from "react";
 import {Plus} from "lucide-react";
 const dateKey=(d)=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
 const shift=(date,days)=>{const [y,m,d]=date.split("-").map(Number);return dateKey(new Date(y,m-1,d+days));};
@@ -6,6 +6,8 @@ const minutes=(value)=>{const [h,m]=String(value||"").split(":").map(Number);ret
 const fmt=(m)=>String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
 export function Timeline({data,onDataChange,onAdd}) {
  const [now,setNow]=useState(Date.now());
+ const scrollRef=useRef(null);
+ const hasPositioned=useRef(false);
  const date=dateKey(new Date(now));
  const [editing,setEditing]=useState(null);
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(id);},[]);
@@ -19,6 +21,21 @@ export function Timeline({data,onDataChange,onAdd}) {
  const gutter=62;
  const dayHeight=(endHour-startHour)*hourHeight;
  const timeToY=m=>(m-dayStart)/60*hourHeight;
+ useEffect(()=>{
+   if(hasPositioned.current)return;
+   const el=scrollRef.current;
+   if(!el)return;
+   hasPositioned.current=true;
+   const currentTime=new Date();
+   const minute=currentTime.getHours()*60+currentTime.getMinutes();
+   const heading=el.querySelector(".timeline-sticky-heading");
+   const headingHeight=heading?.getBoundingClientRect().height||80;
+   const timeline=el.querySelector(".timeline-hour-grid");
+   const timelineOffset=timeline?.offsetTop||0;
+   const currentY=(minute-dayStart)/60*hourHeight;
+   const target=timelineOffset+currentY-headingHeight-Math.max(40,(el.clientHeight-headingHeight)*0.3);
+   el.scrollTop=Math.max(0,Math.min(el.scrollHeight-el.clientHeight,target));
+ },[]);
  const lineVisible=currentMinutes>=dayStart&&currentMinutes<=dayEnd;
  const visibleTasks=timed.filter(t=>{
    const start=minutes(t.time);
@@ -30,9 +47,9 @@ export function Timeline({data,onDataChange,onAdd}) {
    const nextStart=minutes(task.time);
    return {key:`${previous.id}-${task.id}`,start:previousEnd,end:nextStart,duration:nextStart-previousEnd};
  }).filter(g=>g.duration>0&&g.start>=dayStart&&g.end<=dayEnd);
- return <section className="focus-redesign" style={{height:"calc(100dvh - 66px - 27px - 90px)",minHeight:320,overflowY:"auto",overflowX:"clip",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",paddingBottom:30}}>
+ return <section ref={scrollRef} className="focus-redesign" style={{height:"calc(100dvh - 66px - 27px - 90px)",minHeight:320,overflowY:"auto",overflowX:"clip",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",paddingBottom:30}}>
   <div className="macro-board-heading timeline-sticky-heading" style={{position:"sticky",top:0,zIndex:20,flexShrink:0,margin:"0 0 18px",padding:"12px 0",background:"#faf8fd",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div><span>DAILY PLAN</span><h2>Timeline</h2></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
-  <div style={{position:"relative",height:dayHeight,marginTop:30}}>
+  <div className="timeline-hour-grid" style={{position:"relative",height:dayHeight,marginTop:30}}>
    {Array.from({length:endHour-startHour+1},(_,i)=>{
      const h=startHour+i;
      const top=i*hourHeight;
