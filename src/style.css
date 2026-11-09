@@ -1932,3 +1932,13 @@ body,
 }
 .bottom-nav>button svg{flex-shrink:0}
 \n/* Compact add actions aligned to their section headings */\n.inline-add-task{width:32px;height:32px;min-width:32px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e4d8f2;border-radius:50%;background:#f2ebfa;color:#805eb1;padding:0;box-shadow:none;cursor:pointer}\n.inline-add-task:active{background:#e5d7f4;transform:scale(.96)}\n.focus-day-title{align-items:center;margin-bottom:12px}\n.focus-day-title h2{margin:0}\n.macro-board-heading .inline-add-task{align-self:center}\n
+/* iPhone-friendly compact new-task dialog: avoid native date input overflow */
+.compact-task-sheet{box-sizing:border-box;width:100%;max-width:520px;padding:18px 16px calc(18px + env(safe-area-inset-bottom));overflow-x:hidden}
+.compact-task-sheet .sheet-top{margin-bottom:13px}
+.compact-task-sheet label{gap:5px;margin-bottom:11px;min-width:0;max-width:100%;width:100%;box-sizing:border-box}
+.compact-task-sheet input:not([type="checkbox"]),.compact-task-sheet select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-width:0;height:44px;padding:9px 11px;font-size:16px}
+.compact-task-sheet input[type="date"]{min-width:0;width:100%;max-width:100%;-webkit-appearance:none;appearance:none;text-align:center}
+.compact-task-sheet input[type="date"]::-webkit-date-and-time-value{text-align:center;min-width:0}
+.compact-task-sheet input[type="date"]::-webkit-datetime-edit{min-width:0;max-width:100%;padding:0}
+.compact-task-sheet .save{margin-top:3px;padding:12px;min-height:46px}
+@media(max-width:480px){.compact-task-sheet{max-width:100vw;padding-left:14px;padding-right:14px}}
