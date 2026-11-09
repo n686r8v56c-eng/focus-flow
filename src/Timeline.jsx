@@ -6,6 +6,18 @@ const minutes=(value)=>{const [h,m]=String(value||"").split(":").map(Number);ret
 const fmt=(m)=>String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
 const TIMELINE_COLORS=["#eee6f7","#e6edf8","#e5f2ed","#fff0df","#f9e5ec"];
 const normalizeColor=value=>String(value||TIMELINE_COLORS[0]).trim().toLowerCase();
+const SUMMARY_DOT_COLORS={
+ "#eee6f7":"#9067c5",
+ "#e6edf8":"#688ed0",
+ "#e5f2ed":"#4aaf91",
+ "#fff0df":"#d79c43",
+ "#f9e5ec":"#ce7297",
+ "#e9e7f8":"#8675c5",
+ "#f2eddf":"#ad965f",
+ "#e6f0f4":"#5a9bb6"
+};
+const summaryDotColor=color=>SUMMARY_DOT_COLORS[normalizeColor(color)]||normalizeColor(color);
+
 export function Timeline({data,onDataChange,onAdd}) {
  const [now,setNow]=useState(Date.now());
  const scrollRef=useRef(null);
@@ -55,7 +67,7 @@ export function Timeline({data,onDataChange,onAdd}) {
      const duration=Math.max(5,Number(task.durationMinutes||task.minutes||30)||30);
      totals.set(color,(totals.get(color)||0)+duration);
    }
-   return [...totals.entries()].map(([key,total])=>({key,dot:key,hours:(total/60).toFixed(1)}));
+   return [...totals.entries()].map(([key,total])=>({key,dot:summaryDotColor(key),hours:(total/60).toFixed(1)}));
  },[timed]);
  const gaps=visibleTasks.slice(1).map((task,i)=>{
    const previous=visibleTasks[i];
