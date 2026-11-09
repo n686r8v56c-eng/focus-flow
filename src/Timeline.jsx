@@ -43,6 +43,31 @@ export function Timeline({data,onDataChange,onAdd}) {
    const start=minutes(t.time);
    return start<dayEnd && start+Math.max(5,Number(t.durationMinutes||t.minutes||30)||30)>dayStart;
  });
+ // Count elapsed scheduled time by card color, not future planned minutes.
+ const colorHours=useMemo(()=>{
+   const grouped=new Map();
+   for(const task of timed){
+     const start=minutes(task.time);
+     if(start===null)continue;
+     const duration=Math.max(5,Number(task.durationMinutes||task.minutes||30)||30);
+     const end=Math.min(start+duration,currentMinutes,dayEnd);
+     const from=Math.max(start,dayStart);
+     if(end<=from)continue;
+     const color=task.color||"#eee6f7";
+     if(!grouped.has(color))grouped.set(color,[]);
+     grouped.get(color).push([from,end]);
+   }
+   return [...grouped.entries()].map(([color,ranges])=>{
+     ranges.sort((a,b)=>a[0]-b[0]);
+     let total=0,left=-1,right=-1;
+     for(const [a,b] of ranges){
+       if(a>right){if(right>left)total+=right-left;left=a;right=b;}
+       else right=Math.max(right,b);
+     }
+     if(right>left)total+=right-left;
+     return {color,hours:(total/60).toFixed(1)};
+   });
+ },[timed,currentMinutes,dayEnd,dayStart]);
  const gaps=visibleTasks.slice(1).map((task,i)=>{
    const previous=visibleTasks[i];
    const previousEnd=minutes(previous.time)+Math.max(5,Number(previous.durationMinutes||previous.minutes||30)||30);
@@ -50,7 +75,7 @@ export function Timeline({data,onDataChange,onAdd}) {
    return {key:`${previous.id}-${task.id}`,start:previousEnd,end:nextStart,duration:nextStart-previousEnd};
  }).filter(g=>g.duration>0&&g.start>=dayStart&&g.end<=dayEnd);
  return <section ref={scrollRef} className="focus-redesign" style={{height:"calc(100dvh - 66px - 27px - 90px)",minHeight:320,overflowY:"auto",overflowX:"clip",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",paddingBottom:30}}>
-  <div className="macro-board-heading timeline-sticky-heading" style={{position:"sticky",top:0,zIndex:20,flexShrink:0,margin:"0 0 18px",padding:"12px 0",background:"#faf8fd",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div><span>DAILY PLAN</span><h2>Timeline</h2></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
+  <div className="macro-board-heading timeline-sticky-heading" style={{position:"sticky",top:0,zIndex:20,flexShrink:0,margin:"0 0 18px",padding:"12px 0",background:"#faf8fd",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div style={{minWidth:0}}><span>DAILY PLAN</span><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><h2 style={{margin:0}}>Timeline</h2><div aria-label="색상별 오늘 현재까지 진행한 시간" style={{display:"flex",gap:"5px 10px",alignItems:"center",flexWrap:"wrap"}}>{colorHours.map(({color,hours})=><span key={color} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#71677b",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}><i aria-hidden="true" style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:color,border:"1px solid #c9bfd2",flexShrink:0}}/>{hours}시간</span>)}</div></div></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
   <div className="timeline-hour-grid" style={{position:"relative",height:dayHeight,marginTop:30}}>
    {Array.from({length:endHour-startHour+1},(_,i)=>{
      const h=startHour+i;
