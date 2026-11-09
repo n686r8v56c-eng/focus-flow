@@ -204,7 +204,7 @@ export function App({
   const project = (id) => data.projects.find((p) => p.id === id);
   const taskProject = (t) => project(t.projectId) || (t.taskScope === "project" ? {name:"프로젝트", color:"#a897dd"} : null);
   const addTimelineTask = (t) => {
-    const newTask={id:uid(),title:t.title.trim(),due:t.due||localDate(),time:t.time||"",durationMinutes:Number(t.durationMinutes)||30,status:"todo",completedAt:null,createdAt:new Date().toISOString()};
+    const newTask={id:uid(),title:t.title.trim(),color:t.color||TIMELINE_COLORS[0],due:t.due||localDate(),time:t.time||"",durationMinutes:Number(t.durationMinutes)||30,status:"todo",completedAt:null,createdAt:new Date().toISOString()};
     update(d=>({...d,timelineTasks:[...(Array.isArray(d.timelineTasks)?d.timelineTasks:(d.tasks||[]).filter(item=>Boolean(item.time)).map(item=>({...item}))),newTask]}));
     setModal(null);
     setEditing(null);
@@ -1869,6 +1869,7 @@ export function App({
       </nav>
       {(modal === "task" || modal === "timelineTask") && (
         <TaskModal
+          timelineMode={modal === "timelineTask"}
           projects={data.projects}
           registryApps={registryApps}
           preProject=""
@@ -2013,7 +2014,8 @@ function PomEstimatePicker({ value, onChange }) {
     </fieldset>
   );
 }
-function TaskModal({ onClose, onSave }) {
+const TIMELINE_COLORS = ["#eee6f7","#e6edf8","#e5f2ed","#fff0df","#f9e5ec","#e9e7f8","#f2eddf","#e6f0f4"];
+function TaskModal({ onClose, onSave, timelineMode=false }) {
   const [title,setTitle]=useState("");
   const [due,setDue]=useState(()=>localDate());
   const [time,setTime]=useState(()=>{
@@ -2023,13 +2025,14 @@ function TaskModal({ onClose, onSave }) {
     return `${pad(next.getHours())}:00`;
   });
   const [duration,setDuration]=useState("30");
+  const [color,setColor]=useState(TIMELINE_COLORS[0]);
   return (
     <div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
       <form className="sheet compact-task-sheet" onSubmit={e=>{
         e.preventDefault();
         if(title.trim())onSave({
           title,projectId:"",taskScope:"personal",entryType:"todo",
-          appRegistryId:"",due,time, durationMinutes:Number(duration)||30,
+          appRegistryId:"",due,time,color, durationMinutes:Number(duration)||30,
           estimatedPomodoros:0,tally:null,tallies:[]
         });
       }}>
@@ -2063,6 +2066,12 @@ function TaskModal({ onClose, onSave }) {
             <option value="180">3시간</option>
           </select>
         </label>
+        {timelineMode&&<div className="timeline-color-picker" role="group" aria-label="타임라인 카드 색상">
+          <span>컬러</span>
+          <div className="timeline-color-options">
+            {TIMELINE_COLORS.map(c=><button key={c} type="button" aria-label={`색상 ${TIMELINE_COLORS.indexOf(c)+1}`} aria-pressed={color===c} onClick={()=>setColor(c)} style={{background:c}} className={color===c?"selected":""}>{color===c?<span aria-hidden="true">✓</span>:null}</button>)}
+          </div>
+        </div>}
         <button className="primary save" type="submit">추가하기</button>
       </form>
     </div>
