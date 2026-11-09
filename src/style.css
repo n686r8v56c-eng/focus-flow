@@ -1942,3 +1942,14 @@ body,
 .compact-task-sheet input[type="date"]::-webkit-datetime-edit{min-width:0;max-width:100%;padding:0}
 .compact-task-sheet .save{margin-top:3px;padding:12px;min-height:46px}
 @media(max-width:480px){.compact-task-sheet{max-width:100vw;padding-left:14px;padding-right:14px}}
+
+/* Single-row navigation and unobtrusive backup menu */
+.bottom-nav{grid-template-columns:repeat(6,minmax(0,1fr))!important;grid-auto-flow:row;gap:0;padding-left:3px;padding-right:3px}
+.bottom-nav>button{width:100%;min-width:0;padding:5px 1px;gap:4px;font-size:clamp(9px,2.5vw,12px)!important;white-space:nowrap}
+.bottom-nav>button svg{width:20px;height:20px}
+.focus-backup-menu{position:relative;display:flex;align-items:center;flex-shrink:0}
+.focus-backup-trigger{background:transparent;border:0;color:#9386a5;font-size:12px;padding:5px 2px;white-space:nowrap}
+.focus-backup-popover{position:absolute;right:-38px;top:calc(100% + 13px);z-index:90;width:205px;box-sizing:border-box;padding:13px;display:flex;flex-direction:column;gap:9px;background:#fff;border:1px solid #e7dcf0;border-radius:14px;box-shadow:0 8px 24px #392d4b25;color:#6d568f}
+.focus-backup-popover small{font-size:11px;color:#92869e;line-height:1.4}
+.focus-backup-popover button{border:1px solid #dfd2ed;background:#f4eefb;color:#7452a5;border-radius:9px;padding:9px;font-size:13px}
+@media(max-width:380px){.bottom-nav>button{font-size:9px!important}.bottom-nav>button svg{width:19px;height:19px}}
