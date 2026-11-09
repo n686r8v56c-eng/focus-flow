@@ -30,6 +30,8 @@ function AuthGate() {
     loading: dataLoading,
     error: syncError,
     canLogout,
+    backupNow,
+    backupInfo,
   } = useSyncedState(supabase, session?.user?.id, initial);
   useEffect(() => {
     let live = true;
@@ -161,6 +163,7 @@ function AuthGate() {
             );
         }}
       />
+      <div className="backup-status" style={{position:"fixed",right:8,bottom:76,zIndex:20,display:"flex",gap:6,alignItems:"center",background:"#fff",border:"1px solid #e4d9ef",borderRadius:14,padding:"5px 8px",fontSize:11,color:"#725299",boxShadow:"0 2px 8px #0001"}}><span>{backupInfo.status==="saved"?"백업 완료":backupInfo.status==="failed"?"백업 실패":backupInfo.status==="backing-up"?"백업 중":"백업 대기"}</span><button type="button" onClick={backupNow} disabled={backupInfo.status==="backing-up"} style={{fontSize:11,padding:"3px 6px",borderRadius:8}}>지금 백업</button></div>
       {(error || syncError) && (
         <div className="sync-warning" role="alert">
           {error || syncError}
