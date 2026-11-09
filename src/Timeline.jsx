@@ -5,8 +5,8 @@ const shift=(date,days)=>{const [y,m,d]=date.split("-").map(Number);return dateK
 const minutes=(value)=>{const [h,m]=String(value||"").split(":").map(Number);return Number.isFinite(h)&&Number.isFinite(m)?h*60+m:null;};
 const fmt=(m)=>String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
 export function Timeline({data,onDataChange,onAdd}) {
- const date=dateKey(new Date(now));
  const [now,setNow]=useState(Date.now());
+ const date=dateKey(new Date(now));
  const [editing,setEditing]=useState(null);
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(id);},[]);
  const tasks=useMemo(()=>(data.tasks||[]).filter(t=>t.due===date || (date===dateKey(new Date())&&t.due&&t.due<date&&t.status!=="done")), [data.tasks,date]);
