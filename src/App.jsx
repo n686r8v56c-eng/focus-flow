@@ -214,6 +214,7 @@ export function App({
           appRegistryId: t.appRegistryId || "",
           due: t.due || "",
           time: t.time || "",
+          durationMinutes: Number(t.durationMinutes)||30,
           entryType: t.entryType === "schedule" ? "schedule" : "todo",
           status: t.status || "todo",
           subtasks: [],
@@ -1996,76 +1997,47 @@ function PomEstimatePicker({ value, onChange }) {
     </fieldset>
   );
 }
-function TaskModal({ projects, registryApps = [], preProject, onClose, onSave, initialDate, initialType = "todo" }) {
-  const [title, setTitle] = useState(""),
-    [taskScope, setTaskScope] = useState("personal"),
-    [entryType, setEntryType] = useState(initialType),
-    [due, setDue] = useState(() => initialDate || localDate()),
-    [hasSchedule, setHasSchedule] = useState(true),
-    [time, setTime] = useState(""),
-    [estimatedPomodoros] = useState(0);
+function TaskModal({ onClose, onSave }) {
+  const [title,setTitle]=useState("");
+  const [due,setDue]=useState(()=>localDate());
+  const [time,setTime]=useState(()=>{
+    const now=new Date();
+    const next=new Date(now);
+    next.setHours(now.getHours()+1,0,0,0);
+    return `${pad(next.getHours())}:00`;
+  });
+  const [duration,setDuration]=useState("30");
   return (
-    <div
-      className="overlay"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <form
-        className="sheet"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (title.trim())
-            onSave({ title, projectId:"", taskScope, entryType, appRegistryId:"", due:hasSchedule?due:"", time:hasSchedule?time:"", estimatedPomodoros, tally:null,tallies:[] });
-        }}
-      >
-        <div className="sheet-top">
-          <h2>{entryType==="schedule"?"새 일정":"새 할 일"}</h2>
-          <button type="button" onClick={onClose}>
-            <X size={20} />
-          </button>
-        </div>
-        <label>
-          할 일 이름
-          <input
-            autoFocus
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="무엇을 할까?"
-          />
+    <div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
+      <form className="sheet" onSubmit={e=>{
+        e.preventDefault();
+        if(title.trim())onSave({
+          title,projectId:"",taskScope:"personal",entryType:"todo",
+          appRegistryId:"",due,time, durationMinutes:Number(duration)||30,
+          estimatedPomodoros:0,tally:null,tallies:[]
+        });
+      }}>
+        <div className="sheet-top"><h2>새 할 일</h2><button type="button" onClick={onClose} aria-label="닫기"><X size={20}/></button></div>
+        <label>할 일 이름
+          <input autoFocus required value={title} onChange={e=>setTitle(e.target.value)} placeholder="무엇을 할까?"/>
         </label>
-        <label>
-          구분
-          <select value={entryType} onChange={e=>setEntryType(e.target.value)}><option value="schedule">일정</option><option value="todo">할 일</option></select>
+        <label>날짜
+          <input type="date" value={due} required onChange={e=>setDue(e.target.value)}/>
         </label>
-        <label>
-          프로젝트
-          <select value={taskScope} onChange={(e)=>setTaskScope(e.target.value)}>
-            <option value="personal">개인 일정</option>
-            <option value="project">프로젝트</option>
+        <label>시간
+          <input type="time" value={time} required onChange={e=>setTime(e.target.value)}/>
+        </label>
+        <label>소요 시간
+          <select value={duration} onChange={e=>setDuration(e.target.value)}>
+            <option value="15">15분</option>
+            <option value="30">30분</option>
+            <option value="60">60분</option>
+            <option value="90">90분</option>
+            <option value="120">2시간</option>
+            <option value="180">3시간</option>
           </select>
         </label>
-        <label>
-          일정
-          <select value={hasSchedule ? "yes" : "no"} onChange={e => {
-            const enabled = e.target.value === "yes";
-            setHasSchedule(enabled);
-            setDue(enabled ? (due || localDate()) : "");
-            if (!enabled) setTime("");
-          }}>
-            <option value="no">일정 없음</option>
-            <option value="yes">일정 있음</option>
-          </select>
-        </label>
-        {hasSchedule && <div className="field-row">
-          <label>날짜<input type="date" value={due} required onChange={e => setDue(e.target.value)} /></label>
-          <label>
-            <span className="time-label-row">시간 (선택) <button type="button" aria-label="시간 초기화" title="시간 초기화" onClick={()=>setTime("")}>↺</button></span>
-            <input type="time" value={time} onChange={e => setTime(e.target.value)} />
-          </label>
-        </div>}
-        <button className="primary save" type="submit">
-          추가하기
-        </button>
+        <button className="primary save" type="submit">추가하기</button>
       </form>
     </div>
   );
