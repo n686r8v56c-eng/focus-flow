@@ -30,8 +30,8 @@ export function Timeline({data,onDataChange,onAdd}) {
    const nextStart=minutes(task.time);
    return {key:`${previous.id}-${task.id}`,start:previousEnd,end:nextStart,duration:nextStart-previousEnd};
  }).filter(g=>g.duration>0&&g.start>=dayStart&&g.end<=dayEnd);
- return <section className="focus-redesign" style={{paddingBottom:30}}>
-  <div className="macro-board-heading timeline-sticky-heading" style={{position:"sticky",top:0,zIndex:20,margin:"0 0 18px",padding:"12px 0",background:"#faf8fd",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div><span>DAILY PLAN</span><h2>Timeline</h2></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
+ return <section className="focus-redesign" style={{height:"calc(100dvh - 66px - 27px - 90px)",minHeight:320,overflowY:"auto",overflowX:"clip",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",paddingBottom:30}}>
+  <div className="macro-board-heading timeline-sticky-heading" style={{position:"sticky",top:0,zIndex:20,flexShrink:0,margin:"0 0 18px",padding:"12px 0",background:"#faf8fd",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div><span>DAILY PLAN</span><h2>Timeline</h2></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
   <div style={{position:"relative",height:dayHeight,marginTop:30}}>
    {Array.from({length:endHour-startHour+1},(_,i)=>{
      const h=startHour+i;
