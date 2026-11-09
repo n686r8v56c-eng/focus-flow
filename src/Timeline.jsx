@@ -4,6 +4,22 @@ const dateKey=(d)=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),Strin
 const shift=(date,days)=>{const [y,m,d]=date.split("-").map(Number);return dateKey(new Date(y,m-1,d+days));};
 const minutes=(value)=>{const [h,m]=String(value||"").split(":").map(Number);return Number.isFinite(h)&&Number.isFinite(m)?h*60+m:null;};
 const fmt=(m)=>String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+const colorGroup=(value)=>{
+ const hex=String(value||"#eee6f7").trim().toLowerCase();
+ const rgb=/^#([0-9a-f]{6})$/.exec(hex);
+ if(!rgb)return {key:hex,dot:hex};
+ const n=parseInt(rgb[1],16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+ const max=Math.max(r,g,b),min=Math.min(r,g,b),delta=max-min;
+ let hue=0;
+ if(delta){if(max===r)hue=((g-b)/delta+6)%6*60;else if(max===g)hue=((b-r)/delta+2)*60;else hue=((r-g)/delta+4)*60;}
+ // Lavender and blue-lavender are one visual family, not separate categories.
+ if(hue>=220&&hue<315)return {key:"purple",dot:"#9671cb"};
+ if(hue>=145&&hue<220)return {key:"mint",dot:"#63b89e"};
+ if(hue>=315||hue<15)return {key:"pink",dot:"#d986a8"};
+ if(hue>=15&&hue<75)return {key:"yellow",dot:"#d4a452"};
+ if(hue>=75&&hue<145)return {key:"green",dot:"#85b66d"};
+ return {key:hex,dot:hex};
+};
 export function Timeline({data,onDataChange,onAdd}) {
  const [now,setNow]=useState(Date.now());
  const scrollRef=useRef(null);
@@ -53,11 +69,11 @@ export function Timeline({data,onDataChange,onAdd}) {
      const end=Math.min(start+duration,currentMinutes,dayEnd);
      const from=Math.max(start,dayStart);
      if(end<=from)continue;
-     const color=task.color||"#eee6f7";
-     if(!grouped.has(color))grouped.set(color,[]);
-     grouped.get(color).push([from,end]);
+     const {key,dot}=colorGroup(task.color);
+     if(!grouped.has(key))grouped.set(key,{dot,ranges:[]});
+     grouped.get(key).ranges.push([from,end]);
    }
-   return [...grouped.entries()].map(([color,ranges])=>{
+   return [...grouped.entries()].map(([key,{dot,ranges}])=>{
      ranges.sort((a,b)=>a[0]-b[0]);
      let total=0,left=-1,right=-1;
      for(const [a,b] of ranges){
@@ -65,7 +81,7 @@ export function Timeline({data,onDataChange,onAdd}) {
        else right=Math.max(right,b);
      }
      if(right>left)total+=right-left;
-     return {color,hours:(total/60).toFixed(1)};
+     return {key,dot,hours:(total/60).toFixed(1)};
    });
  },[timed,currentMinutes,dayEnd,dayStart]);
  const gaps=visibleTasks.slice(1).map((task,i)=>{
@@ -75,7 +91,7 @@ export function Timeline({data,onDataChange,onAdd}) {
    return {key:`${previous.id}-${task.id}`,start:previousEnd,end:nextStart,duration:nextStart-previousEnd};
  }).filter(g=>g.duration>0&&g.start>=dayStart&&g.end<=dayEnd);
  return <section ref={scrollRef} className="focus-redesign" style={{height:"calc(100dvh - 66px - 27px - 90px)",minHeight:320,overflowY:"auto",overflowX:"clip",overscrollBehavior:"contain",WebkitOverflowScrolling:"touch",paddingBottom:30}}>
-  <div className="macro-board-heading timeline-sticky-heading" style={{position:"sticky",top:0,zIndex:20,flexShrink:0,margin:"0 0 18px",padding:"12px 0",background:"#faf8fd",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div style={{minWidth:0}}><span>DAILY PLAN</span><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><h2 style={{margin:0}}>Timeline</h2><div aria-label="색상별 오늘 현재까지 진행한 시간" style={{display:"flex",gap:"5px 10px",alignItems:"center",flexWrap:"wrap"}}>{colorHours.map(({color,hours})=><span key={color} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#71677b",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}><i aria-hidden="true" style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:color,border:"1px solid #c9bfd2",flexShrink:0}}/>{hours}시간</span>)}</div></div></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
+  <div className="macro-board-heading timeline-sticky-heading" style={{position:"sticky",top:0,zIndex:20,flexShrink:0,margin:"0 0 18px",padding:"12px 0",background:"#faf8fd",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div style={{minWidth:0}}><span>DAILY PLAN</span><div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><h2 style={{margin:0}}>Timeline</h2><div aria-label="색상별 오늘 현재까지 진행한 시간" style={{display:"flex",gap:"5px 10px",alignItems:"center",flexWrap:"wrap"}}>{colorHours.map(({key,dot,hours})=><span key={key} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#71677b",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}><i aria-hidden="true" style={{display:"inline-block",width:10,height:10,borderRadius:"50%",backgroundColor:dot,border:"1px solid rgba(0,0,0,.08)",flexShrink:0}}/>{hours}시간</span>)}</div></div></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
   <div className="timeline-hour-grid" style={{position:"relative",height:dayHeight,marginTop:30}}>
    {Array.from({length:endHour-startHour+1},(_,i)=>{
      const h=startHour+i;
