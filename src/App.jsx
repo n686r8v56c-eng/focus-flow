@@ -2025,7 +2025,17 @@ function TaskModal({ onClose, onSave }) {
           <input type="date" value={due} required onChange={e=>setDue(e.target.value)}/>
         </label>
         <label>시간
-          <input type="time" value={time} required onChange={e=>setTime(e.target.value)}/>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <select aria-label="오전 오후" value={Number(time.slice(0,2))<12?"AM":"PM"} onChange={e=>{const h=Number(time.slice(0,2));const next=e.target.value==="AM"?h%12:h%12+12;setTime(`${pad(next)}:${time.slice(3,5)}`);}} style={{flex:"0 0 28%",minWidth:0,fontSize:16}}>
+              <option value="AM">오전</option><option value="PM">오후</option>
+            </select>
+            <select aria-label="시" value={String(Number(time.slice(0,2))%12||12)} onChange={e=>{const pm=Number(time.slice(0,2))>=12;const h=Number(e.target.value)%12+(pm?12:0);setTime(`${pad(h)}:${time.slice(3,5)}`);}} style={{flex:1,minWidth:0,fontSize:16}}>
+              {Array.from({length:12},(_,i)=><option key={i+1} value={String(i+1)}>{i+1}시</option>)}
+            </select>
+            <select aria-label="분 (5분 단위)" value={String(Math.floor(Number(time.slice(3,5))/5)*5)} onChange={e=>setTime(`${time.slice(0,2)}:${pad(Number(e.target.value))}`)} style={{flex:1,minWidth:0,fontSize:16}}>
+              {Array.from({length:12},(_,i)=><option key={i} value={String(i*5)}>{pad(i*5)}분</option>)}
+            </select>
+          </div>
         </label>
         <label>소요 시간
           <select value={duration} onChange={e=>setDuration(e.target.value)}>
