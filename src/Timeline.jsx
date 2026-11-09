@@ -24,6 +24,12 @@ export function Timeline({data,onDataChange,onAdd}) {
    const start=minutes(t.time);
    return start<dayEnd && start+Math.max(5,Number(t.durationMinutes||t.minutes||30)||30)>dayStart;
  });
+ const gaps=visibleTasks.slice(1).map((task,i)=>{
+   const previous=visibleTasks[i];
+   const previousEnd=minutes(previous.time)+Math.max(5,Number(previous.durationMinutes||previous.minutes||30)||30);
+   const nextStart=minutes(task.time);
+   return {key:`${previous.id}-${task.id}`,start:previousEnd,end:nextStart,duration:nextStart-previousEnd};
+ }).filter(g=>g.duration>0&&g.start>=dayStart&&g.end<=dayEnd);
  return <section className="focus-redesign" style={{paddingBottom:30}}>
   <div className="macro-board-heading" style={{margin:"3px 0 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}><div><span>DAILY PLAN</span><h2>Timeline</h2></div><button type="button" aria-label="할 일 추가" title="할 일 추가" onClick={onAdd} className="inline-add-task"><Plus size={21}/></button></div>
   <div style={{position:"relative",height:dayHeight,marginTop:30}}>
@@ -35,6 +41,9 @@ export function Timeline({data,onDataChange,onAdd}) {
        <div style={{position:"absolute",left:gutter,right:0,borderTop:"1px solid #e9e2ef"}}/>
      </div>;
    })}
+   {gaps.map(g=><div key={g.key} style={{position:"absolute",top:timeToY(g.start),height:timeToY(g.end)-timeToY(g.start),left:gutter,right:0,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none",color:"#9788a7",fontSize:12,fontWeight:500}}>
+     <span style={{background:"#faf8fd",padding:"1px 8px",borderRadius:10}}>✧ {g.duration}분 빈 시간</span>
+   </div>)}
    {visibleTasks.map(t=>{
      const start=minutes(t.time);
      const duration=Math.max(5,Number(t.durationMinutes||t.minutes||30)||30);
@@ -44,11 +53,11 @@ export function Timeline({data,onDataChange,onAdd}) {
      const compact=height<65;
      const remainingLabel=currentMinutes<start?"시작 전":currentMinutes>=end?"종료":`${Math.max(0,Math.ceil((end*60000-(now-new Date(current.getFullYear(),current.getMonth(),current.getDate()).getTime()))/60000))}분 남음`;
      return <div key={t.id} role="button" tabIndex={0} aria-label={`${t.title} 일정 수정`} onClick={()=>setEditing(t)} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setEditing(t);}}}
-       style={{position:"absolute",top,left:gutter,right:0,height,boxSizing:"border-box",borderRadius:12,background:t.color||"#eee6f7",color:"#44394d",padding:compact?"2px 9px":"8px 12px",display:"flex",flexDirection:"column",justifyContent:"center",gap:compact?7:5,alignItems:"stretch",overflow:"hidden",cursor:"pointer"}}>
-       {!compact&&<span style={{fontSize:11,color:"#71677b",whiteSpace:"nowrap",lineHeight:1.2}}>{fmt(start)}–{fmt(end)} · {duration}분</span>}
-       <div style={{display:"flex",flexDirection:"column",gap:2,minWidth:0}}>
-         <strong style={{minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:compact?12:15,lineHeight:1.2,textDecoration:t.status==="done"?"line-through":"none"}}>{t.title}</strong>
-         <span style={{fontSize:compact?10:12,color:"#674b9d",lineHeight:1.15,fontWeight:600}}>{remainingLabel}</span>
+       style={{position:"absolute",top,left:gutter,right:0,height,boxSizing:"border-box",borderRadius:12,background:t.color||"#eee6f7",color:"#44394d",padding:compact?"1px 9px":"8px 12px",display:"flex",flexDirection:"column",justifyContent:"center",gap:compact?1:5,alignItems:"stretch",overflow:"hidden",cursor:"pointer"}}>
+       <span style={{fontSize:compact?10:11,color:"#71677b",whiteSpace:"nowrap",lineHeight:compact?1:1.2}}>{fmt(start)}–{fmt(end)} · {duration}분</span>
+       <div style={{display:"flex",flexDirection:"column",gap:compact?0:2,minWidth:0}}>
+         <strong style={{minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:compact?11:15,lineHeight:compact?1:1.2,textDecoration:t.status==="done"?"line-through":"none"}}>{t.title}</strong>
+         <span style={{fontSize:compact?10:12,color:"#674b9d",lineHeight:compact?1:1.15,fontWeight:600}}>{remainingLabel}</span>
        </div>
      </div>;
    })}
