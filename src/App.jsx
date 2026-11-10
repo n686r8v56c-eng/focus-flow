@@ -54,6 +54,8 @@ import {
   loadClockBuffer,
   createClockVoice,
 } from "./clock-audio.js";
+
+const FROM_C_FIRST_REPORT = {"date":"2026-11-10","sections":[["오늘의 성과","Script Flow에 영상 제작 프로젝트와 체크리스트 추가"],["오늘의 발견","AI가 코딩뿐 아니라 콘텐츠 제작 과정에도 협업할 수 있다는 가능성"],["학습 성과","판례와 사례를 이해하기 쉽게 재구성하는 방식 발견"],["새로운 아이디어","매일 ChatGPT 대화를 회의록으로 정리해 일기 앱에 자동 기록"],["오늘의 변화","앱 개발 중심에서 AI를 활용한 실제 콘텐츠 생산으로 관심 확장"]]};
 const uid = () => Math.random().toString(36).slice(2, 10);
 const pad = (n) => String(n).padStart(2, "0");
 const localDate = (d = new Date()) =>
@@ -137,6 +139,8 @@ export function App({
   const [familyEditing,setFamilyEditing]=useState(null);
   const [familyDraft,setFamilyDraft]=useState({date:"",memo:""});
   const [tab, setTab] = useState("daily"),
+    [fromCDraft, setFromCDraft] = useState(""),
+    [fromCEditing, setFromCEditing] = useState(false),
     [calendarMode, setCalendarMode] = useState("schedule"),
     [todoDate, setTodoDate] = useState(localDate()),
     [selectedProject, setSelectedProject] = useState("p1"),
@@ -1046,21 +1050,22 @@ export function App({
     const monthFirstDay=new Date(monthStart+"T12:00:00").getDay();
     const startDay=dayAdd(monthStart,-monthFirstDay);
     const days=Array.from({length:42},(_,i)=>dayAdd(startDay,i));
-    const isMatch=t=>calendarMode==="family"||calendarMode==="emotion"?false:calendarMode==="schedule"?isScheduleEntry(t):!isScheduleEntry(t);
-    const selected=calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===focusDate):calendarMode==="emotion"?(data.emotionLogs||[]).filter(item=>item.date===focusDate):data.tasks.filter(t=>t.due===focusDate&&isMatch(t));
+    const isMatch=t=>calendarMode==="fromc"||calendarMode==="family"||calendarMode==="emotion"?false:calendarMode==="schedule"?isScheduleEntry(t):!isScheduleEntry(t);
+    const selected=calendarMode==="fromc"?(data.fromCReports||[]).filter(item=>item.date===focusDate):calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===focusDate):calendarMode==="emotion"?(data.emotionLogs||[]).filter(item=>item.date===focusDate):data.tasks.filter(t=>t.due===focusDate&&isMatch(t));
     return <div className="focus-redesign">
-      <div className="section-top"><h1>일정</h1></div>{calendarMode!=="family"&&calendarMode!=="emotion"&&<button type="button" aria-label={calendarMode==="schedule"?"일정 추가":"할 일 추가"} title={calendarMode==="schedule"?"일정 추가":"할 일 추가"} style={{position:"fixed",right:"20px",bottom:"calc(92px + env(safe-area-inset-bottom, 0px))",width:"56px",height:"56px",borderRadius:"50%",background:"#9570c7",color:"#fff",border:"none",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 5px 18px rgba(70,40,105,.2)",zIndex:35,cursor:"pointer"}} onClick={()=>{setEditing(null);setModal("task");}}><Plus size={27}/></button>}
+      <div className="section-top"><h1>일정</h1></div>{calendarMode!=="family"&&calendarMode!=="emotion"&&calendarMode!=="fromc"&&<button type="button" aria-label={calendarMode==="schedule"?"일정 추가":"할 일 추가"} title={calendarMode==="schedule"?"일정 추가":"할 일 추가"} style={{position:"fixed",right:"20px",bottom:"calc(92px + env(safe-area-inset-bottom, 0px))",width:"56px",height:"56px",borderRadius:"50%",background:"#9570c7",color:"#fff",border:"none",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 5px 18px rgba(70,40,105,.2)",zIndex:35,cursor:"pointer"}} onClick={()=>{setEditing(null);setModal("task");}}><Plus size={27}/></button>}
       <div className="focus-segments" role="tablist" aria-label="캘린더 종류">
         <button role="tab" aria-selected={calendarMode==="schedule"} className={calendarMode==="schedule"?"selected":""} onClick={()=>setCalendarMode("schedule")}>일정</button>
         <button role="tab" aria-selected={calendarMode==="todo"} className={calendarMode==="todo"?"selected":""} onClick={()=>setCalendarMode("todo")}>할 일</button>
         <button role="tab" aria-selected={calendarMode==="family"} className={calendarMode==="family"?"selected":""} onClick={()=>setCalendarMode("family")}>가족</button>
         <button role="tab" aria-selected={calendarMode==="emotion"} className={calendarMode==="emotion"?"selected":""} onClick={()=>setCalendarMode("emotion")}>감정</button>
+        <button role="tab" aria-selected={calendarMode==="fromc"} className={calendarMode==="fromc"?"selected":""} onClick={()=>setCalendarMode("fromc")}>From C</button>
       </div>
       <section className="focus-panel focus-calendar-panel">
         <FocusDateStrip date={focusDate} onChange={setFocusDate} month/>
         <div className="month-grid weekday">{"일월화수목금토".split("").map((x,i)=><div key={i}>{x}</div>)}</div>
         <div className="month-grid focus-month-days">{days.map(date=>{
-          const visible=calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===date):calendarMode==="emotion"?(data.emotionLogs||[]).filter(item=>item.date===date):data.tasks.filter(t=>t.due===date&&isMatch(t));
+          const visible=calendarMode==="fromc"?(data.fromCReports||[]).filter(item=>item.date===date):calendarMode==="family"?(data.familyLogs||[]).filter(item=>item.date===date):calendarMode==="emotion"?(data.emotionLogs||[]).filter(item=>item.date===date):data.tasks.filter(t=>t.due===date&&isMatch(t));
           return <button key={date} type="button"
             className={"focus-month-cell "+(date.slice(0,7)!==focusDate.slice(0,7)?"muted ":"")+(date===focusDate?"active":"")}
             onClick={()=>setFocusDate(date)} aria-pressed={date===focusDate}>
@@ -1071,8 +1076,8 @@ export function App({
         })}</div>
       </section>
       <section className="focus-panel">
-        <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="family"?"가족":calendarMode==="emotion"?"감정":calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
-        {calendarMode==="emotion"?<div className="focus-task-list">{selected.length?selected.map(item=><div key={item.id} onPointerDown={e=>{if(!e.target.closest("button,textarea,input"))beginEmotionHold(e,item.id)}} onPointerMove={moveEmotionHold} onPointerUp={cancelEmotionHold} onPointerCancel={cancelEmotionHold} onContextMenu={e=>{e.preventDefault();cancelEmotionHold();setEmotionMenuId(item.id)}} style={{padding:"11px 12px",borderRadius:12,background:"#f7f3fa",marginBottom:8,WebkitTouchCallout:"none"}}>
+        <div className="focus-day-title"><h2>{focusDate.slice(5,7)}월 {focusDate.slice(8,10)}일 · {calendarMode==="family"?"가족":calendarMode==="emotion"?"감정":calendarMode==="fromc"?"From C":calendarMode==="schedule"?"일정":"할 일"}</h2><small>{selected.length}개</small></div>
+        {calendarMode==="fromc"?<div className="focus-task-list">{selected.length?selected.map(item=><article key={item.date} style={{padding:16,background:"#f7f3fa",borderRadius:12,marginBottom:10}}><strong style={{color:"#73539c"}}>From C · {item.date}</strong>{(item.sections||[]).map(([label,body])=><div key={label} style={{marginTop:13,lineHeight:1.6}}><strong>{label}</strong><div style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{body}</div></div>)}{item.memo&&<p style={{whiteSpace:"pre-wrap"}}>{item.memo}</p>}</article>):<div className="focus-empty">이날의 From C 기록이 없어.</div>}<div style={{marginTop:12,display:"grid",gap:8}}><textarea aria-label="From C 회의록 입력" placeholder="회의록을 여기에 붙여넣거나 직접 기록할 수 있어." rows={5} value={fromCDraft} onChange={e=>setFromCDraft(e.target.value)} style={{fontSize:16,width:"100%",boxSizing:"border-box",padding:12,borderRadius:10,border:"1px solid #dfd0eb"}}/><button type="button" className="secondary" disabled={!fromCDraft.trim()} onClick={()=>{const value=fromCDraft.trim();update(d=>({...d,fromCReports:[...(d.fromCReports||[]).filter(x=>x.date!==focusDate),{date:focusDate,sections:[["오늘의 회의록",value]]}]}));setFromCDraft("");}}>이 날짜에 저장</button></div></div>:calendarMode==="emotion"?<div className="focus-task-list">{selected.length?selected.map(item=><div key={item.id} onPointerDown={e=>{if(!e.target.closest("button,textarea,input"))beginEmotionHold(e,item.id)}} onPointerMove={moveEmotionHold} onPointerUp={cancelEmotionHold} onPointerCancel={cancelEmotionHold} onContextMenu={e=>{e.preventDefault();cancelEmotionHold();setEmotionMenuId(item.id)}} style={{padding:"11px 12px",borderRadius:12,background:"#f7f3fa",marginBottom:8,WebkitTouchCallout:"none"}}>
           <div style={{fontWeight:650}}>{item.title}</div>
           {emotionEditing!==item.id&&item.memo&&<div style={{fontSize:13,color:"#856e98",whiteSpace:"pre-wrap",overflowWrap:"anywhere",marginTop:4,lineHeight:1.45}}>{item.memo}</div>}
           {emotionMenuId===item.id&&<div role="group" aria-label="감정 기록 메뉴" style={{display:"flex",gap:8,marginTop:10}}>
@@ -1102,6 +1107,7 @@ export function App({
       </section>
     </div>;
   }
+  useEffect(()=>{if((data.fromCReports||[]).some(x=>x.date===FROM_C_FIRST_REPORT.date))return;update(d=>({...d,fromCReports:[...(d.fromCReports||[]),FROM_C_FIRST_REPORT]}));},[]);
   function Projects() {
     // UI scope only: existing project/task associations remain untouched.
     const isPersonalScope = projectScope === "personal";
