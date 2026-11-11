@@ -1944,7 +1944,7 @@ body,
 @media(max-width:480px){.compact-task-sheet{max-width:100vw;padding-left:14px;padding-right:14px}}
 
 /* Single-row navigation and unobtrusive backup menu */
-.bottom-nav{grid-template-columns:repeat(6,minmax(0,1fr))!important;grid-auto-flow:row;gap:0;padding-left:3px;padding-right:3px}
+.bottom-nav{grid-template-columns:repeat(5,minmax(0,1fr));grid-auto-flow:row;gap:0;padding-left:3px;padding-right:3px}
 .bottom-nav>button{width:100%;min-width:0;padding:5px 1px;gap:4px;font-size:clamp(9px,2.5vw,12px)!important;white-space:nowrap}
 .bottom-nav>button svg{width:20px;height:20px}
 .focus-backup-menu{position:relative;display:flex;align-items:center;flex-shrink:0}
