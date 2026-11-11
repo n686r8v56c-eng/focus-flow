@@ -33,7 +33,6 @@ import {
 } from "lucide-react";
 import "./style.css";
 import { InboxPanel, copyInboxText } from "./InboxPanel.jsx";
-import { ChecklistBoards } from "./ChecklistBoards.jsx";
 import { youtubeId } from "./inbox-model.js";
 import "./timeblocks.css";
 import { TimeTable } from "./TimeTable.jsx";
@@ -1882,7 +1881,6 @@ export function App({
         {tab === "familyhome" ? <section className="focus-redesign"><div className="section-top"><h1>고미쩌미</h1></div><div className="focus-panel" style={{display:"grid",gap:12}}><div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:5}}>{["넥스가드","미용","산책","공놀이","여행"].map(label=><button key={label} type="button" onClick={()=>recordFamily(label)} style={{minWidth:0,padding:"12px 2px",border:"1px solid #dfd0eb",borderRadius:10,background:"#f2eafa",color:"#6e4b94",fontSize:12,fontWeight:700,whiteSpace:"nowrap",cursor:"pointer"}}>{label}</button>)}</div><div style={{display:"grid",gap:8}}><strong style={{color:"#43364e"}}>감정</strong><div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:5}}>{["행복","감사","성취","슬픔","화남"].map(label=><button key={label} type="button" onClick={()=>recordEmotion(label)} style={{minWidth:0,padding:"12px 2px",border:"1px solid #b9e1d4",borderRadius:10,background:"#dff4eb",color:"#286957",fontSize:12,fontWeight:700,whiteSpace:"nowrap",cursor:"pointer"}}>{label}</button>)}</div>{emotionRecorded&&<p role="status" style={{color:"#487b6d",margin:0}}>{emotionRecorded} · 오늘 날짜에 저장했어</p>}<button type="button" className="secondary" onClick={()=>{setCalendarMode("emotion");setFocusDate(localDate());setTab("calendar")}}>감정 기록 보기</button></div>{familyRecorded&&<p role="status" style={{color:"#78539e",margin:0}}>{familyRecorded} · 오늘 날짜에 저장했어</p>}<button type="button" className="secondary" onClick={()=>{setCalendarMode("family");setFocusDate(localDate());setTab("calendar")}}>가족 기록 보기</button></div></section>
           :tab === "playlist" ? null
           :tab === "opportunity" ? <InboxPanel key="opportunity" kind="opportunity" storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><><div className="section-top"><h1>오늘의 할 일</h1></div><FocusTaskRows items={data.tasks.filter(t=>!isScheduleEntry(t)&&t.due===today)} mode="todo"/></>}/>
-          :tab === "checklists" ? <ChecklistBoards boards={data.checklistBoards||[]} onChange={boards=>setData({...data,checklistBoards:boards})}/>
           :tab === "todo" ? TodoPanel()
           :tab === "calendar" ? Calendar()
           :tab === "timeline" ? <Timeline data={data} onDataChange={setData} onAdd={()=>setModal("timelineTask")}/>
@@ -1909,7 +1907,7 @@ export function App({
           ["weeklyfocus",CalendarRange,"매크로"],
           ["daily",Clock3,"데일리"],
           ["timeline",CalendarRange,"타임라인"],
-          ["checklists",ClipboardCheck,"체크리스트"],
+          ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
       </nav>
