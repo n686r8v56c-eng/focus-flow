@@ -1911,7 +1911,7 @@ export function App({
             referrerPolicy="strict-origin-when-cross-origin"
           />
         </section>}
-        {genre==="focus" && </React.Fragment>}
+        </React.Fragment>}
       </main>
       {genre==="focus" && <nav className="bottom-nav" aria-label="메인 메뉴">
         {[
