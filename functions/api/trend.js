@@ -62,7 +62,7 @@ async function naver(request,env,kind){
   const data=await fetchJson(base+"/search-trend/v1/search",{method:"POST",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify(body)});
   return response({provider:"naver",kind,q,observedAt:new Date().toISOString(),results:data.results||[],note:"최대값 100 기준 상대 검색 관심도. 실제 검색 횟수가 아님."});
 }
-function xmlField(xml,field){const m=xml.match(new RegExp("<(?:[\\w-]+:)?"+field+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w-]+:)?"+field+">","i"));return m?clean(m[1].replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g,"$1")):"";}
+function xmlField(xml,field){const pattern=new RegExp("<(?:[\\w-]+:)?"+field+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w-]+:)?"+field+">","i");const match=xml.match(pattern);if(!match)return "";return clean(match[1].replace(/^<!\[CDATA\[|\]\]>$/g,""));}
 async function rss(){
   const res=await fetch("https://trends.google.com/trending/rss?geo=KR",{headers:{"User-Agent":"Mozilla/5.0 (compatible; FocusFlowTrend/1.0)"},signal:AbortSignal.timeout(10000)});
   if(!res.ok)throw new Error("구글 트렌드 RSS 응답 오류 ("+res.status+")");
