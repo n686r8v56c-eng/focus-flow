@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Plus, Trash2, Bookmark, Download, Search, X, Check, ChevronDown } from "lucide-react";
 import "./trend.css";
+import { TrendAuto } from "./TrendAuto.jsx";
 
 const SOURCES = [
   { id:"naver", title:"네이버 엔터", note:"뉴스·영상 랭킹 직접 확인", url:"https://entertain.naver.com/" },
@@ -50,7 +51,7 @@ function exportCsv(items){
   const a=document.createElement("a");a.href=href;a.download="trend-entertainment-"+today()+".csv";a.click();
   setTimeout(()=>URL.revokeObjectURL(href),1000);
 }
-export function TrendWorkbench({ userId }) {
+export function TrendWorkbench({ userId, client }) {
   const [tab,setTab]=useState("ranking");
   const [issues,setIssues]=useState([]);
   const [loaded,setLoaded]=useState(false);
@@ -78,6 +79,12 @@ export function TrendWorkbench({ userId }) {
       &&date>=start
       &&(item.title+" "+item.summary+" "+item.memo).toLowerCase().includes(query.toLowerCase());
   }).sort((a,b)=>(b.observedAt||"").localeCompare(a.observedAt||"")), [issues,filter,period,query,tab]);
+  const addFromApi = async item => {
+    if(!loaded)throw new Error("저장 공간을 불러오는 중이야.");
+    const next=[{...blank(),...item,id:crypto.randomUUID(),updatedAt:new Date().toISOString()},...issues];
+    await writeIssues(key,next);
+    setIssues(next);
+  };
   const startAdd=()=>{setEditingId(null);setDraft(blank());};
   const startEdit=item=>{setEditingId(item.id);setDraft({...item});};
   const commit=async e=>{
@@ -92,9 +99,10 @@ export function TrendWorkbench({ userId }) {
     <div className="trend-heading"><div><small>FOCUS FLOW / TREND</small><h1>Entertainment</h1><p>직접 확인하는 엔터테인먼트 관심도 관측소</p></div><button type="button" className="trend-primary" onClick={startAdd}><Plus size={17}/> 이슈 등록</button></div>
     <div className="trend-tabs" role="tablist">{[["ranking","랭킹"],["sources","소스"],["verify","검증"],["saved","저장함"]].map(([id,label])=><button type="button" key={id} role="tab" aria-selected={tab===id} className={tab===id?"selected":""} onClick={()=>setTab(id)}>{label}</button>)}</div>
     {error&&<p className="trend-error" role="alert">{error}<button type="button" onClick={()=>setError("")}>닫기</button></p>}
+    {(tab==="ranking"||tab==="verify")&&<TrendAuto client={client} onAdd={addFromApi}/>}
     {(tab==="sources"||tab==="ranking")&&<div className="trend-source-grid">{SOURCES.map(s=><a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" className="trend-source"><span>{s.title}<ExternalLink size={14}/></span><small>{s.note}</small></a>)}</div>}
     {tab==="sources"&&<div className="trend-note"><strong>원본 확인 원칙</strong><p>네이버 인기기사 순위와 유튜브·구글 관심도는 서로 다른 지표야. 원본 화면에서 확인한 시각과 링크를 기록해 줘. 자동 실시간 수집이나 통합 공식 순위를 제공한다고 표시하지 않아.</p></div>}
-    {tab==="verify"&&<div className="trend-note"><strong>교차검증 방법</strong><p>같은 이슈를 네이버 엔터, 유튜브, 구글 트렌드, 네이버 데이터랩에서 검색하고 관측값을 각각 이슈 메모에 남겨. 숫자가 확인되지 않으면 비워 두고, 조회수·검색 관심도·랭킹을 하나의 점수로 섞지 않아.</p><p>이슈 카드를 눌러 출처·순위·조회수·검색 관심도 및 미확인 정보를 수정할 수 있어.</p></div>}
+    {tab==="verify"&&<div className="trend-note"><strong>교차검증 방법</strong><p>같은 키워드를 네이버 뉴스·검색 관심도, 유튜브·구글 트렌드에서 교차검증해. 자동 API 결과와 사람이 확인한 원본 순위를 구별하고, 확인되지 않은 값은 비워 둬.</p><p>이슈 카드를 눌러 출처·순위·조회수·검색 관심도 및 미확인 정보를 수정할 수 있어.</p></div>}
     {tab!=="sources"&&<><div className="trend-filters"><select aria-label="분야 선택" value={filter} onChange={e=>setFilter(e.target.value)}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select><select aria-label="기록 기간" value={period} onChange={e=>setPeriod(e.target.value)}><option value="1">오늘</option><option value="7">7일</option><option value="30">30일</option><option value="3650">전체 기간</option></select><label className="trend-search"><Search size={15}/><input aria-label="이슈 검색" placeholder="이슈 검색" value={query} onChange={e=>setQuery(e.target.value)}/></label></div>
       <div className="trend-results"><div className="trend-results-title"><strong>{tab==="verify"?"교차검증 기록":tab==="saved"?"저장한 이슈":"직접 수집한 이슈"} · {filtered.length}건</strong><button type="button" onClick={()=>exportCsv(filtered)} disabled={!filtered.length}><Download size={15}/> CSV</button></div>
       {!loaded?<p className="trend-empty">저장된 이슈를 불러오는 중…</p>:!filtered.length?<div className="trend-empty"><p>아직 해당 조건에 기록된 이슈가 없어.</p><button type="button" onClick={startAdd}>첫 이슈 등록하기</button><small>실시간 순위를 임의로 채우지 않고 직접 확인한 데이터만 보여줘.</small></div>:filtered.map((item,i)=><article key={item.id} className="trend-issue"><div className="trend-issue-head"><button type="button" className="trend-issue-title" onClick={()=>startEdit(item)}><span className="trend-index">{i+1}</span><span><strong>{item.title}</strong><small>{item.category} · {item.observedAt} · {SOURCES.find(s=>s.id===item.source)?.title||"직접 입력"}</small></span></button><button type="button" title={item.saved?"저장 해제":"저장함에 추가"} aria-label={item.saved?"저장 해제":"저장함에 추가"} className={item.saved?"trend-bookmarked":""} onClick={()=>save(issues.map(x=>x.id===item.id?{...x,saved:!x.saved}:x))}><Bookmark size={19} fill={item.saved?"currentColor":"none"}/></button></div>{item.summary&&<p>{item.summary}</p>}<div className="trend-metrics"><span>원본 순위: {item.rank||"미확인"}</span><span>조회수: {item.views||"미확인"}</span><span>검색 관심도: {item.searchInterest||"미확인"}</span></div><div className="trend-issue-actions">{item.url&&<a href={safeUrl(item.url)} target="_blank" rel="noopener noreferrer">원본 보기 <ExternalLink size={13}/></a>}<button type="button" onClick={()=>startEdit(item)}>근거·메모 수정</button><button type="button" title="이슈 삭제" onClick={()=>{if(window.confirm("이 이슈의 기록을 삭제할까?"))save(issues.filter(x=>x.id!==item.id));}}><Trash2 size={15}/></button></div></article>)}</div></>}
