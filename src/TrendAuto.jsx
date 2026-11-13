@@ -21,7 +21,7 @@ export function TrendAuto({client,onAdd}){
    try{
      const {data:auth,error:authErr}=await client.auth.getSession();
      if(authErr||!auth?.session?.access_token)throw new Error("로그인을 확인할 수 없어. 다시 로그인해 줘.");
-     const keywords=kind==="search"?keyword.split(/[,\\n]+/).map(x=>x.trim()).filter(Boolean):[keyword.trim()];
+     const keywords=kind==="search"?keyword.split(/[,\n]+/).map(x=>x.trim()).filter(Boolean):[keyword.trim()];
      if(keywords.length>3)throw new Error("API 사용량 보호를 위해 키워드는 한 번에 최대 3개까지 조회할 수 있어.");
      const batches=[];
      for(const q of keywords){
