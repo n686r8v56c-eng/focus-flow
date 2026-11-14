@@ -1989,3 +1989,25 @@ body,
   .bottom-nav { padding-left: 4px; padding-right: 4px; }
   .bottom-nav > button { font-size: 11px !important; }
 }
+
+
+/* Weekly planner: independent seven-day notes */
+.weekly-planner{padding:20px 16px 32px;color:#493459;max-width:1050px;margin:0 auto}
+.weekly-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.weekly-heading small{font-size:11px;letter-spacing:.17em;font-weight:800;color:#9877b6}
+.weekly-heading h1{font-size:25px;margin:4px 0 0;color:#382641}
+.weekly-navigation{display:flex;align-items:center;gap:6px}
+.weekly-navigation strong{font-size:14px;white-space:nowrap;padding:9px 5px}
+.weekly-navigation button{border:1px solid #e7dbf0;border-radius:10px;background:#fff;color:#6b4a92;min-height:36px;min-width:34px;font-size:20px;cursor:pointer}
+.weekly-navigation button:last-child{font-size:12px;padding:0 9px}
+.weekly-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid #e6d9f0;border-radius:16px;overflow:hidden;background:#fff}
+.weekly-day{min-width:0;min-height:190px;padding:13px 12px;display:flex;flex-direction:column;border-bottom:1px solid #e9dff0}
+.weekly-day:nth-child(odd){border-right:1px solid #e9dff0}
+.weekly-day:nth-last-child(-n+1){border-bottom:0}
+.weekly-day-head{display:flex;align-items:baseline;gap:8px;color:#72549a}
+.weekly-day-head b{font-size:22px;color:#48305d}
+.weekly-day-head span{font-size:12px;white-space:nowrap}
+.weekly-day textarea{flex:1;resize:vertical;min-height:120px;width:100%;box-sizing:border-box;border:0;outline:0;background:transparent;color:#3c3145;font:inherit;font-size:13px;line-height:1.65;margin-top:8px;padding:4px 0}
+.weekly-day textarea::placeholder{color:#c5b9cf}
+.weekly-day textarea:focus{background:#fbf8ff;border-radius:6px}
+@media(max-width:380px){.weekly-planner{padding:14px 10px}.weekly-day{padding:10px 8px}.weekly-day-head{gap:5px}.weekly-day-head span{font-size:11px}}
