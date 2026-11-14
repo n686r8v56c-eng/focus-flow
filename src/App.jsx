@@ -50,6 +50,7 @@ import { ChecklistPanel } from "./ChecklistPanel.jsx";
 import { ApiChecklist } from "./ApiChecklist.jsx";
 import { TrendWorkbench } from "./TrendWorkbench.jsx";
 import { RouteFlow } from "./RouteFlow.jsx";
+import { RouteBackupControls } from "./RouteBackupControls.jsx";
 import { WeatherTemperature } from "./WeatherTemperature.jsx";
 import { SubwayMapShortcut } from "./SubwayMapShortcut.jsx";
 import {
@@ -1881,6 +1882,7 @@ export function App({
           <a href="https://apps.apple.com/kr/app/id981110422" target="_blank" rel="noopener noreferrer" title="카카오 T 택시 바로가기" aria-label="카카오 T 택시 바로가기" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:9,background:"#fee500",textDecoration:"none",fontSize:19}}>🚕</a>
         </span>}
         {(genre==="focus" || genre==="route") && <WeatherTemperature />}
+        <RouteBackupControls client={bridgeClient} userId={bridgeUserId} visible={genre==="route"}/>
         <div className="header-actions" style={genre!=="focus"?{display:"none"}:undefined}>
           <button type="button" className="api-top-button focus-header-icon-button" title="앱관리" aria-label="앱관리" style={{border:"1px solid #e3d9ee",background:tab === "apps" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("apps")} aria-current={tab === "apps" ? "page" : undefined}><Blocks size={20}/></button>
           <button type="button" className="api-top-button focus-header-icon-button" title="플레이리스트" aria-label="플레이리스트" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><Music2 size={20}/></button>
