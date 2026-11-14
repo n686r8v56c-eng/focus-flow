@@ -2221,3 +2221,8 @@ body,
 .weekly-planner .weekly-note-wrap:focus-within .weekly-note-display{visibility:hidden}
 .weekly-planner .weekly-note-wrap:focus-within textarea{opacity:1}
 .weekly-planner .weekly-note-wrap textarea:focus{background:transparent}
+
+
+/* D Check now has three two-column rows: Money / Thread on the bottom. */
+.daily-check-page .daily-check-section:nth-child(n+3){border-bottom:1px solid #e5d7f0}
+.daily-check-page .daily-check-section:nth-child(n+5){border-bottom:0}
