@@ -2127,3 +2127,17 @@ body,
     font-size: 16px;
   }
 }
+
+
+/* Restore readable left-to-right text flow within narrow D Check columns.
+   Keep iOS-safe 16px input text; don't let the text field grow past its cell. */
+.daily-check-page .daily-check-item{display:flex;min-width:0;width:100%;gap:7px}
+.daily-check-page .daily-check-item input:not([type="checkbox"]){
+ display:block;direction:ltr;text-align:left;
+ flex:1 1 0;min-width:0;width:0;max-width:100%;
+ box-sizing:border-box;letter-spacing:-.65px;
+ padding-left:0;padding-right:0;
+}
+.daily-check-page .daily-check-item button{
+ flex:0 0 12px;min-width:12px;padding:0;line-height:1;
+}
