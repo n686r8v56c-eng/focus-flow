@@ -28,3 +28,20 @@
 .route-saved .route-icon-actions button{width:33px;height:33px}
 .route-section-head>button{display:inline-flex;align-items:center;gap:5px}
 @media(max-width:420px){.route-stop-compact{gap:6px}.route-stop-compact .route-no{width:24px;height:24px}.route-stop-compact .route-stop-body strong{font-size:13px}.route-icon-actions button{width:29px;height:31px}.route-saved .route-icon-actions button{width:30px;height:31px}}
+
+/* ROUTE nested categories and checklist */
+.route-subfolder{margin-left:12px}
+.route-checklist{display:grid;gap:7px;padding:10px 0;border-top:1px solid #eee6f2}
+.route-checklist-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:#59436d}
+.route-checklist-head button{display:inline-flex;align-items:center;gap:4px;border:1px solid #e3d6ed;border-radius:8px;background:#f8f3fc;color:#77549f;padding:7px 9px;cursor:pointer}
+.route-check-tree{display:grid;gap:4px;min-width:0}
+.route-check-row{display:flex;align-items:center;gap:5px;min-width:0}
+.route-check-row>input[type="checkbox"]{width:17px;height:17px;flex-shrink:0;accent-color:#8a64bb}
+.route-form .route-check-row>input:not([type=checkbox]){flex:1;min-width:0;width:0;padding:8px 5px;font-size:13px}
+.route-check-row>input.checked{text-decoration:line-through;color:#8d8793}
+.route-check-row>button{flex-shrink:0;display:grid;place-items:center;width:29px;height:31px;border:1px solid #e8ddef;border-radius:7px;background:#fff;color:#76549a;cursor:pointer}
+.route-check-photo{flex-shrink:0}
+.route-check-photo label{display:grid;place-items:center;width:33px;height:33px;border:1px dashed #d7c5e7;border-radius:8px;background:#faf7fc;color:#8a64bb;cursor:pointer;overflow:hidden}
+.route-check-photo input[type="file"]{display:none}
+.route-check-photo img{width:100%;height:100%;object-fit:cover}
+.route-check-photo small{font-size:10px;color:#a23555}
