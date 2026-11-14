@@ -50,6 +50,7 @@ import { ChecklistPanel } from "./ChecklistPanel.jsx";
 import { ApiChecklist } from "./ApiChecklist.jsx";
 import { TrendWorkbench } from "./TrendWorkbench.jsx";
 import { RouteFlow } from "./RouteFlow.jsx";
+import { WeatherTemperature } from "./WeatherTemperature.jsx";
 import {
   CLOCK_SOUNDS,
   clockType,
@@ -1872,6 +1873,7 @@ export function App({
             <button type="button" aria-current={genre==="route"?"page":undefined} onClick={()=>{setGenre("route");setGenreMenuOpen(false);}}>ROUTE <small>하루 동선·지도</small></button>
           </div>}
         </div>
+        {(genre==="focus" || genre==="route") && <WeatherTemperature />}
         <div className="header-actions" style={genre!=="focus"?{display:"none"}:undefined}>
           <button type="button" className="api-top-button focus-header-icon-button" title="앱관리" aria-label="앱관리" style={{border:"1px solid #e3d9ee",background:tab === "apps" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("apps")} aria-current={tab === "apps" ? "page" : undefined}><Blocks size={20}/></button>
           <button type="button" className="api-top-button focus-header-icon-button" title="플레이리스트" aria-label="플레이리스트" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><Music2 size={20}/></button>
