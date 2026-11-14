@@ -58,3 +58,8 @@
 .route-kakao-add-actions{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
 .route-kakao-add-actions .route-kakao-add{white-space:nowrap;font-size:11px;padding:7px 9px;border-radius:7px}
 .route-kakao-add-actions .route-kakao-add:last-child{background:#f5effa;color:#7953a4}
+
+/* Saved place long-press actions */
+.route-place-context{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:8px 4px 12px}
+.route-place-context button{display:inline-flex;align-items:center;gap:5px;padding:9px 13px;border:1px solid #e4d9ee;border-radius:9px;background:#f7f2fb;color:#76549a;font-size:13px;cursor:pointer}
+.route-place-context button:nth-child(2){color:#a73d58;background:#fff5f6;border-color:#f0d8df}
