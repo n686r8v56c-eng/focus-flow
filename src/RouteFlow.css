@@ -142,3 +142,10 @@
 .route-cost-summary strong{font-size:17px;color:#65408b;font-variant-numeric:tabular-nums}
 .route-cost-summary small{font-size:11px;color:#8c8096}
 .route-cost-inline{display:block;font-size:12px;font-weight:650;color:#7953a2;font-variant-numeric:tabular-nums}
+
+/* Keep optional amounts on the title line, right-aligned */
+.route-stop-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;width:100%;min-width:0}
+.route-stop-heading strong{flex:1;min-width:0;overflow-wrap:anywhere}
+.route-stop-heading .route-cost-inline{flex:0 0 auto;white-space:nowrap;text-align:right;margin-left:auto}
+.route-stop-body{min-width:0}
+@media(max-width:390px){.route-stop-heading{gap:5px}.route-stop-heading .route-cost-inline{font-size:11px}}
