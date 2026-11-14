@@ -57,9 +57,19 @@ function KakaoRouteMap({ordered,picked,onPick,onAdd}){
    sdk.maps.event.addListener(marker,"click",()=>onPick(p.id));markersRef.current.push(marker);bounds.extend(point);count++;
   });
   if(found){const point=new sdk.maps.LatLng(Number(found.y),Number(found.x));const marker=new sdk.maps.Marker({map,position:point,title:found.place_name});markersRef.current.push(marker);bounds.extend(point);count++;}
-  if(count>1)map.setBounds(bounds);else if(count===1)map.setCenter(bounds.getSouthWest());
+  // A successful geolocation must take priority over saved route pins.
+  // Otherwise this effect re-centers the map on the itinerary after permission is granted.
+  if(geoPoint){
+   const current=new sdk.maps.LatLng(geoPoint.lat,geoPoint.lng);
+   const here=new sdk.maps.Marker({map,position:current,title:"현재 위치",zIndex:10});
+   markersRef.current.push(here);
+  }
+  if(found)map.setCenter(new sdk.maps.LatLng(Number(found.y),Number(found.x)));
+  else if(geoPoint){map.setCenter(new sdk.maps.LatLng(geoPoint.lat,geoPoint.lng));map.setLevel(4);}
+  else if(count>1)map.setBounds(bounds);
+  else if(count===1)map.setCenter(bounds.getSouthWest());
   else if(picked?.lat&&picked?.lng)map.setCenter(new sdk.maps.LatLng(Number(picked.lat),Number(picked.lng)));
- },[sdk,ordered,picked,found,onPick]);
+ },[sdk,ordered,picked,found,onPick,geoPoint]);
  const search=e=>{
   e.preventDefault();if(!sdk||!query.trim())return;
   setMessage("검색 중…");const service=new sdk.maps.services.Places();
