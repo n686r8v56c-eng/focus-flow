@@ -86,3 +86,20 @@
 .route-journal-entry>div:first-child{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .route-journal-entry small{color:#8a7b98}
 .route-journal-entry p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+
+/* iOS Safari: prevent focus-triggered auto zoom without disabling pinch zoom. */
+.route-flow{box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow-x:clip}
+.route-flow *, .route-flow *::before, .route-flow *::after{box-sizing:border-box}
+.route-flow input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.route-flow textarea,
+.route-flow select{font-size:16px;max-width:100%;min-width:0}
+.route-title{min-width:0}
+.route-title>div{min-width:0}
+.route-title label{min-width:0;flex-shrink:0}
+.route-title input[type="date"]{width:130px;max-width:100%;font-size:16px}
+.route-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.route-kakao-search{min-width:0}
+.route-kakao-search input{width:0;flex:1 1 0}
+.route-journal select,.route-journal input,.route-journal textarea{font-size:16px}
+.route-tabs{width:100%;max-width:100vw;box-sizing:border-box}
+@media(max-width:380px){.route-title input[type="date"]{width:118px}.route-title h1{font-size:21px}}
