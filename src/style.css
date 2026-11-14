@@ -2107,3 +2107,7 @@ body,
  font-weight:600;
  color:#91839e;
 }
+
+/* Slightly tighter vertical rhythm between D Check checklist rows. */
+.daily-check-page .daily-check-items{gap:2px}
+.daily-check-page .daily-check-item input:not([type="checkbox"]){padding-top:3px;padding-bottom:3px}
