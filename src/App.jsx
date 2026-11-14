@@ -1873,7 +1873,11 @@ export function App({
             <button type="button" aria-current={genre==="route"?"page":undefined} onClick={()=>{setGenre("route");setGenreMenuOpen(false);}}>ROUTE <small>하루 동선·지도</small></button>
           </div>}
         </div>
-        {genre==="route" && <a href="https://apps.apple.com/kr/app/id981110422" target="_blank" rel="noopener noreferrer" title="카카오 T 택시 바로가기" aria-label="카카오 T 택시 바로가기" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0,width:32,height:32,borderRadius:9,background:"#fee500",color:"#252525",textDecoration:"none",fontSize:19}}>🚕</a>}
+        {genre==="route" && <span style={{display:"inline-flex",alignItems:"center",gap:4,flexShrink:0}}>
+          <a href="https://apps.apple.com/kr/app/id884947832" target="_blank" rel="noopener noreferrer" title="전국 스마트 버스" aria-label="전국 스마트 버스 열기" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:9,background:"#e8f0ff",textDecoration:"none",fontSize:19}}>🚌</a>
+          <a href="https://apps.apple.com/kr/app/id1095533900" target="_blank" rel="noopener noreferrer" title="카카오지하철" aria-label="카카오지하철 열기" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:9,background:"#e8f6ed",textDecoration:"none",fontSize:19}}>🚇</a>
+          <a href="https://apps.apple.com/kr/app/id981110422" target="_blank" rel="noopener noreferrer" title="카카오 T 택시 바로가기" aria-label="카카오 T 택시 바로가기" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:9,background:"#fee500",textDecoration:"none",fontSize:19}}>🚕</a>
+        </span>}
         {(genre==="focus" || genre==="route") && <WeatherTemperature />}
         <div className="header-actions" style={genre!=="focus"?{display:"none"}:undefined}>
           <button type="button" className="api-top-button focus-header-icon-button" title="앱관리" aria-label="앱관리" style={{border:"1px solid #e3d9ee",background:tab === "apps" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("apps")} aria-current={tab === "apps" ? "page" : undefined}><Blocks size={20}/></button>
