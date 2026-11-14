@@ -2176,3 +2176,18 @@ body,
 }
 .daily-check-page .daily-check-text-wrap:focus-within .daily-check-display{visibility:hidden}
 .daily-check-page .daily-check-text-wrap:focus-within input:not([type="checkbox"]){opacity:1}
+
+
+/* iOS focus-safe input with constant visual 13px text (16px * .8125).
+   The actual input remains 16px to avoid Safari auto-zoom. */
+.daily-check-page .daily-check-text-wrap input:not([type="checkbox"]){
+ font-size:16px!important;
+ width:123.076923%!important;
+ max-width:none!important;
+ transform:scale(.8125);
+ transform-origin:left center;
+ letter-spacing:normal!important;
+}
+.daily-check-page .daily-check-text-wrap:focus-within input:not([type="checkbox"]){
+ opacity:1;
+}
