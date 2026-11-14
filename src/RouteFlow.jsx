@@ -96,10 +96,10 @@ function KakaoRouteMap({ordered,picked,onPick,onAddRoute,onAddSaved}){
  };
  const search=e=>{e.preventDefault();searchPlaces("nearby");};
  return <div className="route-kakao-panel">
-  <form className="route-kakao-search" onSubmit={search}><input aria-label="장소 검색" placeholder="카페, 병원, 주소, 관광지 검색" value={query} onChange={e=>setQuery(e.target.value)}/><button type="submit" disabled={!sdk}>검색</button></form>
-  {message&&<p role="status" className="route-hint">{message}</p>}
   <div className="route-map-wrap"><div className="route-map" ref={container} aria-label="카카오 지도" /><button className="route-locate-button" type="button" title="내 위치로 이동" aria-label="내 위치로 이동" onClick={locate}><Navigation size={18}/></button></div>
   {geoStatus&&<p role="status" className="route-hint">{geoStatus}</p>}
+  <form className="route-kakao-search" onSubmit={search}><input aria-label="장소 검색" placeholder="카페, 병원, 주소, 관광지 검색" value={query} onChange={e=>setQuery(e.target.value)}/><button type="submit" disabled={!sdk}>검색</button></form>
+  {message&&<p role="status" className="route-hint">{message}</p>}
   {query.trim()&&<div style={{display:"flex",gap:8,alignItems:"center",margin:"8px 0",flexWrap:"wrap"}}><button type="button" onClick={()=>searchPlaces("nearby")} disabled={!sdk} aria-pressed={searchMode==="nearby"}>📍 내 주변</button><button type="button" onClick={()=>searchPlaces("nationwide")} disabled={!sdk} aria-pressed={searchMode==="nationwide"}>전국 검색</button><small>{results.length}개 표시</small></div>}
   {results.length>0&&<div className="route-kakao-results">{results.map(item=><div className="route-kakao-result" key={item.id}><button type="button" onClick={()=>setFound(item)}><strong>{item.place_name}</strong><small>{item.distance?Number(item.distance).toLocaleString()+"m · ":""}{item.road_address_name||item.address_name}</small></button><div className="route-kakao-add-actions"><button type="button" className="route-kakao-add" onClick={()=>onAddRoute(item)}>+ 동선</button><button type="button" className="route-kakao-add" onClick={()=>onAddSaved(item)}>+ 장소함</button></div></div>)}</div>}
   {moreResults&&<button type="button" style={{width:"100%",padding:10,marginTop:8}} onClick={()=>paginationRef.current?.nextPage()}>검색 결과 더 보기</button>}
