@@ -2089,3 +2089,21 @@ body,
 .daily-check-page .daily-check-item input[type="checkbox"]:checked::after{
  font-size:9px;line-height:9px;
 }
+
+
+/* Readable user-authored text in Weekly and D Check, including editing fields. */
+.weekly-planner .weekly-day textarea,
+.daily-check-page .daily-check-item input:not([type="checkbox"]),
+.daily-check-page .daily-check-add input{
+ font-weight:600;
+ color:#382641;
+}
+.weekly-planner .weekly-day textarea::placeholder,
+.daily-check-page .daily-check-add input::placeholder{
+ font-weight:500;
+ color:#a99ab8;
+}
+.daily-check-page .daily-check-item input.completed{
+ font-weight:600;
+ color:#91839e;
+}
