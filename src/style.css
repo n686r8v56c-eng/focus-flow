@@ -2070,3 +2070,11 @@ body,
 .daily-check-page .daily-check-item input[type="checkbox"]:checked::after{font-size:11px;line-height:11px}
 .daily-check-page .daily-check-item{gap:5px}
 .daily-check-page .daily-check-section-title{gap:0}
+
+
+/* Match Weekly header placement: heading and date navigation share a row. */
+.daily-check-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.daily-check-heading .daily-check-title h1{margin:4px 0 0}
+.daily-check-heading .daily-check-navigation{margin-bottom:0;gap:6px}
+.daily-check-heading .daily-check-navigation strong{padding:9px 4px;font-size:14px}
+@media(max-width:440px){.daily-check-heading{gap:8px}.daily-check-heading .daily-check-navigation{flex-wrap:nowrap}.daily-check-heading .daily-check-navigation strong{font-size:13px;padding:8px 2px}}
