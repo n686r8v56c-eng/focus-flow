@@ -51,6 +51,7 @@ import { ApiChecklist } from "./ApiChecklist.jsx";
 import { TrendWorkbench } from "./TrendWorkbench.jsx";
 import { RouteFlow } from "./RouteFlow.jsx";
 import { WeatherTemperature } from "./WeatherTemperature.jsx";
+import { SubwayMapShortcut } from "./SubwayMapShortcut.jsx";
 import {
   CLOCK_SOUNDS,
   clockType,
@@ -1874,6 +1875,7 @@ export function App({
           </div>}
         </div>
         {genre==="route" && <span style={{display:"inline-flex",alignItems:"center",gap:4,flexShrink:0}}>
+          <SubwayMapShortcut />
           <a href="https://apps.apple.com/kr/app/id884947832" target="_blank" rel="noopener noreferrer" title="전국 스마트 버스" aria-label="전국 스마트 버스 열기" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:9,background:"#e8f0ff",textDecoration:"none",fontSize:19}}>🚌</a>
           <a href="https://apps.apple.com/kr/app/id1095533900" target="_blank" rel="noopener noreferrer" title="카카오지하철" aria-label="카카오지하철 열기" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:9,background:"#e8f6ed",textDecoration:"none",fontSize:19}}>🚇</a>
           <a href="https://apps.apple.com/kr/app/id981110422" target="_blank" rel="noopener noreferrer" title="카카오 T 택시 바로가기" aria-label="카카오 T 택시 바로가기" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:9,background:"#fee500",textDecoration:"none",fontSize:19}}>🚕</a>
