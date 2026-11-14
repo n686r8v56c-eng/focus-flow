@@ -151,3 +151,12 @@
 @media(max-width:390px){.route-stop-heading{gap:5px}.route-stop-heading .route-cost-inline{font-size:11px}}
 
 .route-cost-summary-bottom{justify-content:flex-end;text-align:right;margin-top:16px;margin-bottom:20px}
+
+/* Compact place library filters: folder selection expands only on demand */
+.route-folder-details{margin:8px 0 12px}
+.route-folder-details>summary{display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none;width:fit-content;max-width:100%;border:1px solid #e1d3ee;border-radius:12px;padding:8px 11px;color:#7954a2;background:#fff;font-size:13px;font-weight:600}
+.route-folder-details>summary::-webkit-details-marker{display:none}
+.route-folder-details>summary span{font-size:11px;font-weight:400;color:#9984ae;margin-left:6px}
+.route-folder-details[open]>summary{background:#f3ebfa}
+.route-folder-details .route-folder-filter{margin-top:9px;padding:10px;border:1px solid #ece4f2;border-radius:12px;background:#faf7fc}
+.route-visit-filter{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
