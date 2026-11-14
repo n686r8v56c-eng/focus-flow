@@ -160,3 +160,8 @@
 .route-folder-details[open]>summary{background:#f3ebfa}
 .route-folder-details .route-folder-filter{margin-top:9px;padding:10px;border:1px solid #ece4f2;border-radius:12px;background:#faf7fc}
 .route-visit-filter{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+
+/* Compact date control replaces the repeated ROUTE hero */
+.route-date-only{display:flex;justify-content:flex-end;margin:0 0 12px}
+.route-date-only label{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;background:#f4eef9;color:#8058a9}
+.route-date-only input{border:0;background:transparent;color:inherit;font:inherit;font-size:14px;max-width:150px;min-width:0}
