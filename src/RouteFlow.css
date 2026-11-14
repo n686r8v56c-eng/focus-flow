@@ -63,3 +63,9 @@
 .route-place-context{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:8px 4px 12px}
 .route-place-context button{display:inline-flex;align-items:center;gap:5px;padding:9px 13px;border:1px solid #e4d9ee;border-radius:9px;background:#f7f2fb;color:#76549a;font-size:13px;cursor:pointer}
 .route-place-context button:nth-child(2){color:#a73d58;background:#fff5f6;border-color:#f0d8df}
+
+/* Contextual secondary folders and folder long-press controls */
+.route-folder-menu{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;padding:5px 0 9px}
+.route-folder-menu button{display:inline-flex;align-items:center;gap:4px;padding:7px 10px;border:1px solid #e5d8f0;border-radius:9px;background:#f7f2fb;color:#77529e;font-size:12px}
+.route-folder-menu button:nth-child(3){color:#a53c55;background:#fff5f6;border-color:#f0d8df}
+.route-folder-chip button{touch-action:pan-y}
