@@ -48,3 +48,5 @@
 
 .route-map-wrap{position:relative}
 .route-locate-button{position:absolute;right:12px;bottom:12px;z-index:3;display:grid;place-items:center;width:42px;height:42px;border:1px solid #ded3e9;border-radius:50%;background:#fff;color:#7956a1;box-shadow:0 2px 8px #0002;cursor:pointer}
+
+.route-map-wrap{position:relative}.route-locate-button{position:absolute;right:12px;bottom:12px;z-index:3;display:grid;place-items:center;width:42px;height:42px;border:1px solid #e5d9ee;border-radius:50%;background:#fff;color:#7752a1;box-shadow:0 2px 8px #0002;cursor:pointer}
