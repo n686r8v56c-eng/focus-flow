@@ -165,3 +165,20 @@
 .route-date-only{display:flex;justify-content:flex-end;margin:0 0 12px}
 .route-date-only label{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;background:#f4eef9;color:#8058a9}
 .route-date-only input{border:0;background:transparent;color:inherit;font:inherit;font-size:14px;max-width:150px;min-width:0}
+
+/* Place library thumbnails and multi-photo editor */
+.route-saved{display:flex;align-items:center;gap:11px}
+.route-saved-info{flex:1;min-width:0}
+.route-place-thumbnail{width:54px;height:54px;flex:0 0 54px;border:1px dashed #d8c5e9;border-radius:12px;background:#f7f1fb;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;color:#9067b4}
+.route-place-thumbnail img{width:100%;height:100%;object-fit:cover}
+.route-place-thumbnail input,.route-place-photo-add input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.route-place-photo-editor{margin:6px 0 16px;padding:12px;border:1px solid #eadff2;border-radius:12px}
+.route-place-photo-editor>strong{display:block;margin-bottom:10px}
+.route-place-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:10px}
+.route-place-photo-item{position:relative;min-width:0}
+.route-place-cover-choice{display:flex;flex-direction:column;align-items:center;width:100%;border:1px solid #e6d8ee;border-radius:10px;padding:4px;background:#fff;color:#8054a8;overflow:hidden}
+.route-place-cover-choice img{width:100%;height:78px;object-fit:cover;border-radius:7px}
+.route-place-cover-choice span{font-size:11px;padding:5px 0}
+.route-place-photo-remove{position:absolute;top:3px;right:3px;background:#fff;border:1px solid #e8ddef;border-radius:7px;padding:5px;color:#8054a8}
+.route-place-photo-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:108px;border:1px dashed #d8c5e9;border-radius:10px;color:#8054a8;cursor:pointer;font-size:12px}
+.route-place-photo-editor>small{display:block;margin-top:9px;color:#81758b}
