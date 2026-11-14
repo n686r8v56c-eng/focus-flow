@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState} from "react";
+import React,{useEffect,useMemo,useRef,useState} from "react";
 import {MapPin,Clock3,Plus,Trash2,ChevronUp,ChevronDown,Navigation,ExternalLink,Bookmark,CalendarDays,Route as RouteIcon,Map as MapIcon,Check,RotateCcw} from "lucide-react";
 import "./RouteFlow.css";
 const pad=n=>String(n).padStart(2,"0");
@@ -12,6 +12,58 @@ const naverSearch=q=>"https://map.naver.com/p/search/"+encodeURIComponent(q);
 const mins=n=>{const v=Number(n);return Number.isFinite(v)&&v>=0?v:0};
 const timeAdd=(t,n)=>{const match=/^(\d\d):(\d\d)$/.exec(t||"");if(!match)return "";const total=Number(match[1])*60+Number(match[2])+Number(n);return pad(Math.floor(((total%1440)+1440)%1440/60))+":"+pad(((total%60)+60)%60)};
 const storageKey=id=>"focus-route-flow-v1:"+String(id||"guest");
+
+const KAKAO_KEY=import.meta.env.VITE_KAKAO_MAP_KEY;
+let kakaoPromise;
+function loadKakao(){
+ if(typeof window==="undefined"||!KAKAO_KEY)return Promise.reject(new Error("카카오 JavaScript 키(VITE_KAKAO_MAP_KEY)를 확인해 주세요."));
+ if(window.kakao?.maps?.services)return Promise.resolve(window.kakao);
+ if(!kakaoPromise)kakaoPromise=new Promise((resolve,reject)=>{
+  const script=document.createElement("script");
+  script.src="https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&libraries=services&appkey="+encodeURIComponent(KAKAO_KEY);
+  script.onload=()=>window.kakao.maps.load(()=>resolve(window.kakao));
+  script.onerror=()=>reject(new Error("카카오 지도 SDK를 불러오지 못했어요. 도메인 등록을 확인해 주세요."));
+  document.head.appendChild(script);
+ }).catch(e=>{kakaoPromise=null;throw e});
+ return kakaoPromise;
+}
+function KakaoRouteMap({ordered,picked,onPick,onAdd}){
+ const container=useRef(null),mapRef=useRef(null),markersRef=useRef([]),searchRef=useRef(null);
+ const [sdk,setSdk]=useState(null),[query,setQuery]=useState(""),[results,setResults]=useState([]),[found,setFound]=useState(null),[message,setMessage]=useState("");
+ useEffect(()=>{let active=true;loadKakao().then(k=>{if(active)setSdk(k)}).catch(e=>{if(active)setMessage(e.message)});return()=>{active=false}},[]);
+ useEffect(()=>{
+  if(!sdk||!container.current)return;
+  if(!mapRef.current)mapRef.current=new sdk.maps.Map(container.current,{center:new sdk.maps.LatLng(37.5665,126.978),level:6});
+  const map=mapRef.current;
+  markersRef.current.forEach(m=>m.setMap(null));markersRef.current=[];
+  const bounds=new sdk.maps.LatLngBounds();let count=0;
+  ordered.forEach((p,i)=>{if(!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lng))||!p.lat||!p.lng)return;
+   const point=new sdk.maps.LatLng(Number(p.lat),Number(p.lng)),marker=new sdk.maps.Marker({map,position:point,title:(i+1)+". "+p.name});
+   sdk.maps.event.addListener(marker,"click",()=>onPick(p.id));markersRef.current.push(marker);bounds.extend(point);count++;
+  });
+  if(found){const point=new sdk.maps.LatLng(Number(found.y),Number(found.x));const marker=new sdk.maps.Marker({map,position:point,title:found.place_name});markersRef.current.push(marker);bounds.extend(point);count++;}
+  if(count>1)map.setBounds(bounds);else if(count===1)map.setCenter(bounds.getSouthWest());
+  else if(picked?.lat&&picked?.lng)map.setCenter(new sdk.maps.LatLng(Number(picked.lat),Number(picked.lng)));
+ },[sdk,ordered,picked,found,onPick]);
+ const search=e=>{
+  e.preventDefault();if(!sdk||!query.trim())return;
+  setMessage("검색 중…");const service=new sdk.maps.services.Places();
+  service.keywordSearch(query.trim(),(data,status)=>{
+   if(status===sdk.maps.services.Status.OK){setResults(data);setMessage(data.length+"개 장소를 찾았어요.");setFound(data[0]);}
+   else{setResults([]);setFound(null);setMessage(status===sdk.maps.services.Status.ZERO_RESULT?"검색 결과가 없어요.":"장소 검색에 실패했어요.");}
+  });
+ };
+ return <div className="route-kakao-panel">
+  <form className="route-kakao-search" onSubmit={search}><input aria-label="장소 검색" placeholder="카페, 병원, 주소, 관광지 검색" value={query} onChange={e=>setQuery(e.target.value)}/><button type="submit" disabled={!sdk}>검색</button></form>
+  {message&&<p role="status" className="route-hint">{message}</p>}
+  <div className="route-map" ref={container} aria-label="카카오 지도" />
+  {results.length>0&&<div className="route-kakao-results">{results.map(item=><div className="route-kakao-result" key={item.id}><button type="button" onClick={()=>setFound(item)}><strong>{item.place_name}</strong><small>{item.road_address_name||item.address_name}</small></button><button type="button" className="route-kakao-add" onClick={()=>onAdd(item)}>+ 동선에 추가</button></div>)}</div>}
+  <div className="route-map-pins">{ordered.map((p,i)=><button className={picked?.id===p.id?"active":""} key={p.id} onClick={()=>onPick(p.id)}>{i+1}. {p.name}</button>)}</div>
+  {picked&&<div className="route-map-info"><strong><MapPin size={16}/>{picked.name}</strong><p>{picked.address||"주소 미입력"}</p>{picked.lat&&picked.lng?<a target="_blank" rel="noopener noreferrer" href={"https://map.kakao.com/link/to/"+encodeURIComponent(picked.name)+","+picked.lat+","+picked.lng}>카카오맵 길찾기</a>:<a target="_blank" rel="noopener noreferrer" href={"https://map.kakao.com/link/search/"+encodeURIComponent(picked.address||picked.name)}>카카오맵에서 검색</a>}</div>}
+  <p className="route-hint">검색한 장소는 좌표와 함께 저장돼요. 교통편 상세 안내는 카카오맵에서 확인할 수 있어요.</p>
+ </div>;
+}
+
 export function RouteFlow({userId}){
  const [date,setDate]=useState(today),[tab,setTab]=useState("today"),[places,setPlaces]=useState([]),[routes,setRoutes]=useState({}),[draft,setDraft]=useState(blank),[selected,setSelected]=useState(""),[editing,setEditing]=useState(""),[error,setError]=useState("");
  const key=storageKey(userId);
@@ -22,6 +74,7 @@ export function RouteFlow({userId}){
  const picked=places.find(p=>p.id===selected)||ordered[0]||null;
  const updatePlace=p=>save(places.map(x=>x.id===p.id?p:x),routes);
  const add=()=>{if(!draft.name.trim()){setError("장소 이름을 입력해 주세요.");return}const p={...draft,name:draft.name.trim(),address:draft.address.trim(),minutes:mins(draft.minutes)};save([...places,p],{...routes,[date]:[...stops,p.id]});setDraft(blank());setSelected(p.id);setTab("route")};
+ const addSearchResult=item=>{const p={...blank(),name:item.place_name,address:item.road_address_name||item.address_name||"",lat:Number(item.y),lng:Number(item.x),kakaoPlaceId:item.id};save([...places,p],{...routes,[date]:[...stops,p.id]});setSelected(p.id)};
  const reorder=(id,dir)=>{const i=stops.indexOf(id),j=i+dir;if(j<0||j>=stops.length)return;const copy=[...stops];[copy[i],copy[j]]=[copy[j],copy[i]];save(places,{...routes,[date]:copy})};
  const removeFromDay=id=>{if(!window.confirm("오늘 동선에서만 제외할까요? 장소함에는 남아 있어요."))return;save(places,{...routes,[date]:stops.filter(x=>x!==id)})};
  const deletePlace=id=>{if(!window.confirm("장소함과 모든 날짜의 동선에서 삭제할까요?"))return;const next={};Object.keys(routes).forEach(day=>next[day]=routes[day].filter(x=>x!==id));save(places.filter(x=>x.id!==id),next);if(selected===id)setSelected("")};
@@ -45,8 +98,8 @@ export function RouteFlow({userId}){
   {error&&<p role="alert" className="route-error">{error}</p>}
   {tab==="today"&&<><div className="route-section-head"><h2>{date} 일정</h2><button onClick={()=>setTab("route")}>동선 편집</button></div>{!ordered.length?<p className="route-empty">아직 방문 장소가 없어요. 동선 탭에서 첫 장소를 추가해 봐요.</p>:ordered.map((p,i)=><div key={p.id}>{routeLinks(p,i)}<article className="route-stop"><div className="route-no">{i+1}</div><div className="route-stop-body"><strong>{p.time} · {p.name}</strong><small>{p.fixed?"🔒 예약 고정 · ":""}{p.minutes}분 체류{p.time?" · "+timeAdd(p.time,p.minutes)+" 종료 예상":""}</small>{p.notes&&<p>{p.notes}</p>}</div><button aria-label={p.name+" 완료"} className={p.done?"route-done":""} onClick={()=>updatePlace({...p,done:!p.done})}><Check size={18}/></button></article></div>)}</>}
   {tab==="route"&&<><div className="route-section-head"><h2>방문 순서</h2><span>화살표로 순서 변경</span></div>{ordered.map((p,i)=><div key={p.id}>{routeLinks(p,i)}<article className="route-stop"><div className="route-no">{i+1}</div><div className="route-stop-body"><strong>{p.name}</strong><small>{p.time} · {p.minutes}분{p.fixed?" · 예약 고정":""}</small><div className="route-actions"><button onClick={()=>{setEditing(editing===p.id?"":p.id);setSelected(p.id)}}>수정</button><button onClick={()=>removeFromDay(p.id)}>동선 제외</button></div></div><div className="route-order"><button aria-label="위로" disabled={i===0} onClick={()=>reorder(p.id,-1)}><ChevronUp size={17}/></button><button aria-label="아래로" disabled={i===ordered.length-1} onClick={()=>reorder(p.id,1)}><ChevronDown size={17}/></button></div></article>{editing===p.id&&form(p,true)}</div>)}<div className="route-section-head"><h2>장소 추가</h2></div>{form(draft)}{places.some(p=>!stops.includes(p.id))&&<div className="route-reuse"><h3>장소함에서 추가</h3>{places.filter(p=>!stops.includes(p.id)).map(p=><button key={p.id} onClick={()=>save(places,{...routes,[date]:[...stops,p.id]})}><Plus size={14}/>{p.name}</button>)}</div>}</>}
-  {tab==="map"&&<><div className="route-section-head"><h2>지도에서 보기</h2><span>번호를 눌러 장소 선택</span></div><div className="route-map"><iframe title="선택한 장소 지도" src={mapUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade"/></div><div className="route-map-pins">{ordered.map((p,i)=><button className={picked?.id===p.id?"active":""} key={p.id} onClick={()=>setSelected(p.id)}>{i+1}. {p.name}</button>)}</div>{picked&&<div className="route-map-info"><strong><MapPin size={16}/>{picked.name}</strong><p>{picked.address||"검색어 기반 장소 (정확한 위치 미확인)"}</p><div className="route-actions"><a target="_blank" rel="noopener noreferrer" href={mapsSearch(picked.address||picked.name)}>구글 지도 열기</a><a target="_blank" rel="noopener noreferrer" href={naverSearch(picked.address||picked.name)}>네이버 지도 열기</a></div></div>}<p className="route-hint">현재는 선택한 장소의 지도를 보여줍니다. 전체 경로 선·자동 환승/소요시간은 교통 API 연결 후 제공됩니다.</p></>}
+  {tab==="map"&&<><div className="route-section-head"><h2>카카오 지도 · 장소 검색</h2></div><KakaoRouteMap ordered={ordered} picked={picked} onPick={setSelected} onAdd={addSearchResult}/></>}
   {tab==="saved"&&<><div className="route-section-head"><h2>장소함</h2><span>저장 {places.length}곳</span></div>{!places.length&&<p className="route-empty">동선에서 장소를 추가하면 여기에 모여요.</p>}{places.map(p=><article className="route-saved" key={p.id}><div><strong>{p.name}</strong><small>{p.address||"주소 미입력"}</small></div><button disabled={stops.includes(p.id)} onClick={()=>save(places,{...routes,[date]:[...stops,p.id]})}>{stops.includes(p.id)?"추가됨":"오늘 추가"}</button><button aria-label={p.name+" 삭제"} onClick={()=>deletePlace(p.id)}><Trash2 size={16}/></button></article>)}</>}
-  <p className="route-storage-note">1차 버전: 이 브라우저에 별도 저장됩니다. Focus Flow의 기존 일정·백업 데이터에는 영향을 주지 않으며, 다른 기기와 자동 동기화되지 않습니다. 교통편은 지도에서 조회해 주세요.</p>
+  <p className="route-storage-note">ROUTE 기록은 현재 이 브라우저에 별도 저장됩니다. Focus Flow의 기존 일정·백업 데이터에는 영향을 주지 않으며, 다른 기기와 자동 동기화되지 않습니다. 교통편은 지도에서 조회해 주세요.</p>
  </section>
 }
