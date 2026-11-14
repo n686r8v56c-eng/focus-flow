@@ -1936,8 +1936,8 @@ export function App({
           ["weekly",CalendarDays,"위클리"],
           ["dcheck",ClipboardCheck,"D체크"],
           ["daily",Clock3,"데일리"],
-          ["todo",Inbox,"인박스"],
-          ["calendar",CalendarDays,"일정"]
+          ["calendar",CalendarDays,"일정"],
+          ["todo",Inbox,"인박스"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
       </nav>}
       {(modal === "task" || modal === "timelineTask") && (
