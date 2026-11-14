@@ -2226,3 +2226,10 @@ body,
 /* D Check now has three two-column rows: Money / Thread on the bottom. */
 .daily-check-page .daily-check-section:nth-child(n+3){border-bottom:1px solid #e5d7f0}
 .daily-check-page .daily-check-section:nth-child(n+5){border-bottom:0}
+
+
+/* Weekly planner: plan/diary switch. Diary uses the identical weekly grid. */
+.weekly-mode-tabs{display:flex;width:min(100%,340px);margin:0 0 14px;padding:4px;border:1px solid #e4d7ee;border-radius:15px;background:#fff;gap:4px}
+.weekly-mode-tabs button{flex:1;min-width:0;min-height:38px;border:0;border-radius:11px;background:transparent;color:#8f76ae;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.weekly-mode-tabs button.active{background:#f0e8fa;color:#7044ad;font-weight:800}
+.weekly-mode-tabs button:focus-visible{outline:2px solid #9877b6;outline-offset:2px}
