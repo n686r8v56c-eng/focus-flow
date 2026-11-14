@@ -10,3 +10,21 @@
 .route-kakao-result small{font-size:11px;color:#777182;overflow-wrap:anywhere}
 .route-kakao-add{font-size:11px;padding:9px}
 .route-map-info a{color:#7953a4;font-size:12px}
+
+/* ROUTE: compact mobile controls and saved-place folders */
+.route-stop-compact{gap:8px;padding:10px 9px}
+.route-stop-compact .route-stop-body{gap:3px}
+.route-icon-actions{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.route-icon-actions button{display:grid;place-items:center;width:31px;height:33px;padding:0;border:1px solid #e7ddec;border-radius:8px;background:#faf7fc;color:#76549a;cursor:pointer}
+.route-icon-actions button:disabled{opacity:.28;cursor:default}
+.route-folder-filter{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.route-folder-filter>button,.route-folder-chip>button{display:inline-flex;align-items:center;gap:4px;padding:7px 9px;border:1px solid #e4d9ee;border-radius:18px;background:#fff;color:#6f568b;font-size:12px;cursor:pointer}
+.route-folder-filter button.active{background:#e8dbf6;border-color:#b99bd7;color:#624184;font-weight:700}
+.route-folder-chip{display:inline-flex;align-items:center;gap:3px}
+.route-folder-chip>button:not(:first-child){padding:7px;border-radius:9px}
+.route-place-filter-input{box-sizing:border-box;width:100%;padding:10px 12px;border:1px solid #ded3e9;border-radius:9px;background:#fff;color:#342e3e;font-size:13px}
+.route-filter-count{margin:9px 0;color:#81788b;font-size:12px}
+.route-saved .route-icon-actions{flex:0 0 auto;display:flex;gap:4px}
+.route-saved .route-icon-actions button{width:33px;height:33px}
+.route-section-head>button{display:inline-flex;align-items:center;gap:5px}
+@media(max-width:420px){.route-stop-compact{gap:6px}.route-stop-compact .route-no{width:24px;height:24px}.route-stop-compact .route-stop-body strong{font-size:13px}.route-icon-actions button{width:29px;height:31px}.route-saved .route-icon-actions button{width:30px;height:31px}}
