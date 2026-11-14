@@ -49,6 +49,7 @@ import { AppRegistry } from "./AppRegistry.jsx";
 import { ChecklistPanel } from "./ChecklistPanel.jsx";
 import { ApiChecklist } from "./ApiChecklist.jsx";
 import { TrendWorkbench } from "./TrendWorkbench.jsx";
+import { RouteFlow } from "./RouteFlow.jsx";
 import {
   CLOCK_SOUNDS,
   clockType,
@@ -1864,13 +1865,14 @@ export function App({
     <div className="app">
       <header className="focus-v6-header">
         <div className="focus-genre-container">
-          <button type="button" className="brand" onClick={()=>setGenreMenuOpen(v=>!v)} aria-expanded={genreMenuOpen} aria-label="FOCUS 또는 TREND 장르 선택">{genre==="focus"?"FOCUS":"TREND"} <ChevronDown size={15}/></button>
+          <button type="button" className="brand" onClick={()=>setGenreMenuOpen(v=>!v)} aria-expanded={genreMenuOpen} aria-label="FOCUS, TREND 또는 ROUTE 장르 선택">{genre==="focus"?"FOCUS":genre==="trend"?"TREND":"ROUTE"} <ChevronDown size={15}/></button>
           {genreMenuOpen&&<div className="focus-genre-menu" role="group" aria-label="장르 선택">
             <button type="button" aria-current={genre==="focus"?"page":undefined} onClick={()=>{setGenre("focus");setGenreMenuOpen(false);}}>FOCUS <small>일정·할 일</small></button>
             <button type="button" aria-current={genre==="trend"?"page":undefined} onClick={()=>{setGenre("trend");setGenreMenuOpen(false);}}>TREND <small>엔터테인먼트 관측소</small></button>
+            <button type="button" aria-current={genre==="route"?"page":undefined} onClick={()=>{setGenre("route");setGenreMenuOpen(false);}}>ROUTE <small>하루 동선·지도</small></button>
           </div>}
         </div>
-        <div className="header-actions" style={genre==="trend"?{display:"none"}:undefined}>
+        <div className="header-actions" style={genre!=="focus"?{display:"none"}:undefined}>
           <button type="button" className="api-top-button focus-header-icon-button" title="앱관리" aria-label="앱관리" style={{border:"1px solid #e3d9ee",background:tab === "apps" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("apps")} aria-current={tab === "apps" ? "page" : undefined}><Blocks size={20}/></button>
           <button type="button" className="api-top-button focus-header-icon-button" title="플레이리스트" aria-label="플레이리스트" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><Music2 size={20}/></button>
           <button type="button" className="api-top-button focus-header-icon-button" title="홈" aria-label="홈" style={{border:"1px solid #e3d9ee",background:tab === "familyhome" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("familyhome")} aria-current={tab === "familyhome" ? "page" : undefined}><House size={20}/></button>
@@ -1886,8 +1888,8 @@ export function App({
           <button type="button" className="header-timer" aria-label="로그아웃" title="로그아웃" onClick={onLogout}><LogOut size={18}/></button>
         </div>
       </header>
-      <main className={genre==="trend" ? "focus-trend-main" : tab === "playlist" ? "focus-playlist-main" : undefined}>
-        {genre==="trend" ? <TrendWorkbench userId={bridgeUserId} client={bridgeClient}/> : <React.Fragment>
+      <main className={genre==="trend" ? "focus-trend-main" : genre==="route" ? "focus-route-main" : tab === "playlist" ? "focus-playlist-main" : undefined}>
+        {genre==="trend" ? <TrendWorkbench userId={bridgeUserId} client={bridgeClient}/> : genre==="route" ? <RouteFlow userId={bridgeUserId}/> : <React.Fragment>
         {tab === "familyhome" ? <section className="focus-redesign"><div className="section-top"><h1>고미쩌미</h1></div><div className="focus-panel" style={{display:"grid",gap:12}}><div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:5}}>{["넥스가드","미용","산책","공놀이","여행"].map(label=><button key={label} type="button" onClick={()=>recordFamily(label)} style={{minWidth:0,padding:"12px 2px",border:"1px solid #dfd0eb",borderRadius:10,background:"#f2eafa",color:"#6e4b94",fontSize:12,fontWeight:700,whiteSpace:"nowrap",cursor:"pointer"}}>{label}</button>)}</div><div style={{display:"grid",gap:8}}><strong style={{color:"#43364e"}}>감정</strong><div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:5}}>{["행복","감사","성취","슬픔","화남"].map(label=><button key={label} type="button" onClick={()=>recordEmotion(label)} style={{minWidth:0,padding:"12px 2px",border:"1px solid #b9e1d4",borderRadius:10,background:"#dff4eb",color:"#286957",fontSize:12,fontWeight:700,whiteSpace:"nowrap",cursor:"pointer"}}>{label}</button>)}</div>{emotionRecorded&&<p role="status" style={{color:"#487b6d",margin:0}}>{emotionRecorded} · 오늘 날짜에 저장했어</p>}<button type="button" className="secondary" onClick={()=>{setCalendarMode("emotion");setFocusDate(localDate());setTab("calendar")}}>감정 기록 보기</button></div>{familyRecorded&&<p role="status" style={{color:"#78539e",margin:0}}>{familyRecorded} · 오늘 날짜에 저장했어</p>}<button type="button" className="secondary" onClick={()=>{setCalendarMode("family");setFocusDate(localDate());setTab("calendar")}}>가족 기록 보기</button></div></section>
           :tab === "playlist" ? null
           :tab === "opportunity" ? <InboxPanel key="opportunity" kind="opportunity" storageClient={bridgeClient} userId={bridgeUserId} data={data} onDataChange={setData} today={today} onOpenTask={setEditing} notify={setToast} renderToday={()=><><div className="section-top"><h1>오늘의 할 일</h1></div><FocusTaskRows items={data.tasks.filter(t=>!isScheduleEntry(t)&&t.due===today)} mode="todo"/></>}/>
