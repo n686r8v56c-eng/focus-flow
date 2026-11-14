@@ -9,6 +9,15 @@ const modes={transit:"대중교통",walking:"도보",driving:"자동차",bicycli
 const mapsSearch=q=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q);
 const mapsDirection=(a,b,mode)=>"https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(a)+"&destination="+encodeURIComponent(b)+"&travelmode="+encodeURIComponent(mode);
 const naverSearch=q=>"https://map.naver.com/p/search/"+encodeURIComponent(q);
+const kakaoDirections=(from,to,mode)=>{
+ const valid=p=>p&&Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lng))&&Number(p.lat)>=-90&&Number(p.lat)<=90&&Number(p.lng)>=-180&&Number(p.lng)<=180;
+ if(!valid(from)||!valid(to))return null;
+ const by={transit:"publictransit",walking:"foot",driving:"car",bicycling:"bicycle"}[mode]||"publictransit";
+ const params=new URLSearchParams({sp:from.lat+","+from.lng,ep:to.lat+","+to.lng,by});
+ return "https://m.map.kakao.com/scheme/route?"+params.toString();
+};
+const kakaoRouteSearch="https://m.map.kakao.com/scheme/open?page=routeSearch";
+
 const mins=n=>{const v=Number(n);return Number.isFinite(v)&&v>=0?v:0};
 const timeAdd=(t,n)=>{const match=/^(\d\d):(\d\d)$/.exec(t||"");if(!match)return "";const total=Number(match[1])*60+Number(match[2])+Number(n);return pad(Math.floor(((total%1440)+1440)%1440/60))+":"+pad(((total%60)+60)%60)};
 const storageKey=id=>"focus-route-flow-v1:"+String(id||"guest");
@@ -78,7 +87,7 @@ export function RouteFlow({userId}){
  const reorder=(id,dir)=>{const i=stops.indexOf(id),j=i+dir;if(j<0||j>=stops.length)return;const copy=[...stops];[copy[i],copy[j]]=[copy[j],copy[i]];save(places,{...routes,[date]:copy})};
  const removeFromDay=id=>{if(!window.confirm("오늘 동선에서만 제외할까요? 장소함에는 남아 있어요."))return;save(places,{...routes,[date]:stops.filter(x=>x!==id)})};
  const deletePlace=id=>{if(!window.confirm("장소함과 모든 날짜의 동선에서 삭제할까요?"))return;const next={};Object.keys(routes).forEach(day=>next[day]=routes[day].filter(x=>x!==id));save(places.filter(x=>x.id!==id),next);if(selected===id)setSelected("")};
- const routeLinks=(p,i)=>{if(!i)return null;const prev=ordered[i-1],from=prev.address||prev.name,to=p.address||p.name;return <div className="route-move"><span>↳ {modes[p.mode]||"대중교통"} 이동</span><a target="_blank" rel="noopener noreferrer" href={mapsDirection(from,to,p.mode||"transit")}>구글 길찾기 <ExternalLink size={12}/></a><a target="_blank" rel="noopener noreferrer" href={naverSearch(to)}>네이버 지도 <ExternalLink size={12}/></a></div>};
+ const routeLinks=(p,i)=>{if(!i)return null;const prev=ordered[i-1],from=prev.address||prev.name,to=p.address||p.name;const link=kakaoDirections(prev,p,p.mode);return <div className="route-move"><span>↳ {prev.name} → {p.name} · {modes[p.mode]||"대중교통"}</span><a target="_blank" rel="noopener noreferrer" href={link||kakaoRouteSearch}>{link?"카카오맵 경로 확인":"카카오맵 길찾기 (장소 선택 필요)"} <ExternalLink size={12}/></a>{!link&&<small>두 장소의 지도 좌표를 저장하면 출발지·도착지가 자동 입력돼요.</small>}<a target="_blank" rel="noopener noreferrer" href={mapsDirection(from,to,p.mode||"transit")}>구글 길찾기 <ExternalLink size={12}/></a></div>};
  const form=(p,isEdit=false)=><div className="route-form">
   <label>장소 이름<input value={p.name} placeholder="예: 병원, 카페, 서울숲" onChange={e=>isEdit?updatePlace({...p,name:e.target.value}):setDraft({...p,name:e.target.value})}/></label>
   <label>주소 또는 검색어<input value={p.address} placeholder="도로명 주소나 장소 검색어" onChange={e=>isEdit?updatePlace({...p,address:e.target.value}):setDraft({...p,address:e.target.value})}/></label>
