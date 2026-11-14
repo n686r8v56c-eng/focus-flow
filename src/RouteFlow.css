@@ -69,3 +69,20 @@
 .route-folder-menu button{display:inline-flex;align-items:center;gap:4px;padding:7px 10px;border:1px solid #e5d8f0;border-radius:9px;background:#f7f2fb;color:#77529e;font-size:12px}
 .route-folder-menu button:nth-child(3){color:#a53c55;background:#fff5f6;border-color:#f0d8df}
 .route-folder-chip button{touch-action:pan-y}
+
+/* Five-tab bottom navigation and visit journal */
+.route-tabs{grid-template-columns:repeat(5,minmax(0,1fr))}
+.route-tabs button{min-width:0;font-size:11px}
+.route-tabs button svg{width:17px;height:17px}
+.route-saved{cursor:pointer}
+.route-journal{display:flex;flex-direction:column;gap:15px}
+.route-journal label{display:flex;flex-direction:column;gap:6px;color:#695b79;font-size:13px}
+.route-journal select,.route-journal input,.route-journal textarea{width:100%;box-sizing:border-box;border:1px solid #dfd1ec;border-radius:10px;background:#fff;color:#382b44;padding:11px;font:inherit}
+.route-journal textarea{resize:vertical;min-height:120px}
+.route-journal-editor{display:flex;flex-direction:column;gap:12px;padding:15px;border:1px solid #e8dcf0;border-radius:14px;background:#fbf8fe}
+.route-journal-actions{display:flex;gap:8px;flex-wrap:wrap}
+.route-journal-actions button{border:1px solid #dfd1ec;border-radius:9px;padding:9px 12px;background:#f4eef9;color:#7955a3;cursor:pointer}
+.route-journal-entry{border-bottom:1px solid #e8dff0;padding:14px 2px}
+.route-journal-entry>div:first-child{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.route-journal-entry small{color:#8a7b98}
+.route-journal-entry p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
