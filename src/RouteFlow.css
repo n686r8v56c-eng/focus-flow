@@ -108,3 +108,11 @@
 .route-visit-filter{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 12px}
 .route-visit-filter button{border:1px solid #e4d9ee;border-radius:18px;padding:8px 13px;background:#fff;color:#70578b;font-size:13px;cursor:pointer}
 .route-visit-filter button.active{background:#e8dbf6;border-color:#b99bd7;color:#624184;font-weight:700}
+
+/* Visit journal photo attachments */
+.route-journal-photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.route-journal-photo{position:relative;aspect-ratio:1;border:1px solid #e7dcee;border-radius:10px;overflow:hidden;background:#f6f0fa;display:grid;place-items:center;color:#8c7c9a;font-size:12px}
+.route-journal-photo img{width:100%;height:100%;object-fit:cover}
+.route-journal-photo button{position:absolute;right:5px;top:5px;border:0;border-radius:7px;padding:5px;background:rgba(255,255,255,.92);color:#8d4261}
+.route-journal-upload{display:inline-flex!important;flex-direction:row!important;align-items:center;gap:6px;width:max-content;max-width:100%;padding:9px 12px;border:1px solid #dfd1ec;border-radius:9px;color:#76549a!important;background:#f7f2fb;cursor:pointer}
+.route-journal-upload input{display:none}
