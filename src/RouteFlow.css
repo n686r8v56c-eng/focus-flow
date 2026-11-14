@@ -149,3 +149,5 @@
 .route-stop-heading .route-cost-inline{flex:0 0 auto;white-space:nowrap;text-align:right;margin-left:auto}
 .route-stop-body{min-width:0}
 @media(max-width:390px){.route-stop-heading{gap:5px}.route-stop-heading .route-cost-inline{font-size:11px}}
+
+.route-cost-summary-bottom{justify-content:flex-end;text-align:right;margin-top:16px;margin-bottom:20px}
