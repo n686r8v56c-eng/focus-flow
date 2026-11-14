@@ -4,7 +4,7 @@ import "./RouteFlow.css";
 const pad=n=>String(n).padStart(2,"0");
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
 const newId=()=>typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
-const blank=()=>({id:newId(),name:"",address:"",folderId:""});
+const blank=()=>({id:newId(),name:"",address:"",folderId:"",time:"10:00",minutes:60,mode:"transit",notes:"",checklist:[],fixed:false,done:false});
 const blankVisit=()=>({time:"10:00",minutes:60,mode:"transit",notes:"",checklist:[],fixed:false,done:false});
 const visitFields=["time","minutes","mode","notes","checklist","fixed","done"];
 const visitFrom=p=>Object.fromEntries(visitFields.map(k=>[k,p?.[k]??blankVisit()[k]]));
