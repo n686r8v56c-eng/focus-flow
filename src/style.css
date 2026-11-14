@@ -2011,3 +2011,16 @@ body,
 .weekly-day textarea::placeholder{color:#c5b9cf}
 .weekly-day textarea:focus{background:#fbf8ff;border-radius:6px}
 @media(max-width:380px){.weekly-planner{padding:14px 10px}.weekly-day{padding:10px 8px}.weekly-day-head{gap:5px}.weekly-day-head span{font-size:11px}}
+
+
+/* Use the available phone width for the two-column weekly writing area. */
+.weekly-planner{width:100%;max-width:none;box-sizing:border-box;padding:18px 8px 24px}
+.weekly-grid{width:100%;box-sizing:border-box}
+.weekly-day{box-sizing:border-box;padding:11px 9px;min-height:210px}
+.weekly-day-head{gap:5px}
+.weekly-day-head b{font-size:20px;flex-shrink:0}
+.weekly-day-head span{font-size:11px;white-space:nowrap}
+.weekly-day textarea{font-size:13px;min-height:140px}
+.weekly-free-note .weekly-day-head b{font-size:23px;line-height:1.1}
+.weekly-free-note textarea{min-height:140px}
+@media(max-width:380px){.weekly-planner{padding-left:5px;padding-right:5px}.weekly-day{padding:10px 6px}.weekly-day-head span{font-size:10px}}
