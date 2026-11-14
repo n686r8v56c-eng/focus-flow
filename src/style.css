@@ -2141,3 +2141,16 @@ body,
 .daily-check-page .daily-check-item button{
  flex:0 0 12px;min-width:12px;padding:0;line-height:1;
 }
+
+
+/* D Check: restore compact body copy when not editing.
+   On focus retain 16px to avoid iOS Safari focus zoom. */
+@supports (-webkit-touch-callout: none) {
+  .daily-check-page .daily-check-item input:not([type="checkbox"]) {
+    font-size:13px;
+    letter-spacing:normal;
+  }
+  .daily-check-page .daily-check-item input:not([type="checkbox"]):focus {
+    font-size:16px;
+  }
+}
