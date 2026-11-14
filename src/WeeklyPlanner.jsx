@@ -1,0 +1,19 @@
+import React, {useState} from "react";
+const pad=n=>String(n).padStart(2,"0");
+const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const monday=d=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-(x.getDay()+6)%7);return x;};
+const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
+const short=d=>`${pad(d.getMonth()+1)}.${pad(d.getDate())}`;
+const days=["월","화","수","목","금","토","일"];
+export function WeeklyPlanner({data,onDataChange}){
+ const [offset,setOffset]=useState(0);
+ const start=addDays(monday(new Date()),offset*7);
+ const dates=Array.from({length:7},(_,i)=>addDays(start,i));
+ const notes=data.weeklyNotes||{};
+ const save=(key,value)=>onDataChange(prev=>({...prev,weeklyNotes:{...(prev.weeklyNotes||{}),[key]:value}}));
+ return <section className="weekly-planner" aria-label="위클리 플래너">
+   <div className="weekly-heading"><div><small>WEEKLY PLAN</small><h1>위클리</h1></div>
+   <div className="weekly-navigation"><button type="button" onClick={()=>setOffset(o=>o-1)} aria-label="이전 주">‹</button><strong>{short(start)} – {short(addDays(start,6))}</strong><button type="button" onClick={()=>setOffset(o=>o+1)} aria-label="다음 주">›</button><button type="button" onClick={()=>setOffset(0)} aria-label="이번 주">오늘</button></div></div>
+   <div className="weekly-grid">{dates.map((d,i)=>{const key=dateKey(d);return <div className="weekly-day" key={key}><div className="weekly-day-head"><b>{["M","T","W","T","F","S","S"][i]}</b><span>{short(d)} ({days[i]})</span></div><textarea aria-label={key+" 위클리 메모"} placeholder="이날의 계획을 적어줘" value={notes[key]||""} onChange={e=>save(key,e.target.value)} /></div>})}</div>
+ </section>;
+}
