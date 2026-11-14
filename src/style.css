@@ -2191,3 +2191,33 @@ body,
 .daily-check-page .daily-check-text-wrap:focus-within input:not([type="checkbox"]){
  opacity:1;
 }
+
+
+/* Weekly: visually consistent 13px text before/during editing.
+   Native textarea keeps 16px font to avoid iOS Safari focus zoom. */
+.weekly-planner .weekly-note-wrap{
+ position:relative;flex:1 1 auto;min-width:0;min-height:140px;
+ margin-top:8px;overflow:hidden;
+}
+.weekly-planner .weekly-note-display{
+ position:absolute;inset:0;pointer-events:none;
+ white-space:pre-wrap;overflow-wrap:anywhere;overflow:hidden;
+ padding:4px 0;font-size:13px;line-height:1.65;font-weight:600;
+ color:#382641;
+}
+.weekly-planner .weekly-note-wrap:has(textarea:placeholder-shown) .weekly-note-display{
+ color:#a99ab8;font-weight:500;
+}
+.weekly-planner .weekly-note-wrap textarea{
+ display:block;margin:0!important;min-height:0!important;
+ width:123.076923%!important;height:123.076923%!important;
+ max-width:none!important;box-sizing:border-box;
+ padding:4.923px 0!important;resize:none;
+ transform:scale(.8125);transform-origin:top left;
+ font-size:16px!important;line-height:1.65!important;
+ font-weight:600;color:#382641;
+ opacity:0;
+}
+.weekly-planner .weekly-note-wrap:focus-within .weekly-note-display{visibility:hidden}
+.weekly-planner .weekly-note-wrap:focus-within textarea{opacity:1}
+.weekly-planner .weekly-note-wrap textarea:focus{background:transparent}
