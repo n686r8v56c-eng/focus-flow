@@ -2024,3 +2024,36 @@ body,
 .weekly-free-note .weekly-day-head b{font-size:23px;line-height:1.1}
 .weekly-free-note textarea{min-height:140px}
 @media(max-width:380px){.weekly-planner{padding-left:5px;padding-right:5px}.weekly-day{padding:10px 6px}.weekly-day-head span{font-size:10px}}
+
+
+/* Six primary tabs and editable four-quadrant Daily Check */
+.bottom-nav{grid-template-columns:repeat(6,minmax(0,1fr));padding-left:4px;padding-right:4px}
+.bottom-nav>button{font-size:11px!important;padding-left:0;padding-right:0}
+.bottom-nav>button svg{width:20px;height:20px;flex-basis:20px}
+.daily-check-page{box-sizing:border-box;width:100%;padding:18px 8px 30px;color:#463258}
+.daily-check-title small{font-size:11px;font-weight:800;letter-spacing:.17em;color:#9877b6}
+.daily-check-title h1{font-size:25px;margin:4px 0 16px}
+.daily-check-navigation{display:flex;align-items:center;gap:8px;margin-bottom:18px}
+.daily-check-navigation strong{font-size:14px;white-space:nowrap}
+.daily-check-navigation button{background:white;color:#725299;border:1px solid #e5d7f0;border-radius:10px;min-width:35px;height:36px;font-size:19px}
+.daily-check-navigation button:last-child{font-size:12px;padding:0 10px}
+.daily-check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid #e5d7f0;border-radius:17px;overflow:hidden;background:#fff}
+.daily-check-section{box-sizing:border-box;min-width:0;min-height:280px;padding:13px 10px;border-bottom:1px solid #e5d7f0}
+.daily-check-section:nth-child(odd){border-right:1px solid #e5d7f0}
+.daily-check-section:nth-child(n+3){border-bottom:0}
+.daily-check-section-title{display:flex;align-items:center;gap:6px;margin-bottom:13px;min-width:0}
+.daily-check-section-title span{font-size:18px}
+.daily-check-section-title b{font-size:16px;white-space:nowrap;letter-spacing:-.6px}
+.daily-check-items{display:flex;flex-direction:column;gap:7px}
+.daily-check-item{display:flex;align-items:center;gap:4px;min-width:0}
+.daily-check-item input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:0 0 19px;width:19px;height:19px;border:1.5px solid #ae8bd4;border-radius:4px;margin:0;cursor:pointer}
+.daily-check-item input[type=checkbox]:checked{background:#8c60c6;border-color:#8c60c6}
+.daily-check-item input[type=checkbox]:checked:after{content:"✓";display:block;color:white;font-size:15px;line-height:17px;text-align:center}
+.daily-check-item input:not([type=checkbox]){min-width:0;flex:1;border:0;background:transparent;padding:5px 0;font:inherit;font-size:13px;color:#42334c;outline:0}
+.daily-check-item input.completed{text-decoration:line-through;color:#a9a0b1}
+.daily-check-item button{border:0;background:transparent;color:#b9aac7;font-size:16px;padding:2px;cursor:pointer}
+.daily-check-add{display:flex;align-items:center;gap:4px;margin-top:10px}
+.daily-check-add input{min-width:0;flex:1;border:0;border-bottom:1px solid #eee5f5;padding:7px 2px;background:transparent;font:inherit;font-size:12px;outline:0}
+.daily-check-add button{border:0;border-radius:50%;background:#f3eafb;color:#725299;width:25px;height:25px;flex-shrink:0;font-size:18px}
+.daily-check-add button:disabled{opacity:.4}
+@media(max-width:380px){.daily-check-page{padding-left:5px;padding-right:5px}.daily-check-section{padding:10px 6px}.daily-check-section-title b{font-size:14px}.daily-check-item input:not([type=checkbox]){font-size:12px}.bottom-nav>button{font-size:10px!important}}
