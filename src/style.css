@@ -2111,3 +2111,19 @@ body,
 /* Slightly tighter vertical rhythm between D Check checklist rows. */
 .daily-check-page .daily-check-items{gap:2px}
 .daily-check-page .daily-check-item input:not([type="checkbox"]){padding-top:3px;padding-bottom:3px}
+
+
+/* iOS Safari: prevent focus-triggered page zoom across all editable controls.
+   Keep real 16px text rather than disabling user pinch zoom. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  textarea,
+  select,
+  [contenteditable="true"] {
+    font-size: max(16px, 1em);
+  }
+  .daily-check-page .daily-check-item input:not([type="checkbox"]),
+  .weekly-planner .weekly-day textarea {
+    font-size: 16px;
+  }
+}
