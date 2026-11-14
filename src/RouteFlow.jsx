@@ -38,8 +38,10 @@ function loadKakao(){
 }
 function KakaoRouteMap({ordered,picked,onPick,onAdd}){
  const container=useRef(null),mapRef=useRef(null),markersRef=useRef([]),searchRef=useRef(null);
- const [sdk,setSdk]=useState(null),[query,setQuery]=useState(""),[results,setResults]=useState([]),[found,setFound]=useState(null),[message,setMessage]=useState("");
+ const [sdk,setSdk]=useState(null),[geoStatus,setGeoStatus]=useState(""),[geoPoint,setGeoPoint]=useState(null),[query,setQuery]=useState(""),[results,setResults]=useState([]),[found,setFound]=useState(null),[message,setMessage]=useState("");
  useEffect(()=>{let active=true;loadKakao().then(k=>{if(active)setSdk(k)}).catch(e=>{if(active)setMessage(e.message)});return()=>{active=false}},[]);
+ const locate=()=>{if(!navigator.geolocation){setGeoStatus("이 브라우저에서는 위치 기능을 지원하지 않아요.");return}setGeoStatus("현재 위치 확인 중…");navigator.geolocation.getCurrentPosition(pos=>{const point={lat:pos.coords.latitude,lng:pos.coords.longitude};setGeoPoint(point);setGeoStatus("현재 위치 주변 지도를 표시했어요.");if(mapRef.current&&sdk){mapRef.current.setCenter(new sdk.maps.LatLng(point.lat,point.lng));mapRef.current.setLevel(4)}},err=>setGeoStatus(err.code===1?"위치 권한이 꺼져 있어요. iPhone 설정에서 이 사이트의 위치 접근을 허용해 주세요.":"현재 위치를 확인하지 못했어요. 다시 시도해 주세요."),{enableHighAccuracy:false,timeout:10000,maximumAge:300000})};
+ useEffect(()=>{if(sdk)locate()},[sdk]);
  useEffect(()=>{
   if(!sdk||!container.current)return;
   if(!mapRef.current)mapRef.current=new sdk.maps.Map(container.current,{center:new sdk.maps.LatLng(37.5665,126.978),level:6});
@@ -65,7 +67,8 @@ function KakaoRouteMap({ordered,picked,onPick,onAdd}){
  return <div className="route-kakao-panel">
   <form className="route-kakao-search" onSubmit={search}><input aria-label="장소 검색" placeholder="카페, 병원, 주소, 관광지 검색" value={query} onChange={e=>setQuery(e.target.value)}/><button type="submit" disabled={!sdk}>검색</button></form>
   {message&&<p role="status" className="route-hint">{message}</p>}
-  <div className="route-map" ref={container} aria-label="카카오 지도" />
+  <div className="route-map-wrap"><div className="route-map" ref={container} aria-label="카카오 지도" /><button className="route-locate-button" type="button" title="내 위치로 이동" aria-label="내 위치로 이동" onClick={locate}><Navigation size={18}/></button></div>
+  {geoStatus&&<p role="status" className="route-hint">{geoStatus}</p>}
   {results.length>0&&<div className="route-kakao-results">{results.map(item=><div className="route-kakao-result" key={item.id}><button type="button" onClick={()=>setFound(item)}><strong>{item.place_name}</strong><small>{item.road_address_name||item.address_name}</small></button><button type="button" className="route-kakao-add" onClick={()=>onAdd(item)}>+ 동선에 추가</button></div>)}</div>}
   <div className="route-map-pins">{ordered.map((p,i)=><button className={picked?.id===p.id?"active":""} key={p.id} onClick={()=>onPick(p.id)}>{i+1}. {p.name}</button>)}</div>
   {picked&&<div className="route-map-info"><strong><MapPin size={16}/>{picked.name}</strong><p>{picked.address||"주소 미입력"}</p>{picked.lat&&picked.lng?<a target="_blank" rel="noopener noreferrer" href={"https://map.kakao.com/link/to/"+encodeURIComponent(picked.name)+","+picked.lat+","+picked.lng}>카카오맵 길찾기</a>:<a target="_blank" rel="noopener noreferrer" href={"https://map.kakao.com/link/search/"+encodeURIComponent(picked.address||picked.name)}>카카오맵에서 검색</a>}</div>}
