@@ -203,7 +203,7 @@ export function RouteFlow({userId}){
  const mapQuery= picked ? (picked.address||picked.name) : "대한민국";
  const mapUrl="https://maps.google.com/maps?q="+encodeURIComponent(mapQuery)+"&output=embed";
  return <section className="route-flow">
-  <div className="route-title"><div><small>ROUTE FLOW</small><h1>하루 동선</h1><p>시간 · 장소 · 이동 경로를 한눈에</p></div><label aria-label="날짜 선택"><CalendarDays size={16}/><input type="date" value={date} onChange={e=>{setDate(e.target.value);setSelected("");setEditing("")}}/></label></div>
+  {(tab==="today"||tab==="route")&&<div className="route-date-only"><label aria-label="날짜 선택"><CalendarDays size={16}/><input type="date" value={date} onChange={e=>{setDate(e.target.value);setSelected("");setEditing("")}}/></label></div>}
 
   
   {error&&<p role="alert" className="route-error">{error}</p>}
