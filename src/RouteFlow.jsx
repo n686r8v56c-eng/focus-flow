@@ -42,7 +42,8 @@ function loadKakao(){
 }
 function KakaoRouteMap({ordered,picked,onPick,onAdd}){
  const container=useRef(null),mapRef=useRef(null),markersRef=useRef([]),searchRef=useRef(null);
- const [sdk,setSdk]=useState(null),[geoStatus,setGeoStatus]=useState(""),[geoPoint,setGeoPoint]=useState(null),[query,setQuery]=useState(""),[results,setResults]=useState([]),[found,setFound]=useState(null),[message,setMessage]=useState("");
+ const [sdk,setSdk]=useState(null),[geoStatus,setGeoStatus]=useState(""),[geoPoint,setGeoPoint]=useState(null),[query,setQuery]=useState(""),[results,setResults]=useState([]),[found,setFound]=useState(null),[message,setMessage]=useState(""),[moreResults,setMoreResults]=useState(false),[searchMode,setSearchMode]=useState("nearby");
+ const paginationRef=useRef(null),searchSeqRef=useRef(0);
  useEffect(()=>{let active=true;loadKakao().then(k=>{if(active)setSdk(k)}).catch(e=>{if(active)setMessage(e.message)});return()=>{active=false}},[]);
  const locate=()=>{if(!navigator.geolocation){setGeoStatus("이 브라우저에서는 위치 기능을 지원하지 않아요.");return}setGeoStatus("현재 위치 확인 중…");navigator.geolocation.getCurrentPosition(pos=>{const point={lat:pos.coords.latitude,lng:pos.coords.longitude};setGeoPoint(point);setGeoStatus("현재 위치 주변 지도를 표시했어요.");if(mapRef.current&&sdk){mapRef.current.setCenter(new sdk.maps.LatLng(point.lat,point.lng));mapRef.current.setLevel(4)}},err=>setGeoStatus(err.code===1?"위치 권한이 꺼져 있어요. iPhone 설정에서 이 사이트의 위치 접근을 허용해 주세요.":"현재 위치를 확인하지 못했어요. 다시 시도해 주세요."),{enableHighAccuracy:false,timeout:10000,maximumAge:300000})};
  useEffect(()=>{if(sdk)locate()},[sdk]);
@@ -70,20 +71,37 @@ function KakaoRouteMap({ordered,picked,onPick,onAdd}){
   else if(count===1)map.setCenter(bounds.getSouthWest());
   else if(picked?.lat&&picked?.lng)map.setCenter(new sdk.maps.LatLng(Number(picked.lat),Number(picked.lng)));
  },[sdk,ordered,picked,found,onPick,geoPoint]);
- const search=e=>{
-  e.preventDefault();if(!sdk||!query.trim())return;
-  setMessage("검색 중…");const service=new sdk.maps.services.Places();
-  service.keywordSearch(query.trim(),(data,status)=>{
-   if(status===sdk.maps.services.Status.OK){setResults(data);setMessage(data.length+"개 장소를 찾았어요.");setFound(data[0]);}
-   else{setResults([]);setFound(null);setMessage(status===sdk.maps.services.Status.ZERO_RESULT?"검색 결과가 없어요.":"장소 검색에 실패했어요.");}
-  });
+ const searchPlaces=(mode="nearby")=>{
+  if(!sdk||!query.trim())return;
+  const seq=++searchSeqRef.current;
+  const nearby=mode==="nearby"&&!!geoPoint;
+  setSearchMode(nearby?"nearby":"nationwide");
+  setResults([]);setFound(null);setMoreResults(false);paginationRef.current=null;
+  setMessage(nearby?"현재 위치 주변 검색 중…":"전국 검색 중…");
+  const service=new sdk.maps.services.Places();
+  const options={size:15,sort:nearby?sdk.maps.services.SortBy.DISTANCE:sdk.maps.services.SortBy.ACCURACY};
+  if(nearby){options.location=new sdk.maps.LatLng(geoPoint.lat,geoPoint.lng);options.radius=20000;}
+  service.keywordSearch(query.trim(),(data,status,pagination)=>{
+   if(seq!==searchSeqRef.current)return;
+   if(status===sdk.maps.services.Status.OK){
+    paginationRef.current=pagination;
+    setResults(prev=>[...prev,...data.filter(item=>!prev.some(p=>p.id===item.id))]);
+    setMoreResults(!!pagination?.hasNextPage);
+    setMessage((nearby?"현재 위치 20km 이내 · 거리순":"전국 검색")+" · 결과 더 보기 가능");
+   }else if(status===sdk.maps.services.Status.ZERO_RESULT){
+    setMoreResults(false);setMessage(nearby?"20km 안에 결과가 없어요. 전국 검색을 눌러보세요.":"검색 결과가 없어요.");
+   }else{setMoreResults(false);setMessage("장소 검색에 실패했어요. 다시 시도해 주세요.");}
+  },options);
  };
+ const search=e=>{e.preventDefault();searchPlaces("nearby");};
  return <div className="route-kakao-panel">
   <form className="route-kakao-search" onSubmit={search}><input aria-label="장소 검색" placeholder="카페, 병원, 주소, 관광지 검색" value={query} onChange={e=>setQuery(e.target.value)}/><button type="submit" disabled={!sdk}>검색</button></form>
   {message&&<p role="status" className="route-hint">{message}</p>}
   <div className="route-map-wrap"><div className="route-map" ref={container} aria-label="카카오 지도" /><button className="route-locate-button" type="button" title="내 위치로 이동" aria-label="내 위치로 이동" onClick={locate}><Navigation size={18}/></button></div>
   {geoStatus&&<p role="status" className="route-hint">{geoStatus}</p>}
-  {results.length>0&&<div className="route-kakao-results">{results.map(item=><div className="route-kakao-result" key={item.id}><button type="button" onClick={()=>setFound(item)}><strong>{item.place_name}</strong><small>{item.road_address_name||item.address_name}</small></button><button type="button" className="route-kakao-add" onClick={()=>onAdd(item)}>+ 동선에 추가</button></div>)}</div>}
+  {query.trim()&&<div style={{display:"flex",gap:8,alignItems:"center",margin:"8px 0",flexWrap:"wrap"}}><button type="button" onClick={()=>searchPlaces("nearby")} disabled={!sdk} aria-pressed={searchMode==="nearby"}>📍 내 주변</button><button type="button" onClick={()=>searchPlaces("nationwide")} disabled={!sdk} aria-pressed={searchMode==="nationwide"}>전국 검색</button><small>{results.length}개 표시</small></div>}
+  {results.length>0&&<div className="route-kakao-results">{results.map(item=><div className="route-kakao-result" key={item.id}><button type="button" onClick={()=>setFound(item)}><strong>{item.place_name}</strong><small>{item.distance?Number(item.distance).toLocaleString()+"m · ":""}{item.road_address_name||item.address_name}</small></button><button type="button" className="route-kakao-add" onClick={()=>onAdd(item)}>+ 동선에 추가</button></div>)}</div>}
+  {moreResults&&<button type="button" style={{width:"100%",padding:10,marginTop:8}} onClick={()=>paginationRef.current?.nextPage()}>검색 결과 더 보기</button>}
   <div className="route-map-pins">{ordered.map((p,i)=><button className={picked?.id===p.id?"active":""} key={p.id} onClick={()=>onPick(p.id)}>{i+1}. {p.name}</button>)}</div>
   {picked&&<div className="route-map-info"><strong><MapPin size={16}/>{picked.name}</strong><p>{picked.address||"주소 미입력"}</p>{picked.lat&&picked.lng?<a target="_blank" rel="noopener noreferrer" href={"https://map.kakao.com/link/to/"+encodeURIComponent(picked.name)+","+picked.lat+","+picked.lng}>카카오맵 길찾기</a>:<a target="_blank" rel="noopener noreferrer" href={"https://map.kakao.com/link/search/"+encodeURIComponent(picked.address||picked.name)}>카카오맵에서 검색</a>}</div>}
   <p className="route-hint">검색한 장소는 좌표와 함께 저장돼요. 교통편 상세 안내는 카카오맵에서 확인할 수 있어요.</p>
