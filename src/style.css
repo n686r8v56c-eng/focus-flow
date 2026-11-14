@@ -2057,3 +2057,16 @@ body,
 .daily-check-add button{border:0;border-radius:50%;background:#f3eafb;color:#725299;width:25px;height:25px;flex-shrink:0;font-size:18px}
 .daily-check-add button:disabled{opacity:.4}
 @media(max-width:380px){.daily-check-page{padding-left:5px;padding-right:5px}.daily-check-section{padding:10px 6px}.daily-check-section-title b{font-size:14px}.daily-check-item input:not([type=checkbox]){font-size:12px}.bottom-nav>button{font-size:10px!important}}
+
+
+/* Compact Daily Check checkboxes; override generic mobile input rules. */
+.daily-check-page .daily-check-item input[type="checkbox"]{
+ appearance:none;-webkit-appearance:none;box-sizing:border-box;
+ width:14px;height:14px;min-width:14px;min-height:14px;max-width:14px;max-height:14px;
+ flex:0 0 14px;padding:0;margin:0;border:1.5px solid #ad8ad4;border-radius:3px;
+ background:#fff;vertical-align:middle;
+}
+.daily-check-page .daily-check-item input[type="checkbox"]:checked{background:#8c60c6;border-color:#8c60c6}
+.daily-check-page .daily-check-item input[type="checkbox"]:checked::after{font-size:11px;line-height:11px}
+.daily-check-page .daily-check-item{gap:5px}
+.daily-check-page .daily-check-section-title{gap:0}
