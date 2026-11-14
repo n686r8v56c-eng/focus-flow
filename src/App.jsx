@@ -1885,7 +1885,7 @@ export function App({
         <RouteBackupControls client={bridgeClient} userId={bridgeUserId} visible={genre==="route"}/>
         <div className="header-actions" style={genre!=="focus"?{display:"none"}:undefined}>
           <button type="button" className="api-top-button focus-header-icon-button" title="앱관리" aria-label="앱관리" style={{border:"1px solid #e3d9ee",background:tab === "apps" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("apps")} aria-current={tab === "apps" ? "page" : undefined}><Blocks size={20}/></button>
-          <button type="button" className="api-top-button focus-header-icon-button" title="플레이리스트" aria-label="플레이리스트" style={{border:"1px solid #e3d9ee",background:tab === "playlist" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>{setPlaylistOpened(true);setTab("playlist")}} aria-current={tab === "playlist" ? "page" : undefined}><Music2 size={20}/></button>
+          <button type="button" className="api-top-button focus-header-icon-button" title="타임라인" aria-label="타임라인" style={{border:"1px solid #e3d9ee",background:tab === "timeline" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9,fontSize:20,fontWeight:750}} onClick={()=>setTab("timeline")} aria-current={tab === "timeline" ? "page" : undefined}>T</button>
           <button type="button" className="api-top-button focus-header-icon-button" title="홈" aria-label="홈" style={{border:"1px solid #e3d9ee",background:tab === "familyhome" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9}} onClick={()=>setTab("familyhome")} aria-current={tab === "familyhome" ? "page" : undefined}><House size={20}/></button>
           <button type="button" className="api-top-button" style={{border:"1px solid #e3d9ee",background:tab === "api" ? "#eee6f7" : "#fff",color:"#725299",borderRadius:9,padding:"7px 11px",fontSize:14,fontWeight:650,minHeight:36}} onClick={()=>setTab("api")} aria-current={tab === "api" ? "page" : undefined}>API</button>
           <div className="focus-backup-menu">
@@ -1930,7 +1930,6 @@ export function App({
         {[
           ["weeklyfocus",CalendarRange,"매크로"],
           ["daily",Clock3,"데일리"],
-          ["timeline",CalendarRange,"타임라인"],
           ["todo",Inbox,"인박스"],
           ["calendar",CalendarDays,"일정"]
         ].map(([id,Icon,label])=><button type="button" key={id} onClick={()=>{if(id==="playlist")setPlaylistOpened(true);setTab(id)}} className={tab===id?"nav-active":""} aria-current={tab===id?"page":undefined}><Icon size={21} strokeWidth={tab===id?2.5:1.8}/><span>{label}</span></button>)}
