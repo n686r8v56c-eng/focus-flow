@@ -182,3 +182,10 @@
 .route-place-photo-remove{position:absolute;top:3px;right:3px;background:#fff;border:1px solid #e8ddef;border-radius:7px;padding:5px;color:#8054a8}
 .route-place-photo-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:108px;border:1px dashed #d8c5e9;border-radius:10px;color:#8054a8;cursor:pointer;font-size:12px}
 .route-place-photo-editor>small{display:block;margin-top:9px;color:#81758b}
+
+.route-photo-modal-backdrop{position:fixed;inset:0;z-index:99999;background:rgba(39,29,51,.48);display:flex;align-items:center;justify-content:center;padding:18px}
+.route-photo-modal{width:min(100%,480px);max-height:calc(100dvh - 44px);overflow-y:auto;background:#fff;border-radius:20px;padding:18px;box-shadow:0 15px 45px rgba(30,20,40,.2)}
+.route-photo-modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:17px}
+.route-photo-modal-header button{border:0;background:#f4eef9;border-radius:10px;padding:9px 13px;color:#654781;font-size:18px}
+.route-photo-modal .route-place-photo-editor{margin:0}
+.route-place-thumbnail{padding:0;appearance:none;-webkit-appearance:none}
