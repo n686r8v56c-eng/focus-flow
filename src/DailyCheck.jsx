@@ -2,7 +2,7 @@ import React,{useState,useRef,useLayoutEffect} from "react";
 const pad=n=>String(n).padStart(2,"0");
 const keyOf=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const move=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
-const sections=[["memory","메모리랩"],["beauty","뷰티건강"],["write","Write"],["fashion","Fashion"]];
+const sections=[["memory","메모리랩"],["beauty","뷰티건강"],["write","Write"],["fashion","Fashion"],["money","Money"],["thread","Thread"]];
 export function DailyCheck({data,onDataChange}){
  const [offset,setOffset]=useState(0);
  const itemInputs=useRef({});
