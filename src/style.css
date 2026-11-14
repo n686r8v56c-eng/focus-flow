@@ -2154,3 +2154,25 @@ body,
     font-size:16px;
   }
 }
+
+
+/* D Check: true 13px display text, 16px editable input on iOS.
+   A transparent input remains tappable; focus reveals its 16px text. */
+.daily-check-page .daily-check-text-wrap{
+ position:relative;flex:1 1 0;min-width:0;overflow:hidden;
+}
+.daily-check-page .daily-check-display{
+ position:absolute;inset:0;display:flex;align-items:center;
+ overflow:hidden;white-space:nowrap;text-overflow:clip;
+ pointer-events:none;font-size:13px!important;font-weight:600;
+ letter-spacing:normal;color:#382641;
+}
+.daily-check-page .daily-check-display.completed{
+ text-decoration:line-through;color:#91839e;
+}
+.daily-check-page .daily-check-text-wrap input:not([type="checkbox"]){
+ width:100%;min-width:0;max-width:100%;box-sizing:border-box;
+ opacity:0;font-size:16px!important;letter-spacing:normal;
+}
+.daily-check-page .daily-check-text-wrap:focus-within .daily-check-display{visibility:hidden}
+.daily-check-page .daily-check-text-wrap:focus-within input:not([type="checkbox"]){opacity:1}
